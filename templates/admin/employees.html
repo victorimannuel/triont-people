@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Kelola Karyawan{% endblock %}
+{% block content %}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 stagger">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Kelola Karyawan 👥</h1>
+        <p class="text-gray-500 mt-1">Tambah, edit, hapus karyawan — HR mode activated!</p>
+    </div>
+    <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
+        <i class="fa-solid fa-plus-circle"></i>
+        Tambah Karyawan
+    </button>
+</div>
+
+<!-- Filter Bar -->
+<div class="card p-4 mb-6 stagger">
+    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="filterForm">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Cari</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+                <input type="text" name="q" value="{{ request.args.get('q', '') }}"
+                    class="input pl-10"
+                    placeholder="Nama / Email...">
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Role</label>
+            <select name="role" class="input">
+                <option value="">Semua Role</option>
+                <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="hr" {% if request.args.get('role') == 'hr' %}selected{% endif %}>HR</option>
+                <option value="manager" {% if request.args.get('role') == 'manager' %}selected{% endif %}>Manager</option>
+                <option value="employee" {% if request.args.get('role') == 'employee' %}selected{% endif %}>Employee</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Departemen</label>
+            <select name="department_id" class="input">
+                <option value="">Semua Departemen</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if request.args.get('department_id') == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+            <select name="status" class="input">
+                <option value="">Semua Status</option>
+                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Aktif</option>
+                <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Nonaktif</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="btn btn-secondary w-full">
+                <i class="fa-solid fa-filter mr-1"></i> Filter
+            </button>
+        </div>
+    </form>
+    {% if request.args.get('q') or request.args.get('role') or request.args.get('department_id') or request.args.get('status') %}
+    <div class="mt-3 flex items-center justify-between">
+        <span class="text-sm text-gray-500">
+            Filter aktif:
+            {% if request.args.get('q') %}<span class="badge bg-teal-100 text-teal-700 ml-1">{{ request.args.get('q') }}</span>{% endif %}
+            {% if request.args.get('role') %}<span class="badge bg-indigo-100 text-indigo-700 ml-1">{{ request.args.get('role') }}</span>{% endif %}
+            {% if request.args.get('department_id') %}<span class="badge bg-amber-100 text-amber-700 ml-1">{{ departments|selectattr('id','equalto',request.args.get('department_id')|int)|map(attribute='name')|first }}</span>{% endif %}
+            {% if request.args.get('status') %}<span class="badge bg-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-100 text-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-700 ml-1">{{ request.args.get('status') }}</span>{% endif %}
+        </span>
+        <a href="{{ url_for('main.admin_employees') }}" class="text-sm text-teal-600 hover:underline">
+            <i class="fa-solid fa-xmark mr-1"></i> Clear
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Employee list -->
+<div class="card stagger">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr>
+                    <th class="text-left px-6 py-3 font-medium">Nama</th>
+                    <th class="text-left px-6 py-3 font-medium">Email</th>
+                    <th class="text-left px-6 py-3 font-medium">Role</th>
+                    <th class="text-left px-6 py-3 font-medium">Departemen</th>
+                    <th class="text-left px-6 py-3 font-medium">Manager</th>
+                    <th class="text-left px-6 py-3 font-medium">Status</th>
+                    <th class="text-right px-6 py-3 font-medium">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for emp in employees %}
+                <tr class="hover:bg-gray-50/50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: {{ emp.avatar_color }}">
+                                {{ emp.name[0] }}
+                            </div>
+                            <span class="font-medium text-gray-900">{{ emp.name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">{{ emp.email }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium
+                            {% if emp.role == 'admin' %}bg-red-100 text-red-700
+                            {% elif emp.role == 'hr' %}bg-emerald-100 text-emerald-700
+                            {% elif emp.role == 'manager' %}bg-indigo-100 text-indigo-700
+                            {% else %}bg-gray-100 text-gray-700{% endif %}">
+                            {{ emp.role|capitalize }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">{{ emp.department.name if emp.department else '-' }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ emp.manager.name if emp.manager else '-' }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if emp.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ 'Aktif' if emp.is_active else 'Nonaktif' }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        {% if emp.role != 'admin' %}
+                        <form method="POST" action="{{ url_for('main.admin_delete_employee', user_id=emp.id) }}"
+                              onsubmit="return confirm('Hapus {{ emp.name }}? Semua data cuti juga akan dihapus.')"
+                              class="inline">
+                            <button type="submit" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                <i class="fa-solid fa-trash-can"></i> Hapus
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-xs text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <i class="fa-solid fa-users"></i>
+                        <p>Belum ada karyawan nih</p>
+                        <span class="text-sm">Klik "Tambah Karyawan" untuk mulai</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-900">Tambah Karyawan Baru</h3>
+            <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('main.admin_add_employee') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                <input type="text" name="name" required
+                    class="input"
+                    placeholder="Nama lengkap karyawan">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" name="email" required
+                    class="input"
+                    placeholder="email@perusahaan.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" name="password" required
+                    class="input"
+                    placeholder="Minimal 6 karakter">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select name="role"
+                    class="input">
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Manager (untuk employee)</label>
+                <select name="manager_id"
+                    class="input">
+                    <option value="">— Tanpa Manager —</option>
+                    {% for m in managers %}
+                    <option value="{{ m.id }}">{{ m.name }} ({{ m.role }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Departemen (untuk employee)</label>
+                <select name="department_id"
+                    class="input">
+                    <option value="">— Tanpa Departemen —</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}">{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
+                    <i class="fa-solid fa-user-plus mr-1"></i> Tambah
+                </button>
+                <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+                    class="flex-1 py-2.5 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all btn btn-secondary">
+                    Batal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

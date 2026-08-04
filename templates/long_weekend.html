@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Long Weekend Calculator{% endblock %}
+{% block content %}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Long Weekend Calculator 🎯</h1>
+        <p class="text-gray-500 mt-1">Cari combo cuti terbaik buat libur panjang maksimal, no waste!</p>
+    </div>
+    <form method="GET" class="flex items-center gap-2">
+        <select name="year" onchange="this.form.submit()"
+            class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+            {% for y in years %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+{% if suggestions %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for s in suggestions %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 {% if s.leave_needed == 0 %}ring-2 ring-emerald-400{% endif %}">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-gray-900 text-lg">{{ s.month }}</h3>
+            {% if s.leave_needed == 0 %}
+            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">Auto 🎉</span>
+            {% else %}
+            <span class="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full font-medium">Ambil {{ s.leave_needed }} hari cuti</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2 text-2xl font-bold text-gray-900 mb-1">
+            <i class="fa-solid fa-calendar-week text-teal-500"></i>
+            {{ s.total_off }} Hari Libur
+        </div>
+        <p class="text-sm text-gray-500 mb-3">
+            <i class="fa-solid fa-arrow-right text-gray-300 mr-1"></i> {{ s.detail }}
+        </p>
+        <div class="text-xs text-gray-400">
+            {% if s.leave_needed > 0 %}
+            Ambil cuti <strong>{{ s.leave_needed }} hari</strong> → dapet libur <strong>{{ s.total_off }} hari</strong> non-stop! 🔥
+            {% else %}
+            Libur panjang tanpa perlu ambil cuti! 🎊 Lucky you!
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-16 text-gray-400">
+    <i class="fa-solid fa-calendar-xmark text-5xl mb-4"></i>
+    <p class="text-lg font-medium text-gray-500">Tahun {{ year }} sepi long weekend-nya 😭</p>
+    <p class="text-sm mt-1">Coba pilih tahun lain deh</p>
+</div>
+{% endif %}
+
+{% endblock %}

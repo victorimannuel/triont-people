@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Jenis Cuti{% endblock %}
+{% block content %}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 stagger">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Jenis Cuti 🎭</h1>
+        <p class="text-gray-500 mt-1">Kelola tipe cuti & quota — custom sesuka hati</p>
+    </div>
+    <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
+        <i class="fa-solid fa-plus-circle"></i>
+        Tambah Jenis Cuti
+    </button>
+</div>
+
+<!-- Filter Bar -->
+<div class="card p-4 mb-6 stagger">
+    <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="filterForm">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Cari</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+                <input type="text" name="q" value="{{ request.args.get('q', '') }}"
+                    class="input pl-10"
+                    placeholder="Nama cuti...">
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+            <select name="status" class="input">
+                <option value="">Semua Status</option>
+                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Aktif</option>
+                <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Nonaktif</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="btn btn-secondary w-full">
+                <i class="fa-solid fa-filter mr-1"></i> Filter
+            </button>
+        </div>
+    </form>
+    {% if request.args.get('q') or request.args.get('status') %}
+    <div class="mt-3 flex items-center justify-between">
+        <span class="text-sm text-gray-500">
+            Filter aktif:
+            {% if request.args.get('q') %}<span class="badge bg-teal-100 text-teal-700 ml-1">{{ request.args.get('q') }}</span>{% endif %}
+            {% if request.args.get('status') %}<span class="badge bg-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-100 text-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-700 ml-1">{{ request.args.get('status') }}</span>{% endif %}
+        </span>
+        <a href="{{ url_for('main.admin_leave_types') }}" class="text-sm text-teal-600 hover:underline">
+            <i class="fa-solid fa-xmark mr-1"></i> Clear
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Leave type cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+    {% for lt in leave_types %}
+    <div class="card p-5 card-hover">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: {{ lt.color }}20;">
+                <i class="fa-solid {{ lt.icon }}" style="color: {{ lt.color }}"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-semibold text-gray-900">{{ lt.name }}</h3>
+                {% if lt.description %}
+                <p class="text-xs text-gray-400">{{ lt.description }}</p>
+                {% endif %}
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" {% if lt.is_active %}checked{% endif %} disabled>
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+        </div>
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-2xl font-bold text-gray-900">{{ lt.days_per_year }}</p>
+                <p class="text-xs text-gray-400">Hari per tahun</p>
+            </div>
+            <div class="text-right">
+                {% if lt.requires_approval %}
+                <span class="badge bg-teal-100 text-teal-700">Perlu Approval</span>
+                {% else %}
+                <span class="badge bg-gray-100 text-gray-600">Auto</span>
+                {% endif %}
+            </div>
+        </div>
+        <button onclick="openEditModal({{ lt.id }}, '{{ lt.name }}', '{{ lt.description }}', {{ lt.days_per_year }}, '{{ lt.color }}', {{ 'true' if lt.is_active else 'false' }})"
+            class="mt-4 w-full py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all btn btn-secondary">
+            <i class="fa-solid fa-pen mr-1"></i> Edit
+        </button>
+        <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}"
+            class="mt-2 w-full inline-block text-center py-2 bg-indigo-50 text-indigo-600 text-sm font-medium rounded-xl hover:bg-indigo-100 transition-all">
+            <i class="fa-solid fa-layer-group mr-1"></i> Atur Approval
+        </a>
+    </div>
+    {% else %}
+    <div class="col-span-full empty-state">
+        <i class="fa-solid fa-list-check"></i>
+        <p>Belum ada jenis cuti</p>
+        <span class="text-sm">Klik "Tambah Jenis Cuti" untuk mulai</span>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-900">Tambah Jenis Cuti</h3>
+            <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('main.admin_add_leave_type') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Cuti</label>
+                <input type="text" name="name" required
+                    class="input"
+                    placeholder="Contoh: Cuti Tahunan">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                <input type="text" name="description"
+                    class="input"
+                    placeholder="Opsional">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hari per Tahun</label>
+                <input type="number" name="days_per_year" value="0" min="0"
+                    class="input">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Warna</label>
+                <input type="color" name="color" value="#0d9488"
+                    class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer">
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
+                    <i class="fa-solid fa-plus mr-1"></i> Tambah
+                </button>
+                <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+                    class="flex-1 py-2.5 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all btn btn-secondary">
+                    Batal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-900">Edit Jenis Cuti</h3>
+            <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="" id="editForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Cuti</label>
+                <input type="text" name="name" id="editName" required
+                    class="input">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                <input type="text" name="description" id="editDescription"
+                    class="input">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hari per Tahun</label>
+                <input type="number" name="days_per_year" id="editDays" min="0"
+                    class="input">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Warna</label>
+                <input type="color" name="color" id="editColor"
+                    class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer">
+            </div>
+            <div>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" id="editActive" value="1"
+                        class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                    <span class="text-sm text-gray-700">Aktif</span>
+                </label>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
+                    <i class="fa-solid fa-save mr-1"></i> Simpan
+                </button>
+                <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+                    class="flex-1 py-2.5 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all btn btn-secondary">
+                    Batal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditModal(id, name, description, days, color, isActive) {
+    document.getElementById('editForm').action = '/admin/leave-types/edit/' + id;
+    document.getElementById('editName').value = name;
+    document.getElementById('editDescription').value = description;
+    document.getElementById('editDays').value = days;
+    document.getElementById('editColor').value = color;
+    document.getElementById('editActive').checked = isActive;
+    document.getElementById('editModal').classList.remove('hidden');
+}
+</script>
+{% endblock %}

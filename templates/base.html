@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GwCuti{% endblock %} — GwCuti</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+        <style>
+            :root { --primary: {{ primary_color }}; --primary-rgb: 13, 148, 136; }
+        </style>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {50:'#f0fdfa',100:'#ccfbf1',200:'#99f6e4',300:'#5eead4',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e',800:'#115e59',900:'#134e4a',950:'#042f2e'},
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .transition-all { transition: all 0.2s ease; }
+        .sidebar-link { transition: all 0.2s; }
+        .sidebar-link:hover { transform: translateX(4px); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 25px -5px rgba(0,0,0,0.1); }
+        .gradient-header { background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%); }
+        .gradient-card { background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); }
+        .gradient-success { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+        .gradient-warning { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
+        .gradient-danger { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+        .gradient-info { background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); }
+        @media print { .no-print { display: none; } }
+        
+        /* Design System Tokens */
+        :root {
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --focus-ring: 0 0 0 3px var(--primary-rgb, 13, 148, 136 / 0.4);
+        }
+        
+        /* Micro-interactions */
+        .btn { @apply inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200; }
+        .btn-primary { @apply text-white shadow-sm hover:shadow-md; background: var(--primary); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary { @apply text-gray-700 border border-gray-200 hover:bg-gray-50; }
+        .btn-secondary:active { transform: scale(0.98); }
+        .btn-ghost { @apply text-gray-600 hover:text-gray-900 hover:bg-gray-100; }
+        .btn-danger { @apply text-red-600 hover:bg-red-50 border border-red-200; }
+        
+        .input { @apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none transition-all duration-200; }
+        .input:focus { @apply border-teal-500 ring-2; ring-color: var(--primary-rgb, 13, 148, 136 / 0.2); }
+        .input-error { @apply border-red-300 focus:border-red-500 focus:ring-red-500/20; }
+        
+        .card { @apply bg-white rounded-2xl border border-gray-100 shadow-sm; }
+        .card-elevated { @apply card shadow-lg; }
+        
+        .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { @apply bg-gray-50; }
+        ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full hover:bg-gray-400; }
+        
+        /* Loading skeleton */
+        .skeleton { @apply animate-pulse bg-gray-200 rounded; }
+        
+        /* Focus visible for accessibility */
+        .focus-visible:focus { outline: none; }
+        .focus-visible:focus-visible { @apply ring-2 ring-teal-500 ring-offset-2; }
+        
+        /* Toast animations */
+        .toast-enter { animation: slideIn 0.3s ease-out; }
+        .toast-exit { animation: slideOut 0.2s ease-in; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        
+        /* Staggered animations */
+        .stagger > * { animation: fadeInUp 0.4s ease-out both; }
+        .stagger > *:nth-child(1) { animation-delay: 0ms; }
+        .stagger > *:nth-child(2) { animation-delay: 50ms; }
+        .stagger > *:nth-child(3) { animation-delay: 100ms; }
+        .stagger > *:nth-child(4) { animation-delay: 150ms; }
+        .stagger > *:nth-child(5) { animation-delay: 200ms; }
+        .stagger > *:nth-child(6) { animation-delay: 250ms; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Empty state */
+        .empty-state { @apply text-center py-12 text-gray-400; }
+        .empty-state i { @apply text-4xl mb-3 block; }
+        .empty-state p { @apply text-base font-medium text-gray-500; }
+        .empty-state .text-sm { @apply text-gray-400 mt-1; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {% if current_user.is_authenticated %}
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="no-print w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 hidden md:flex">
+            <div class="p-5" style="background: linear-gradient(135deg, var(--primary), #115e59);">
+                <a href="{{ url_for('main.dashboard') }}" class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-check text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-lg leading-tight">GwCuti</h1>
+                        <p class="text-white/70 text-xs">Leave Management</p>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                {% if current_user.role != 'admin' %}
+                <!-- Employee menu (employee, manager, hr) -->
+                <a href="{{ url_for('main.dashboard') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.dashboard' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.dashboard' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-gauge-high w-5 text-center {% if request.endpoint == 'main.dashboard' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('main.apply_leave') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.apply_leave' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.apply_leave' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-plus-circle w-5 text-center {% if request.endpoint == 'main.apply_leave' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Ajukan Cuti
+                </a>
+                <a href="{{ url_for('main.history') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.history' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.history' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-clock-rotate-left w-5 text-center {% if request.endpoint == 'main.history' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Riwayat
+                </a>
+                <a href="{{ url_for('main.calendar') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.calendar' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.calendar' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-calendar-days w-5 text-center {% if request.endpoint == 'main.calendar' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Kalender
+                </a>
+                <a href="{{ url_for('main.long_weekend') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.long_weekend' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.long_weekend' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-wand-magic-sparkles w-5 text-center {% if request.endpoint == 'main.long_weekend' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Long Weekend
+                </a>
+                {% endif %}
+
+                {% if current_user.role in ('manager', 'hr', 'admin') %}
+                <div class="pt-4 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Manajemen</p>
+                </div>
+                <a href="{{ url_for('main.approvals') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.approvals' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.approvals' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-check-double w-5 text-center {% if request.endpoint == 'main.approvals' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Persetujuan
+                </a>
+                {% endif %}
+
+                {% if current_user.role in ('hr', 'admin') %}
+                <div class="pt-4 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</p>
+                </div>
+                <a href="{{ url_for('main.admin_employees') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.admin_employees' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.admin_employees' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-users w-5 text-center {% if request.endpoint == 'main.admin_employees' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Karyawan
+                </a>
+                <a href="{{ url_for('main.admin_leave_types') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.admin_leave_types' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.admin_leave_types' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-list-check w-5 text-center {% if request.endpoint == 'main.admin_leave_types' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Jenis Cuti
+                </a>
+                <a href="{{ url_for('main.admin_departments') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.admin_departments' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.admin_departments' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-sitemap w-5 text-center {% if request.endpoint == 'main.admin_departments' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Departemen
+                </a>
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('main.admin_companies') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium {% if request.endpoint == 'main.admin_companies' %}text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}" style="{% if request.endpoint == 'main.admin_companies' %}background:var(--primary){% endif %}">
+                    <i class="fa-solid fa-building w-5 text-center {% if request.endpoint == 'main.admin_companies' %}text-white{% else %}text-gray-400{% endif %}"></i>
+                    Perusahaan
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.export_excel') }}"
+                   class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                    <i class="fa-solid fa-file-excel w-5 text-center text-gray-400"></i>
+                    Export Excel
+                </a>
+                {% endif %}
+            </nav>
+
+            <!-- User footer -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style="background: {{ current_user.avatar_color }}">
+                        {{ current_user.name[0] }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ current_user.name }}</p>
+                        <p class="text-xs text-gray-500 capitalize">{{ current_user.role }}</p>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-gray-100 focus-visible" title="Logout" aria-label="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Mobile header -->
+            <header class="no-print md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-gray-600 p-2 rounded-lg hover:bg-gray-100 focus-visible" aria-label="Toggle menu" aria-expanded="false">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--primary)">
+                        <i class="fa-solid fa-calendar-check text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-900">GwCuti</span>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-gray-100 focus-visible" aria-label="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
+            </header>
+
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="no-print hidden md:hidden bg-white border-b border-gray-200 shadow-lg animate-slideIn">
+                <nav class="p-3 space-y-1">
+                    {% if current_user.role != 'admin' %}
+                    <a href="{{ url_for('main.dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-gauge-high w-5 text-center text-gray-400"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('main.apply_leave') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-plus-circle w-5 text-center text-gray-400"></i> Ajukan Cuti
+                    </a>
+                    <a href="{{ url_for('main.history') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-clock-rotate-left w-5 text-center text-gray-400"></i> Riwayat
+                    </a>
+                    <a href="{{ url_for('main.calendar') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-calendar-days w-5 text-center text-gray-400"></i> Kalender
+                    </a>
+                    <a href="{{ url_for('main.long_weekend') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-gray-400"></i> Long Weekend
+                    </a>
+                    {% endif %}
+                    {% if current_user.role in ('manager', 'hr', 'admin') %}
+                    <hr class="my-2">
+                    <a href="{{ url_for('main.approvals') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-check-double w-5 text-center text-gray-400"></i> Persetujuan
+                    </a>
+                    {% endif %}
+                    {% if current_user.role in ('hr', 'admin') %}
+                    <a href="{{ url_for('main.admin_employees') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-users w-5 text-center text-gray-400"></i> Karyawan
+                    </a>
+                    <a href="{{ url_for('main.admin_leave_types') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-list-check w-5 text-center text-gray-400"></i> Jenis Cuti
+                    </a>
+                    <a href="{{ url_for('main.admin_departments') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-sitemap w-5 text-center text-gray-400"></i> Departemen
+                    </a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('main.admin_companies') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible">
+                        <i class="fa-solid fa-building w-5 text-center text-gray-400"></i> Perusahaan
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                </nav>
+                <div class="border-t border-gray-100 p-3 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: {{ current_user.avatar_color }}">
+                        {{ current_user.name[0] }}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">{{ current_user.name }}</p>
+                        <p class="text-xs text-gray-500 capitalize">{{ current_user.role }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page content -->
+            <main class="flex-1 overflow-y-auto bg-gray-50">
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="px-4 sm:px-6 pt-4">
+                    {% for category, message in messages %}
+                    <div class="flex items-center gap-3 px-4 py-3 rounded-xl border shadow-sm text-sm font-medium
+                        {% if category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800
+                        {% elif category == 'danger' %}bg-red-50 border-red-200 text-red-800
+                        {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+                        {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+                        <i class="fa-solid {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% elif category == 'warning' %}fa-triangle-exclamation{% else %}fa-info-circle{% endif %}"></i>
+                        <span class="flex-1">{{ message }}</span>
+                        <button onclick="this.parentElement.remove()" class="opacity-60 hover:opacity-100">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div class="p-4 sm:p-6 lg:p-8">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+    {% else %}
+    <!-- Non-authenticated layout (login page) -->
+    <main>
+        {% block guest_content %}{% endblock %}
+    </main>
+    {% endif %}
+
+    <script>
+        // Auto-hide flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[class*="bg-emerald-50"], [class*="bg-red-50"], [class*="bg-amber-50"], [class*="bg-blue-50"]').forEach(function(el) {
+                setTimeout(function() {
+                    el.style.transition = 'opacity 0.5s';
+                    el.style.opacity = '0';
+                    setTimeout(function() { el.remove(); }, 500);
+                }, 5000);
+            });
+        });
+
+        // Close mobile menu on click outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('mobile-menu');
+            if (menu && !menu.classList.contains('hidden')) {
+                const toggle = document.querySelector('[onclick*="mobile-menu"]');
+                if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                    menu.classList.add('hidden');
+                }
+            }
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Masuk{% endblock %}
+{% block guest_content %}
+<div class="min-h-screen flex">
+    <!-- Left side - branding -->
+    <div class="hidden lg:flex lg:w-1/2 gradient-header relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cg fill=\\'none\\' fill-rule=\\'evenodd\\'%3E%3Cg fill=\\'%23ffffff\\' fill-opacity=\\'0.3\\'%3E%3Cpath d=\\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
+        <div class="relative flex flex-col justify-center px-16 text-white">
+            <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
+                <i class="fa-solid fa-calendar-check text-white text-3xl"></i>
+            </div>
+            <h2 class="text-4xl font-bold mb-4">GwCuti</h2>
+            <p class="text-teal-200 text-lg max-w-md leading-relaxed">
+                Platform manage cuti yang gampang banget. Ajukan cuti, approve request, monitor semua di satu tempat aja. No ribet! 😎
+            </p>
+            <div class="mt-10 space-y-4">
+                <div class="flex items-center gap-4 text-teal-100">
+                    <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </div>
+                    <span>Ajukan cuti cuma 1 menit ⚡</span>
+                </div>
+                <div class="flex items-center gap-4 text-teal-100">
+                    <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-check-circle"></i>
+                    </div>
+                    <span>Approval cepat lewat dashboard manager 🚀</span>
+                </div>
+                <div class="flex items-center gap-4 text-teal-100">
+                    <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-calendar-alt"></i>
+                    </div>
+                    <span>Kalender cuti real-time, stay updated! 📅</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right side - login form -->
+    <div class="flex-1 flex items-center justify-center px-6 sm:px-12 bg-gray-50">
+        <div class="w-full max-w-md">
+            <!-- Mobile logo -->
+            <div class="text-center mb-8">
+                <div class="md:hidden w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:var(--primary)">
+                    <i class="fa-solid fa-calendar-check text-white text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Selamat Datang</h2>
+                <p class="text-gray-500 mt-1">Login dulu buat kelola cuti kamu ya~ 🌿</p>
+            </div>
+
+            <!-- Login card -->
+            <div class="card card-elevated p-8 stagger">
+                <form method="POST" class="space-y-5">
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-envelope text-gray-400"></i>
+                            </div>
+                            <input type="email" name="email" required
+                                class="input pl-10"
+                                placeholder="contoh@email.com"
+                                autocomplete="email"
+                                autofocus>
+                        </div>
+                    </div>
+                    <!-- Password -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" name="password" required
+                                class="input pl-10"
+                                placeholder="Masukkan password"
+                                autocomplete="current-password">
+                            <!-- Toggle password visibility -->
+                            <button type="button" onclick="togglePassword()"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 focus-visible"
+                                aria-label="Toggle password visibility">
+                                <i class="fa-solid fa-eye" id="password-toggle-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Submit -->
+                    <button type="submit"
+                        class="btn btn-primary w-full py-3">
+                        <i class="fa-solid fa-right-to-bracket mr-2"></i> Masuk
+                    </button>
+                </form>
+
+                <!-- Demo accounts -->
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <p class="text-xs text-gray-400 text-center mb-3">Akun demo buat testing (jangan dipake beneran ya):</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+                        <div class="bg-gray-50 rounded-lg p-2.5 text-center hover:bg-gray-100 transition-colors cursor-pointer" onclick="fillDemo('admin@gwcuti.app', 'admin123')">
+                            <p class="font-medium text-gray-700">Admin</p>
+                            <p class="text-gray-400">admin@gwcuti.app</p>
+                            <p class="text-gray-400">admin123</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2.5 text-center hover:bg-gray-100 transition-colors cursor-pointer" onclick="fillDemo('hr@gwcuti.app', 'hr123')">
+                            <p class="font-medium text-gray-700">HR</p>
+                            <p class="text-gray-400">hr@gwcuti.app</p>
+                            <p class="text-gray-400">hr123</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2.5 text-center hover:bg-gray-100 transition-colors cursor-pointer" onclick="fillDemo('manager@gwcuti.app', 'manager123')">
+                            <p class="font-medium text-gray-700">Manager</p>
+                            <p class="text-gray-400">manager@gwcuti.app</p>
+                            <p class="text-gray-400">manager123</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2.5 text-center hover:bg-gray-100 transition-colors cursor-pointer" onclick="fillDemo('andi@gwcuti.app', 'employee123')">
+                            <p class="font-medium text-gray-700">Karyawan</p>
+                            <p class="text-gray-400">andi@gwcuti.app</p>
+                            <p class="text-gray-400">employee123</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-center text-xs text-gray-400 mt-6">
+                GwCuti v1.0 — Cuti management made simple ✨
+            </p>
+        </div>
+    </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.querySelector('input[name="password"]');
+    const icon = document.getElementById('password-toggle-icon');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// Fill demo credentials
+function fillDemo(email, password) {
+    document.querySelector('input[name="email"]').value = email;
+    document.querySelector('input[name="password"]').value = password;
+}
+
+// Auto-focus email field on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('input[name="email"]').focus();
+});
+</script>
+{% endblock %}
+{% endblock %}

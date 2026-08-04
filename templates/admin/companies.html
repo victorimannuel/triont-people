@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Perusahaan{% endblock %}
+{% block content %}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 stagger">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Perusahaan 🏢</h1>
+        <p class="text-gray-500 mt-1">Kelola perusahaan yang pakai GwCuti, multi-tenant style</p>
+    </div>
+    <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
+        <i class="fa-solid fa-plus-circle"></i>
+        Tambah Perusahaan
+    </button>
+</div>
+
+<!-- Filter Bar -->
+<div class="card p-4 mb-6 stagger">
+    <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="filterForm">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Cari</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+                <input type="text" name="q" value="{{ request.args.get('q', '') }}"
+                    class="input pl-10"
+                    placeholder="Nama perusahaan...">
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Status Notifikasi</label>
+            <select name="notifications" class="input">
+                <option value="">Semua</option>
+                <option value="enabled" {% if request.args.get('notifications') == 'enabled' %}selected{% endif %}>Aktif</option>
+                <option value="disabled" {% if request.args.get('notifications') == 'disabled' %}selected{% endif %}>Nonaktif</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="btn btn-secondary w-full">
+                <i class="fa-solid fa-filter mr-1"></i> Filter
+            </button>
+        </div>
+    </form>
+    {% if request.args.get('q') or request.args.get('notifications') %}
+    <div class="mt-3 flex items-center justify-between">
+        <span class="text-sm text-gray-500">
+            Filter aktif:
+            {% if request.args.get('q') %}<span class="badge bg-teal-100 text-teal-700 ml-1">{{ request.args.get('q') }}</span>{% endif %}
+            {% if request.args.get('notifications') %}<span class="badge bg-indigo-100 text-indigo-700 ml-1">{{ request.args.get('notifications') }}</span>{% endif %}
+        </span>
+        <a href="{{ url_for('main.admin_companies') }}" class="text-sm text-teal-600 hover:underline">
+            <i class="fa-solid fa-xmark mr-1"></i> Clear
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Company List -->
+<div class="card stagger">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr>
+                    <th class="text-left px-6 py-3 font-medium">Warna</th>
+                    <th class="text-left px-6 py-3 font-medium">Nama</th>
+                    <th class="text-left px-6 py-3 font-medium">Karyawan</th>
+                    <th class="text-left px-6 py-3 font-medium">Notif</th>
+                    <th class="text-left px-6 py-3 font-medium">Dibuat</th>
+                    <th class="text-right px-6 py-3 font-medium">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for c in companies %}
+                <tr class="hover:bg-gray-50/50">
+                    <td class="px-6 py-4">
+                        <div class="w-8 h-8 rounded-lg" style="background:{{ c.primary_color }}"></div>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ c.name }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ c.users.count() }} orang</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if c.notifications_enabled %}bg-emerald-100 text-emerald-700{% else %}bg-gray-100 text-gray-700{% endif %}">
+                            {{ 'Aktif' if c.notifications_enabled else 'Nonaktif' }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400">{{ c.created_at.strftime('%d %B %Y') }}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="openEditModal({{ c.id }}, '{{ c.name }}', '{{ c.primary_color }}', {{ 'true' if c.notifications_enabled else 'false' }}, '{{ c.smtp_host or '' }}', {{ c.smtp_port or 587 }}, '{{ c.smtp_user or '' }}', {{ 'true' if c.notify_on_approve else 'false' }}, {{ 'true' if c.notify_on_reject else 'false' }}, {{ 'true' if c.notify_on_submit else 'false' }})"
+                            class="px-3 py-1.5 text-xs rounded-lg transition-colors text-white" style="background:var(--primary)">
+                            <i class="fa-solid fa-pen"></i> Edit
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <i class="fa-solid fa-building"></i>
+                        <p>Belum ada perusahaan nih</p>
+                        <span class="text-sm">Klik "Tambah Perusahaan" untuk mulai</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-900">Tambah Perusahaan</h3>
+            <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('main.admin_add_company') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Perusahaan</label>
+                <input type="text" name="name" required
+                    class="input"
+                    placeholder="Contoh: PT Maju Jaya">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Warna Tema</label>
+                <div class="grid grid-cols-6 gap-2 mb-2">
+                    {% for c in ['#0d9488','#8b5cf6','#d946ef','#ec4899','#f43f5e','#ef4444',
+                                  '#f97316','#f59e0b','#10b981','#06b6d4','#0ea5e9','#64748b'] %}
+                    <button type="button" onclick="document.getElementById('addColor').value='{{ c }}'; document.querySelectorAll('#addModal .theme-swatch').forEach(el=>el.style.outline='none'); this.style.outline='3px solid #000'; this.style.outlineOffset='2px'"
+                        class="theme-swatch w-full aspect-square rounded-xl border-2 border-gray-200 hover:scale-105 transition-transform"
+                        style="background:{{ c }}"></button>
+                    {% endfor %}
+                </div>
+                <input type="color" name="primary_color" id="addColor" value="#0d9488"
+                    class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer">
+            </div>
+            <button type="submit"
+                class="w-full py-3 text-white font-medium rounded-xl transition-all btn btn-primary">
+                <i class="fa-solid fa-save mr-2"></i> Simpan
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-gray-900">Edit Perusahaan</h3>
+            <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="" id="editForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Perusahaan</label>
+                <input type="text" name="name" id="editName" required
+                    class="input">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Warna Tema</label>
+                <div class="grid grid-cols-6 gap-2 mb-2">
+                    {% for c in ['#0d9488','#8b5cf6','#d946ef','#ec4899','#f43f5e','#ef4444',
+                                  '#f97316','#f59e0b','#10b981','#06b6d4','#0ea5e9','#64748b'] %}
+                    <button type="button" onclick="document.getElementById('editColor').value='{{ c }}'; document.querySelectorAll('#editModal .theme-swatch').forEach(el=>el.style.outline='none'); this.style.outline='3px solid #000'; this.style.outlineOffset='2px'"
+                        class="theme-swatch w-full aspect-square rounded-xl border-2 border-gray-200 hover:scale-105 transition-transform"
+                        style="background:{{ c }}"></button>
+                    {% endfor %}
+                </div>
+                <input type="color" name="primary_color" id="editColor"
+                    class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer">
+            </div>
+            <div class="mb-4 border-t border-gray-100 pt-4">
+                <h4 class="text-sm font-semibold text-gray-900 mb-3">Notifikasi Email</h4>
+                <label class="flex items-center gap-2 mb-3">
+                    <input type="checkbox" name="notifications_enabled" id="editNotifEnabled" value="1"
+                        class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                    <span class="text-sm text-gray-700">Aktifkan notifikasi email</span>
+                </label>
+                <div id="smtpFields" class="space-y-3 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">SMTP Host</label>
+                        <input type="text" name="smtp_host" id="editSmtpHost"
+                            class="input"
+                            placeholder="smtp.gmail.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">SMTP Port</label>
+                        <input type="number" name="smtp_port" id="editSmtpPort" value="587"
+                            class="input">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Pengirim</label>
+                        <input type="email" name="smtp_user" id="editSmtpUser"
+                            class="input"
+                            placeholder="admin@perusahaan.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Email</label>
+                        <input type="password" name="smtp_password" id="editSmtpPass"
+                            class="input">
+                    </div>
+                    <div class="border-t border-gray-50 pt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kirim notifikasi saat:</label>
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" name="notify_on_approve" id="editNotifApprove" value="1" checked
+                                class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                            <span class="text-sm text-gray-600">Cuti disetujui</span>
+                        </label>
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" name="notify_on_reject" id="editNotifReject" value="1" checked
+                                class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                            <span class="text-sm text-gray-600">Cuti ditolak</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="notify_on_submit" id="editNotifSubmit" value="1"
+                                class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                            <span class="text-sm text-gray-600">Cuti diajukan</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit"
+                class="w-full py-3 text-white font-medium rounded-xl transition-all btn btn-primary">
+                <i class="fa-solid fa-save mr-2"></i> Simpan
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditModal(id, name, color, notifEnabled, smtpHost, smtpPort, smtpUser, notifyApprove, notifyReject, notifySubmit) {
+    document.getElementById('editForm').action = '/admin/companies/edit/' + id;
+    document.getElementById('editName').value = name;
+    document.getElementById('editColor').value = color;
+    document.getElementById('editNotifEnabled').checked = (notifEnabled === 'true');
+    document.getElementById('editSmtpHost').value = smtpHost;
+    document.getElementById('editSmtpPort').value = smtpPort;
+    document.getElementById('editSmtpUser').value = smtpUser;
+    document.getElementById('editNotifApprove').checked = (notifyApprove === 'true');
+    document.getElementById('editNotifReject').checked = (notifyReject === 'true');
+    document.getElementById('editNotifSubmit').checked = (notifySubmit === 'true');
+    document.getElementById('smtpFields').classList.toggle('hidden', !document.getElementById('editNotifEnabled').checked);
+    document.getElementById('editModal').classList.remove('hidden');
+}
+
+// Toggle SMTP fields
+document.addEventListener('change', function(e) {
+    if (e.target.id === 'editNotifEnabled') {
+        document.getElementById('smtpFields').classList.toggle('hidden', !e.target.checked);
+    }
+});
+</script>
+{% endblock %}
