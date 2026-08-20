@@ -448,7 +448,7 @@ async function submitRollover() {
     try {
         const res = await fetch('/admin/leave-balances/rollover', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || '' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.PEOPLE_CSRF_TOKEN || '' },
             body: JSON.stringify({ from_year: fromYear, mode, max_carry_days: maxCarry, leave_type_ids: checkedIds, rollover_token: rolloverToken }),
         });
         const data = await res.json();
