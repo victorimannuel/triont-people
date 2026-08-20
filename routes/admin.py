@@ -426,6 +426,141 @@ def admin_leave_balances():
         grant_token=secrets.token_urlsafe(24)
     )
 
+@main_bp.route('/admin/leave-balances/rollover', methods=['POST'])
+@login_required
+@role_required('hr', 'admin')
+def admin_leave_balance_rollover():
+    """Batch annual rollover: reset or carry-forward leave balances for all active employees."""
+    company_id = get_active_company_id()
+    data = request.get_json(silent=True) or {}
+
+    from_year = data.get('from_year')
+    # must be an integer
+    if not isinstance(from_year, int):
+        return jsonify(ok=False, message=translate('Parameter tidak valid.')), 400
+
+    to_year = from_year + 1
+    mode = data.get('mode', '')          # 'reset' | 'carry_forward'
+    leave_type_ids = data.get('leave_type_ids', [])   # empty list = all types
+    max_carry = data.get('max_carry_days')             # None = no cap
+    rollover_token = data.get('rollover_token', '').strip()
+
+    # --- Validate inputs ---
+    current_year = date.today().year
+    if not (2020 <= from_year <= current_year + 1):
+        return jsonify(ok=False, message=translate('Tahun sumber tidak valid.')), 400
+    if mode not in ('reset', 'carry_forward'):
+        return jsonify(ok=False, message=translate('Mode rollover tidak valid.')), 400
+    if not re.fullmatch(r'[A-Za-z0-9_-]{20,100}', rollover_token):
+        return jsonify(ok=False, message=translate('Token tidak valid.')), 400
+    if max_carry is not None and (not isinstance(max_carry, (int, float)) or max_carry < 0):
+        return jsonify(ok=False, message=translate('Batas carry-forward tidak valid.')), 400
+
+    # Idempotency check via LeaveGrant with special rollover mode flag
+    # Idempotency: grants are stored as {rollover_token}_{lt.id}, check for prefix
+    existing = LeaveGrant.query.filter(
+        LeaveGrant.company_id == company_id,
+        LeaveGrant.request_token.like(f'{rollover_token}_%'),
+    ).first()
+    if existing:
+        return jsonify(ok=True, message=translate('Rollover ini sudah diproses sebelumnya.'), skipped=True)
+
+    # Active leave types for this company
+    lt_query = LeaveType.query.filter_by(company_id=company_id, is_active=True)
+    if leave_type_ids:
+        lt_query = lt_query.filter(LeaveType.id.in_(leave_type_ids))
+    leave_types = lt_query.all()
+    if not leave_types:
+        return jsonify(ok=False, message=translate('Tidak ada jenis cuti yang sesuai.')), 400
+
+    # Active employees for this company
+    employees = User.query.filter_by(company_id=company_id, is_active=True).all()
+    if not employees:
+        return jsonify(ok=False, message=translate('Tidak ada karyawan aktif.')), 400
+
+    created_count = 0
+    updated_count = 0
+
+    for emp in employees:
+        for lt in leave_types:
+            src_bal = LeaveBalance.query.filter_by(
+                company_id=company_id,
+                employee_id=emp.id,
+                leave_type_id=lt.id,
+                year=from_year,
+            ).first()
+
+            if mode == 'reset':
+                carry_days = 0.0
+            else:
+                # carry_forward: remaining = total - used (floored at 0)
+                if src_bal:
+                    remaining = max(0.0, src_bal.total_days - src_bal.used_days)
+                    carry_days = remaining if max_carry is None else min(remaining, float(max_carry))
+                else:
+                    carry_days = 0.0
+
+            # Base quota from leave type definition
+            base_quota = float(lt.days_per_year)
+            new_total = base_quota + carry_days
+
+            # Upsert destination year balance
+            dst_bal = LeaveBalance.query.filter_by(
+                company_id=company_id,
+                employee_id=emp.id,
+                leave_type_id=lt.id,
+                year=to_year,
+            ).with_for_update().first()
+
+            if dst_bal:
+                dst_bal.total_days = new_total
+                updated_count += 1
+            else:
+                dst_bal = LeaveBalance(
+                    company_id=company_id,
+                    employee_id=emp.id,
+                    leave_type_id=lt.id,
+                    year=to_year,
+                    total_days=new_total,
+                    used_days=0.0,
+                    pending_days=0.0,
+                )
+                db.session.add(dst_bal)
+                created_count += 1
+
+    # Record one LeaveGrant per leave type as an audit trail (actor-level)
+    for lt in leave_types:
+        grant = LeaveGrant(
+            company_id=company_id,
+            employee_id=None,
+            leave_type_id=lt.id,
+            year=to_year,
+            mode=f'rollover_{mode}',
+            amount=0,
+            old_total=0,
+            new_total=0,
+            actor_id=current_user.id,
+            request_token=f'{rollover_token}_{lt.id}',
+        )
+        db.session.add(grant)
+
+    audit_log('admin.leave_balance_rollover', 'company', company_id, details={
+        'from_year': from_year,
+        'to_year': to_year,
+        'mode': mode,
+        'max_carry_days': max_carry,
+        'leave_type_ids': [lt.id for lt in leave_types],
+        'employees_affected': len(employees),
+        'balances_created': created_count,
+        'balances_updated': updated_count,
+    }, company_id=company_id)
+
+    db.session.commit()
+
+    msg = translate(f'Rollover selesai: {created_count + updated_count} saldo diproses untuk {len(employees)} karyawan ke tahun {to_year}.')
+    return jsonify(ok=True, message=msg, created=created_count, updated=updated_count, to_year=to_year)
+
+
 @main_bp.route('/admin/employees/add', methods=['POST'])
 @login_required
 @role_required('manager', 'hr', 'admin')

@@ -24,8 +24,12 @@ Dokumen ini mencatat daftar rencana perbaikan, modernisasi, dan peningkatan fitu
 ---
 
 ## ⚙️ 3. Operasional HR & Batch Tools
-- [ ] **Annual Balance Rollover / Reset (Tutup Buku Saldo Tahunan)**:
-  - Fitur batch di menu [Admin Saldo Cuti](file:///home/victor/projects/triton/people/triton-people/templates/admin/leave_balances.html) untuk mereset kuota cuti tahunan atau mentransfer sisa cuti (*carry-forward*) ke tahun berikutnya secara otomatis bagi seluruh karyawan aktif.
+- [x] **Annual Balance Rollover / Reset (Tutup Buku Saldo Tahunan)**:
+  - [x] Tombol **Tutup Buku / Rollover** di halaman Admin Saldo Cuti (hanya tampil untuk role `hr` dan `admin`).
+  - [x] Modal 2-step: pilih tahun sumber, mode (Reset Penuh / Carry-Forward), batas carry opsional, dan pilih jenis cuti.
+  - [x] Backend `POST /admin/leave-balances/rollover` memproses seluruh karyawan aktif secara batch.
+  - [x] Idempotency token — rollover tidak bisa diproses dua kali dengan token yang sama.
+  - [x] Audit log `admin.leave_balance_rollover` tercatat di Audit Trail.
 
 ---
 

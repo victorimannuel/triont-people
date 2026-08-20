@@ -39,6 +39,7 @@ class AuditLog(db.Model):
             'admin.employee_unarchived': 'Buka Arsip Karyawan',
             'admin.employee_deleted': 'Hapus Karyawan Permanen',
             'admin.leave_granted': 'Penyesuaian Kuota Cuti',
+            'admin.leave_balance_rollover': 'Tutup Buku Saldo Tahunan',
             'admin.leave_type_created': 'Tambah Jenis Cuti',
             'admin.leave_type_updated': 'Edit Jenis Cuti',
             'admin.leave_type_archived': 'Arsipkan Jenis Cuti',

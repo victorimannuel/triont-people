@@ -1260,6 +1260,88 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(res_history.status_code, 200)
         self.assertIn(f'/leaves/{req.id}/slip'.encode(), res_history.data)
 
+    def test_annual_leave_balance_rollover(self):
+        """Test the /admin/leave-balances/rollover endpoint for reset and carry-forward modes."""
+        from_year = date.today().year
+        to_year = from_year + 1
+
+        # Seed/update a balance for employee in from_year
+        bal = LeaveBalance.query.filter_by(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            year=from_year,
+        ).first()
+        if bal:
+            bal.total_days = 12.0
+            bal.used_days = 8.0
+            bal.pending_days = 0.0
+        else:
+            bal = LeaveBalance(
+                company_id=self.company_a.id,
+                employee_id=self.employee_user.id,
+                leave_type_id=self.lt_annual_a.id,
+                year=from_year,
+                total_days=12.0,
+                used_days=8.0,
+                pending_days=0.0,
+            )
+            db.session.add(bal)
+        db.session.commit()
+
+        self._login(self.admin_user)
+
+        # --- 1. Reset mode: to_year balance = leave_type.days_per_year (no carry) ---
+        token_reset = 'resettoken-abcdefghij1234567890'
+        res = self.client.post('/admin/leave-balances/rollover',
+            json={'from_year': from_year, 'mode': 'reset', 'leave_type_ids': [self.lt_annual_a.id], 'rollover_token': token_reset},
+            content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data['ok'], data.get('message'))
+
+        dst_bal = LeaveBalance.query.filter_by(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            year=to_year,
+        ).first()
+        self.assertIsNotNone(dst_bal)
+        # Should equal days_per_year (no carry)
+        self.assertEqual(dst_bal.total_days, float(self.lt_annual_a.days_per_year))
+
+        # --- 2. Idempotency: same token returns ok=True, skipped=True without duplicate ---
+        res_idem = self.client.post('/admin/leave-balances/rollover',
+            json={'from_year': from_year, 'mode': 'reset', 'leave_type_ids': [self.lt_annual_a.id], 'rollover_token': token_reset},
+            content_type='application/json')
+        data_idem = res_idem.get_json()
+        self.assertTrue(data_idem['ok'])
+        self.assertTrue(data_idem.get('skipped'))
+
+        # --- 3. Carry-forward mode: to_year balance = days_per_year + remaining (capped at 3) ---
+        # remaining = 12 - 8 = 4, cap = 3 → carry = 3
+        dst_bal.total_days = 0  # reset dst so we can recheck
+        dst_bal.used_days = 0
+        db.session.commit()
+
+        token_carry = 'carrytoken-abcdefghij1234567890'
+        res_cf = self.client.post('/admin/leave-balances/rollover',
+            json={'from_year': from_year, 'mode': 'carry_forward', 'max_carry_days': 3, 'leave_type_ids': [self.lt_annual_a.id], 'rollover_token': token_carry},
+            content_type='application/json')
+        self.assertEqual(res_cf.status_code, 200)
+        data_cf = res_cf.get_json()
+        self.assertTrue(data_cf['ok'])
+
+        db.session.refresh(dst_bal)
+        expected = float(self.lt_annual_a.days_per_year) + 3.0  # capped carry
+        self.assertAlmostEqual(dst_bal.total_days, expected, places=1)
+
+        # --- 4. Invalid mode returns 400 ---
+        res_bad = self.client.post('/admin/leave-balances/rollover',
+            json={'from_year': from_year, 'mode': 'invalid', 'rollover_token': 'validtoken-abcdefghij1234'},
+            content_type='application/json')
+        self.assertEqual(res_bad.status_code, 400)
+
 if __name__ == '__main__':
     unittest.main()
 
