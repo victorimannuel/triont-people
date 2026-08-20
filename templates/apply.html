@@ -185,8 +185,25 @@ function updateDuration() {
         if (box) box.classList.remove('hidden');
     } else {
         if (b && b.value && b.value >= a.value) {
-            const count = Math.floor((new Date(b.value) - new Date(a.value)) / 86400000) + 1;
-            if (textEl) textEl.textContent = count + ' ' + tr('hari');
+            let curr = new Date(a.value + 'T00:00:00');
+            const end = new Date(b.value + 'T00:00:00');
+            let workDays = 0;
+            const holidays = typeof HOLIDAYS_SET !== 'undefined' ? HOLIDAYS_SET : new Set();
+            while (curr <= end) {
+                const day = curr.getDay(); // 0: Sun, 6: Sat
+                const isoStr = curr.toISOString().split('T')[0];
+                if (day !== 0 && day !== 6 && !holidays.has(isoStr)) {
+                    workDays += 1;
+                }
+                curr.setDate(curr.getDate() + 1);
+            }
+            if (textEl) {
+                if (workDays === 0) {
+                    textEl.textContent = tr('0 hari kerja (Akhir pekan / Libur Nasional)');
+                } else {
+                    textEl.textContent = workDays + ' ' + tr('hari kerja (Sabtu, Minggu & libur nasional tidak dipotong)');
+                }
+            }
             if (box) box.classList.remove('hidden');
         } else {
             if (box) box.classList.add('hidden');
@@ -265,8 +282,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeModal();
     });
-});
 const LEAVE_TYPES_CFG = {{ leave_types_json | tojson }};
+const HOLIDAYS_SET = new Set({{ (holidays_json or []) | tojson }});
 
 function updateAttachmentSection() {
     const radio = document.querySelector('[name=leave_type]:checked');

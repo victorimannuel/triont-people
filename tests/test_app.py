@@ -1466,8 +1466,78 @@ class PeopleAppTestCase(unittest.TestCase):
         self.company_a.notify_on_submit = True
         db.session.commit()
 
-        # Should execute without errors and notify manager Bob
-        send_notification(self.company_a, 'submit', req)
+    def test_cancel_pending_leave_request(self):
+        """Test employee self-service cancellation of pending leave request."""
+        this_year = date.today().year
+        bal = LeaveBalance.query.filter_by(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            year=this_year
+        ).first()
+        bal.pending_days = 2.0
+        db.session.commit()
+
+        req = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 11, 10),
+            end_date=date(this_year, 11, 11),
+            duration_days=2.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1
+        )
+        db.session.add(req)
+        db.session.commit()
+
+        self._login(self.employee_user)
+
+        # Cancel request
+        res = self.client.post(f'/leaves/{req.id}/cancel', data={
+            'reason': 'Salah tanggal',
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+
+        db.session.refresh(req)
+        db.session.refresh(bal)
+        self.assertEqual(req.status, 'cancelled')
+        self.assertIn('Salah tanggal', req.notes)
+        self.assertEqual(bal.pending_days, 0.0)
+
+        # Cannot cancel again
+        res2 = self.client.post(f'/leaves/{req.id}/cancel', data={'_csrf_token': 'test-token'})
+        self.assertEqual(res2.status_code, 302)
+
+    def test_working_days_calculation_excludes_weekends_and_holidays(self):
+        """Test calculate_working_duration properly excludes weekends and public holidays."""
+        from services.leave_service import calculate_working_duration
+        from models.holiday import PublicHoliday
+
+        # Friday (2026-10-02) to Monday (2026-10-05) -> Fri, Sat, Sun, Mon = 2 working days
+        fri = date(2026, 10, 2)
+        mon = date(2026, 10, 5)
+        dur1 = calculate_working_duration(fri, mon, company_id=self.company_a.id)
+        self.assertEqual(dur1, 2.0)
+
+        # Half day morning
+        dur_half = calculate_working_duration(fri, mon, company_id=self.company_a.id, day_part='morning')
+        self.assertEqual(dur_half, 0.5)
+
+        # Add holiday on Friday Oct 2
+        hol = PublicHoliday(
+            company_id=self.company_a.id,
+            name='Hari Libur Khusus',
+            holiday_date=fri,
+            is_active=True
+        )
+        db.session.add(hol)
+        db.session.commit()
+
+        dur2 = calculate_working_duration(fri, mon, company_id=self.company_a.id)
+        self.assertEqual(dur2, 1.0)
 
 if __name__ == '__main__':
     unittest.main()

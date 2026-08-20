@@ -388,8 +388,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (drawerRange) drawerRange.textContent = fmt(startInput.value) + ' (' + t('Siang') + ')';
         } else {
             if (endInput && endInput.value && endInput.value >= startInput.value) {
-                const count = Math.floor((parseDate(endInput.value) - parseDate(startInput.value)) / 86400000) + 1;
-                durationDays.textContent = count + ' ' + (count === 1 ? t('hari') : t('hari'));
+                let curr = parseDate(startInput.value);
+                const end = parseDate(endInput.value);
+                let workDays = 0;
+                while (curr <= end) {
+                    const day = curr.getDay();
+                    const iso = curr.toISOString().split('T')[0];
+                    const isHol = Array.isArray(holidays) && holidays.some(h => h.date === iso);
+                    if (day !== 0 && day !== 6 && !isHol) {
+                        workDays += 1;
+                    }
+                    curr.setDate(curr.getDate() + 1);
+                }
+                durationDays.textContent = workDays + ' ' + t('hari kerja');
                 durationBox.classList.remove('hidden');
             } else {
                 durationBox.classList.add('hidden');

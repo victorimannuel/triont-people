@@ -21,11 +21,13 @@ Dokumen ini mencatat daftar rencana perbaikan, optimasi performa, dan peningkata
 
 ---
 
-## 💼 3. Peningkatan Operasional & Fitur Karyawan (Self-Service)
-- [ ] **Fitur "Batalkan Pengajuan" Mandiri untuk Karyawan** (`/history`):
-  - [ ] Tombol pembatalan untuk pengajuan yang masih berstatus `pending` di halaman Riwayat Cuti karyawan.
-  - [ ] Mengembalikan kuota hari yang terkunci di `pending_days` secara otomatis dan mencatat audit log `leave.request_cancel`.
-- [ ] **Kalkulasi Hari Kerja Cuti (Exclude Weekend & Hari Libur Nasional)**:
-  - [ ] Opsi perhitungan durasi cuti hanya pada hari kerja aktif (Senin–Jumat) dan otomatis mengecualikan tanggal yang tercatat di daftar Hari Libur Nasional (`public_holidays`), sehingga cuti Jumat–Senin tidak memotong kuota Sabtu & Minggu.
-- [ ] **Sinkronisasi Kalender Tim (.ics / WebCal Subscription Feed)**:
-  - [ ] Endpoint feed `.ics` (`/calendar/feed.ics?token=...`) agar karyawan dapat berlangganan jadwal cuti tim langsung ke Google Calendar, Apple Calendar, atau Outlook di HP/laptop secara realtime.
+## 💼 3. Peningkatan Operasional & Fitur Karyawan (Selesai)
+- [x] **Fitur "Batalkan Pengajuan" Mandiri untuk Karyawan** (`/history` & `routes/leaves.py`):
+  - [x] Tombol pembatalan untuk pengajuan yang masih berstatus `pending` di halaman Riwayat Cuti karyawan.
+  - [x] Mengembalikan kuota hari yang terkunci di `pending_days` secara otomatis dan mencatat audit log `leave.request_cancel`.
+- [x] **Kalkulasi Hari Kerja Cuti (Exclude Weekend & Hari Libur Nasional)**:
+  - [x] Fungsi `calculate_working_duration()` menghitung durasi cuti hanya pada hari kerja aktif (Senin–Jumat) dan otomatis mengecualikan tanggal yang tercatat di daftar Hari Libur Nasional (`public_holidays`).
+  - [x] Form pengajuan dan kalender preview menampilkan kalkulasi hari kerja secara interaktif.
+- [x] **Sinkronisasi Kalender Tim (.ics / WebCal Subscription Feed)**:
+  - [x] Endpoint feed `.ics` (`/calendar/feed/<token>.ics`) dan modal subscribe langsung ke Google Calendar, Apple Calendar, atau Outlook di HP/laptop secara realtime.
+

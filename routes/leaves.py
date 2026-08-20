@@ -9,11 +9,13 @@ from models.user import User
 from models.company import Company
 from models.leave import LeaveType, LeaveRequest, LeaveBalance
 from models.approval import ApprovalConfig
+from models.holiday import PublicHoliday
 from core.i18n import translate
 from core.auth import get_active_company_id, role_required
 from services.audit_service import audit_log
 from services.notification_service import send_notification
 from services.holiday_service import calculate_long_weekends
+from services.leave_service import calculate_working_duration
 from routes.common import main_bp
 
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
@@ -43,10 +45,14 @@ def apply_leave():
     def _lt_json():
         return {lt.id: {'requires_attachment': bool(lt.requires_attachment), 'attachment_label': lt.attachment_label or ''} for lt in leave_types}
 
+    holidays = PublicHoliday.query.filter_by(company_id=my_company, is_active=True).all()
+    holidays_json = [h.holiday_date.isoformat() for h in holidays]
+
     def _render_apply(**kwargs):
         return render_template('apply.html', leave_types=leave_types, balances=balances,
                                max_date=max_date, employees=employees,
-                               delegate_enabled=delegate_enabled, leave_types_json=_lt_json(), **kwargs)
+                               delegate_enabled=delegate_enabled, leave_types_json=_lt_json(),
+                               holidays_json=holidays_json, **kwargs)
 
     if request.method == 'POST':
         leave_type_id = request.form.get('leave_type', type=int)
@@ -131,7 +137,17 @@ def apply_leave():
             original_name = secure_filename(upload_file.filename)
 
         bal = balances.get(leave_type_id)
-        duration = 0.5 if day_part in ('morning', 'afternoon') else float((end_date - start_date).days + 1)
+        duration = calculate_working_duration(
+            start_date, end_date,
+            company_id=my_company,
+            day_part=day_part,
+            exclude_weekends=True,
+            exclude_holidays=True
+        )
+        if duration <= 0:
+            flash(translate('Tanggal yang dipilih merupakan akhir pekan atau hari libur (0 hari kerja).'), 'danger')
+            return _render_apply()
+
         if lt and bal and lt.days_per_year > 0:
             remaining = bal.total_days - bal.used_days - bal.pending_days
             if duration > remaining:
@@ -271,4 +287,46 @@ def leave_slip(request_id):
         printed_at=datetime.now(),
         printed_by=current_user
     )
+
+@main_bp.route('/leaves/<int:request_id>/cancel', methods=['POST'])
+@login_required
+def cancel_leave(request_id):
+    my_company = get_active_company_id()
+    req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
+
+    is_owner = (req.employee_id == current_user.id)
+    is_admin_or_hr = (current_user.role in ('admin', 'hr'))
+
+    if not (is_owner or is_admin_or_hr):
+        flash(translate('Anda tidak memiliki izin untuk membatalkan pengajuan ini.'), 'danger')
+        return redirect(url_for('main.history'))
+
+    if req.status != 'pending':
+        flash(translate('Hanya pengajuan cuti yang berstatus pending yang dapat dibatalkan.'), 'danger')
+        return redirect(url_for('main.history'))
+
+    # Refund pending days in balance
+    bal = LeaveBalance.query.filter_by(
+        employee_id=req.employee_id,
+        leave_type_id=req.leave_type_id,
+        company_id=my_company,
+        year=req.start_date.year
+    ).first()
+    if bal:
+        bal.pending_days = max(0.0, bal.pending_days - req.duration_days)
+
+    req.status = 'cancelled'
+    cancel_reason = request.form.get('reason', '').strip()
+    req.notes = f"Dibatalkan oleh {current_user.name}" + (f": {cancel_reason}" if cancel_reason else "")
+
+    audit_log('leave.request_cancel', 'leave_request', req.id, company_id=my_company, details={
+        'employee_id': req.employee_id,
+        'leave_type_id': req.leave_type_id,
+        'duration_days': req.duration_days,
+        'reason': cancel_reason
+    })
+    db.session.commit()
+
+    flash(translate('Pengajuan cuti berhasil dibatalkan.'), 'success')
+    return redirect(url_for('main.history'))
 
