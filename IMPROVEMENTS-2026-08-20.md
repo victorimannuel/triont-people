@@ -53,4 +53,3 @@ Dokumen ini mencatat daftar rencana perbaikan, modernisasi, dan peningkatan fitu
   - [x] **Keamanan & Rate Limiting**: Proteksi percobaan salah berulang (max 5x attempt lock) dan cooldown pengiriman ulang OTP (resend cooldown 60 detik).
   - [x] **Audit Trail**: Mencatat seluruh aktivitas request OTP, verifikasi, dan reset password ke Audit Log.
 
-

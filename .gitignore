@@ -38,3 +38,6 @@ cookies*.txt
 *.backup
 .env.*
 !.env.example
+
+# Node / Frontend
+node_modules/
