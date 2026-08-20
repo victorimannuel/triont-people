@@ -88,6 +88,8 @@ def calendar():
 
     calendar_token = current_user.get_calendar_token()
 
+    prev_month_days = (first_day - timedelta(days=1)).day
+
     return render_template('calendar.html',
         month=month, year=year,
         prev_month=prev_month, prev_year=prev_year,
@@ -95,6 +97,7 @@ def calendar():
         month_name=month_names[month],
         days_in_month=days_in_month,
         first_weekday=first_weekday,
+        prev_month_days=prev_month_days,
         leaves_by_date=leaves_by_date,
         holidays_by_date=holidays_by_date,
         today=today,

@@ -51,12 +51,20 @@
 
         <!-- Calendar grid -->
         <div id="leave-calendar-grid" class="grid min-h-0 flex-1 select-none grid-cols-7 overflow-hidden rounded-lg border-l border-t border-gray-100" style="grid-auto-rows:minmax(0,1fr);touch-action:none">
-            <!-- Empty cells for days before the 1st -->
-            {% for _ in range(first_weekday) %}
-            <div class="min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/50 p-1 sm:p-1.5"></div>
+            <!-- Days of the previous month (leading days) -->
+            {% for i in range(first_weekday) %}
+            {% set prev_day = prev_month_days - first_weekday + 1 + i %}
+            <div class="calendar-day other-month group relative min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/40 p-1 transition-colors sm:p-1.5 opacity-60 hover:bg-gray-50/70" data-date="{{ '%04d-%02d-%02d'|format(prev_year, prev_month, prev_day) }}">
+                <div class="pointer-events-none absolute inset-0 hidden bg-triton-50/70 ring-1 ring-inset ring-triton-600/20 calendar-selection"></div>
+                <div class="relative flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium sm:text-sm text-gray-400">
+                        {{ prev_day }}
+                    </span>
+                </div>
+            </div>
             {% endfor %}
 
-            <!-- Days of the month -->
+            <!-- Days of the current month -->
             {% for day in range(1, days_in_month + 1) %}
             {% set is_today = day == today.day and month == today.month and year == today.year %}
             {% set leaves_on_day = leaves_by_date.get(day, []) %}
@@ -98,11 +106,19 @@
             </div>
             {% endfor %}
 
-            <!-- Empty cells for remaining days -->
+            <!-- Days of the next month (trailing days, without empty extra row) -->
             {% set total_cells = first_weekday + days_in_month %}
-            {% set remaining = 42 - total_cells if total_cells <= 35 else 49 - total_cells %}
-            {% for _ in range(remaining) %}
-            <div class="min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/50 p-1 sm:p-1.5"></div>
+            {% set grid_target = 28 if total_cells <= 28 else (35 if total_cells <= 35 else 42) %}
+            {% set remaining = grid_target - total_cells %}
+            {% for next_day in range(1, remaining + 1) %}
+            <div class="calendar-day other-month group relative min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/40 p-1 transition-colors sm:p-1.5 opacity-60 hover:bg-gray-50/70" data-date="{{ '%04d-%02d-%02d'|format(next_year, next_month, next_day) }}">
+                <div class="pointer-events-none absolute inset-0 hidden bg-triton-50/70 ring-1 ring-inset ring-triton-600/20 calendar-selection"></div>
+                <div class="relative flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium sm:text-sm text-gray-400">
+                        {{ next_day }}
+                    </span>
+                </div>
+            </div>
             {% endfor %}
         </div>
         {% if can_apply_leave %}<span id="calendar-selection-text" class="pointer-events-none absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-triton-200 bg-white/95 px-4 py-2 text-xs font-semibold text-triton-800 shadow-lg backdrop-blur-sm sm:bottom-6">Pilih tanggal</span>{% endif %}
