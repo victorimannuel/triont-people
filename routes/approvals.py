@@ -183,13 +183,23 @@ def approve_leave(request_id):
     ).order_by(ApprovalConfig.leave_type_id.desc()).first()
 
     if current_user.role == 'manager':
-        if not config or config.approver_role != 'manager':
+        # Manager can approve if there is no config (default level 1) or config is explicitly for manager
+        if config and config.approver_role not in ('manager', 'hr'):
             abort(403)
-        if req.employee.manager_id != current_user.id:
+        # Check if the employee is a direct subordinate or belongs to a department headed by this manager
+        is_subordinate = (req.employee.manager_id == current_user.id)
+        is_dept_head = False
+        if req.employee.department_id:
+            dept = Department.query.filter_by(id=req.employee.department_id, head_id=current_user.id).first()
+            if dept:
+                is_dept_head = True
+        if not (is_subordinate or is_dept_head):
             abort(403)
-    elif current_user.role == 'hr':
-        if not config or config.approver_role not in ('hr', 'manager'):
-            abort(403)
+    elif current_user.role in ('hr', 'admin'):
+        # HR and Admin have company-wide authority to approve/reject all leave requests across levels and types
+        pass
+    else:
+        abort(403)
 
     notes = request.form.get('notes', '')
 

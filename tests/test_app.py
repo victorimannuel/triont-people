@@ -1342,6 +1342,77 @@ class PeopleAppTestCase(unittest.TestCase):
             content_type='application/json')
         self.assertEqual(res_bad.status_code, 400)
 
+    def test_hr_and_manager_approval_permissions_and_fallbacks(self):
+        """Test that HR can approve leaves without 403 when config is None or director, and managers can approve their subordinates."""
+        # Create an HR user
+        hr_user = User(name='HR Staff', email='hr@test.com', role='hr', company_id=self.company_a.id)
+        hr_user.set_password('HrPass123')
+        db.session.add(hr_user)
+        db.session.commit()
+
+        # 1. Leave request for leave type without any ApprovalConfig (config is None)
+        lt_special = LeaveType(company_id=self.company_a.id, name='Cuti Khusus', days_per_year=5, is_active=True)
+        db.session.add(lt_special)
+        db.session.commit()
+
+        bal_special = LeaveBalance(company_id=self.company_a.id, employee_id=self.employee_user.id, leave_type_id=lt_special.id, year=date.today().year, total_days=5, used_days=0, pending_days=1)
+        db.session.add(bal_special)
+
+        req1 = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=lt_special.id,
+            start_date=date(date.today().year, 12, 1),
+            end_date=date(date.today().year, 12, 1),
+            duration_days=1.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1
+        )
+        db.session.add(req1)
+        db.session.commit()
+
+        # HR approves req1 (no ApprovalConfig in DB)
+        self._login(hr_user, 'HrPass123')
+        res1 = self.client.post(f'/approve/{req1.id}', data={
+            'action': 'approve',
+            'expected_level': '1',
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res1.status_code, 302)
+        db.session.refresh(req1)
+        self.assertEqual(req1.status, 'approved')
+
+        # 2. Leave request with ApprovalConfig role = 'director'
+        cfg_dir = ApprovalConfig(company_id=self.company_a.id, leave_type_id=lt_special.id, level=1, approver_role='director')
+        db.session.add(cfg_dir)
+        db.session.commit()
+
+        req2 = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=lt_special.id,
+            start_date=date(date.today().year, 12, 2),
+            end_date=date(date.today().year, 12, 2),
+            duration_days=1.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1
+        )
+        db.session.add(req2)
+        bal_special.pending_days = 1.0
+        db.session.commit()
+
+        # HR approves req2 (approver_role = 'director' should not 403 HR)
+        res2 = self.client.post(f'/approve/{req2.id}', data={
+            'action': 'approve',
+            'expected_level': '1',
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res2.status_code, 302)
+        db.session.refresh(req2)
+        self.assertEqual(req2.status, 'approved')
+
 if __name__ == '__main__':
     unittest.main()
 
