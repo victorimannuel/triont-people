@@ -213,7 +213,7 @@
                     {% if current_user.role in ('manager', 'hr', 'admin') %}
                     <td class="px-5 py-3.5">
                         <div class="flex justify-end gap-1">
-                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit="return confirm('{{ t('Are you sure you want to delete holiday') }} {{ h.name }}?')">
+                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit='return confirm("{{ t("Are you sure you want to delete holiday") }} {{ h.name }}?")'>
                                 <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="{{ t('Delete holiday') }}">
                                     <i class="fa-solid fa-trash-can"></i>
                                     <span class="sr-only">{{ t('Delete') }} {{ h.name }}</span>
