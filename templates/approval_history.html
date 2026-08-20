@@ -81,6 +81,7 @@
                     <th class="px-6 py-3 text-left font-medium">{{ t('Tanggal') }}</th>
                     <th class="px-6 py-3 text-left font-medium">{{ t('Durasi') }}</th>
                     <th class="px-6 py-3 text-left font-medium">{{ t('Diajukan') }}</th>
+                    <th class="px-6 py-3 text-left font-medium">{{ t('Tgl approval') }}</th>
                     <th class="px-6 py-3 text-left font-medium">{{ t('Status') }}</th>
                     <th class="px-6 py-3 text-left font-medium">{{ t('Catatan') }}</th>
                     <th class="px-6 py-3 text-left font-medium">{{ t('Delegate') }}</th>
@@ -97,6 +98,18 @@
                     <td class="whitespace-nowrap px-6 py-4 text-gray-600">{{ req.start_date.strftime('%d/%m/%Y') }} - {{ req.end_date.strftime('%d/%m/%Y') }}</td>
                     <td class="px-6 py-4 text-gray-600">{{ req|format_duration }}</td>
                     <td class="whitespace-nowrap px-6 py-4 text-gray-600">{{ req.created_at|format_datetime('%d/%m/%Y %H:%M') if req.created_at else '-' }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-gray-600">
+                        {% if req.approved_at %}
+                            <div>
+                                <span class="font-semibold text-gray-800">{{ req.approved_at|format_datetime('%d/%m/%Y %H:%M') }}</span>
+                                {% if req.approver %}
+                                <p class="text-[11px] text-gray-400">oleh {{ req.approver.name }}</p>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="text-gray-300 text-xs">-</span>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-semibold {% if req.status == 'approved' %}bg-emerald-100 text-emerald-700{% elif req.status == 'rejected' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-700{% endif %}">{% if req.status == 'approved' %}{{ t('Disetujui') }}{% elif req.status == 'rejected' %}{{ t('Ditolak') }}{% else %}{{ t('Menunggu Approval') }}{% endif %}</span></td>
                     <td class="max-w-[220px] truncate px-6 py-4 text-gray-600" title="{{ req.notes or '' }}">{{ req.notes or '-' }}</td>
                     <td class="px-6 py-4 text-gray-600">{{ req.delegate.name if req.delegate else '-' }}</td>

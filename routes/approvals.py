@@ -227,6 +227,8 @@ def approve_leave(request_id):
 
     elif action == 'reject':
         req.status = 'rejected'
+        req.approved_by = current_user.id
+        req.approved_at = utcnow()
         req.notes = notes
         this_year = req.start_date.year
         bal = LeaveBalance.query.filter_by(employee_id=req.employee_id, company_id=req.company_id, leave_type_id=req.leave_type_id, year=this_year).first()

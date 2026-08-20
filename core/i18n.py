@@ -108,6 +108,7 @@ TRANSLATIONS = {
     'Level approval berhasil dihapus!': {'en': 'Approval level deleted.', 'idc': 'Level approval udah dihapus.'},
     'Riwayat approval berhasil diarsipkan!': {'en': 'Approval history archived.', 'idc': 'Riwayat approval udah diarsip.'},
     'Riwayat approval berhasil dikembalikan dari arsip!': {'en': 'Approval history unarchived.', 'idc': 'Riwayat approval udah dibalikin dari arsip.'},
+    'Tgl approval': {'en': 'Approval Date', 'id': 'Tgl approval', 'idc': 'Tgl approval'},
     'Pengaturan SMTP perusahaan berhasil diperbarui!': {'en': 'Company SMTP settings updated.', 'idc': 'Pengaturan SMTP perusahaan udah diperbarui.'},
     'Harap isi konfigurasi SMTP terlebih dahulu.': {'en': 'Please fill in SMTP configuration first.', 'idc': 'Isi konfigurasi SMTP dulu ya.'},
     'Daftar hari libur nasional dan cuti bersama berhasil disinkronkan! ✅': {'en': 'National holidays and collective leave list synchronized! ✅', 'idc': 'Daftar libur nasional dan cuti bersama udah disinkronkan! ✅'},

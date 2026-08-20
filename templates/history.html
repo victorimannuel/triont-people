@@ -80,9 +80,15 @@
                         <span class="mx-1.5 text-gray-300">•</span>
                         {{ req|format_duration }}
                     </p>
-                    {% if req.reason %}
-                    <p class="text-sm text-gray-400 mt-1 italic">"{{ req.reason }}"</p>
-                    {% endif %}
+                    <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+                        <span><i class="fa-regular fa-paper-plane mr-1"></i>Diajukan: {{ req.created_at|format_datetime('%d %b %Y %H:%M') if req.created_at else '-' }}</span>
+                        {% if req.approved_at %}
+                        <span class="{% if req.status == 'approved' %}text-emerald-700{% elif req.status == 'rejected' %}text-red-700{% else %}text-gray-500{% endif %} font-medium">
+                            <i class="{% if req.status == 'approved' %}fa-solid fa-circle-check text-emerald-500{% elif req.status == 'rejected' %}fa-solid fa-circle-xmark text-red-500{% else %}fa-solid fa-clock{% endif %} mr-1"></i>
+                            {% if req.status == 'approved' %}Disetujui{% elif req.status == 'rejected' %}Ditolak{% else %}Diproses{% endif %}: {{ req.approved_at|format_datetime('%d %b %Y %H:%M') }}{% if req.approver %} (oleh {{ req.approver.name }}){% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
                     {% if req.attachment_original_name %}
                     <div class="mt-1.5">
                         <a href="{{ url_for('main.download_leave_attachment', request_id=req.id) }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-triton-700 transition">
