@@ -1,6 +1,36 @@
 import smtplib
 from email.message import EmailMessage
 
+def _dispatch_email(company, to_email, subject, body):
+    """Internal helper to dispatch email via SMTP with timeout and error logging."""
+    if not to_email or not company or not company.smtp_host or not company.smtp_user:
+        print(f'ℹ️  [NO_SMTP] Email to {to_email} with subject "{subject}" logged.')
+        return False
+
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = company.smtp_user
+        msg['To'] = to_email
+        msg.set_content(body)
+
+        if company.smtp_port == 465:
+            with smtplib.SMTP_SSL(company.smtp_host, company.smtp_port, timeout=15) as server:
+                if company.smtp_password:
+                    server.login(company.smtp_user, company.smtp_password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(company.smtp_host, company.smtp_port, timeout=15) as server:
+                server.starttls()
+                if company.smtp_password:
+                    server.login(company.smtp_user, company.smtp_password)
+                server.send_message(msg)
+        print(f'✅ Notification sent to {to_email}')
+        return True
+    except Exception as e:
+        print(f'❌ Failed to send email to {to_email}: {e}')
+        return False
+
 def send_notification(company, event, leave_request):
     """Send notification based on company config. Logs to console if SMTP not configured."""
     if not company or not company.notifications_enabled:
@@ -16,11 +46,10 @@ def send_notification(company, event, leave_request):
     emp = leave_request.employee
     status_text = {'approve': 'disetujui', 'reject': 'ditolak', 'submit': 'diajukan'}
     action_title = status_text.get(event, event)
-    subject = f'[{company.name}] Pengajuan Cuti {action_title.title()} - {emp.name}'
-    
+
     notes_line = f"\nCatatan: {leave_request.notes}" if getattr(leave_request, 'notes', None) else ""
     reason_line = f"\nAlasan: {leave_request.reason}" if getattr(leave_request, 'reason', None) else ""
-    
+
     part = getattr(leave_request, 'day_part', 'full') or 'full'
     if part == 'morning':
         duration_str = '0.5 hari (Pagi)'
@@ -29,7 +58,49 @@ def send_notification(company, event, leave_request):
     else:
         duration_str = f"{int(leave_request.duration_days) if leave_request.duration_days % 1 == 0 else leave_request.duration_days:g} hari"
 
-    body = f"""Halo {emp.name},
+    if event == 'submit':
+        # 1. Confirmation to employee
+        emp_subject = f'[{company.name}] Pengajuan Cuti Berhasil Dikirim - {leave_request.leave_type.name}'
+        emp_body = f"""Halo {emp.name},
+
+Pengajuan cuti {leave_request.leave_type.name} Anda berhasil dikirim dan sedang menunggu persetujuan atasan/HR.
+
+Detail Pengajuan:
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
+- Durasi     : {duration_str}
+- Status     : Menunggu Persetujuan (Pending){reason_line}
+
+Salam,
+{company.name} (People by Triton)
+"""
+        _dispatch_email(company, emp.email, emp_subject, emp_body)
+
+        # 2. Notification to manager (if employee has a direct manager)
+        if getattr(emp, 'manager', None) and emp.manager.email:
+            mgr_subject = f'[{company.name}] Pengajuan Cuti Baru Menunggu Persetujuan - {emp.name}'
+            mgr_body = f"""Halo {emp.manager.name},
+
+Anggota tim Anda, {emp.name}, baru saja mengajukan permohonan cuti yang memerlukan persetujuan Anda.
+
+Detail Pengajuan:
+- Karyawan   : {emp.name} ({emp.email})
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
+- Durasi     : {duration_str}{reason_line}
+
+Silakan tinjau dan berikan keputusan melalui Inbox Approval di People by Triton:
+https://people.thehyouman.com/approvals
+
+Salam,
+{company.name} (People by Triton)
+"""
+            _dispatch_email(company, emp.manager.email, mgr_subject, mgr_body)
+
+    else:
+        # Decision notification to employee (approve / reject)
+        subject = f'[{company.name}] Pengajuan Cuti {action_title.title()} - {leave_request.leave_type.name}'
+        body = f"""Halo {emp.name},
 
 Pengajuan cuti {leave_request.leave_type.name} Anda telah {action_title}.
 
@@ -42,31 +113,7 @@ Detail Pengajuan:
 Salam,
 {company.name} (People by Triton)
 """
-
-    if company.smtp_host and company.smtp_user:
-        try:
-            msg = EmailMessage()
-            msg['Subject'] = subject
-            msg['From'] = company.smtp_user
-            msg['To'] = emp.email
-            msg.set_content(body)
-
-            if company.smtp_port == 465:
-                with smtplib.SMTP_SSL(company.smtp_host, company.smtp_port, timeout=15) as server:
-                    if company.smtp_password:
-                        server.login(company.smtp_user, company.smtp_password)
-                    server.send_message(msg)
-            else:
-                with smtplib.SMTP(company.smtp_host, company.smtp_port, timeout=15) as server:
-                    server.starttls()
-                    if company.smtp_password:
-                        server.login(company.smtp_user, company.smtp_password)
-                    server.send_message(msg)
-            print(f'✅ Notification sent to {emp.email}')
-        except Exception as e:
-            print(f'❌ Failed to send email: {e}')
-    else:
-        print('ℹ️  No SMTP config. Notification logged.')
+        _dispatch_email(company, emp.email, subject, body)
 
 def send_password_reset_otp_email(company, user, otp_code: str):
     """Sends OTP verification email for password reset."""

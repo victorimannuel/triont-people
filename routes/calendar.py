@@ -55,7 +55,9 @@ def calendar():
 
     leaves_by_date = {}
     for req in all_requests:
-        for d in range(max(req.start_date.day, 1), min(req.end_date.day, days_in_month) + 1):
+        start_d = 1 if req.start_date < first_day else req.start_date.day
+        end_d = days_in_month if req.end_date > last_day else req.end_date.day
+        for d in range(start_d, end_d + 1):
             if d not in leaves_by_date:
                 leaves_by_date[d] = []
             leaves_by_date[d].append(req)

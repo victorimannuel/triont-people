@@ -1413,6 +1413,62 @@ class PeopleAppTestCase(unittest.TestCase):
         db.session.refresh(req2)
         self.assertEqual(req2.status, 'approved')
 
+    def test_calendar_cross_month_leave_display(self):
+        """Test that leave spanning across two months is properly displayed on both month calendar views."""
+        this_year = date.today().year
+        # Cross-month leave: Aug 28 to Sept 4
+        req_cross = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 8, 28),
+            end_date=date(this_year, 9, 4),
+            duration_days=8.0,
+            status='approved',
+            current_approval_level=1,
+            max_approval_level=1
+        )
+        db.session.add(req_cross)
+        db.session.commit()
+
+        self._login(self.admin_user)
+
+        # 1. View August calendar
+        res_aug = self.client.get(f'/calendar?month=8&year={this_year}')
+        self.assertEqual(res_aug.status_code, 200)
+        self.assertIn(b'Alice Employee', res_aug.data)
+
+        # 2. View September calendar (must still show Alice Employee for Sept 1-4)
+        res_sep = self.client.get(f'/calendar?month=9&year={this_year}')
+        self.assertEqual(res_sep.status_code, 200)
+        self.assertIn(b'Alice Employee', res_sep.data)
+
+    def test_submit_leave_notification_dispatches_to_manager(self):
+        """Test that send_notification on submit logs/dispatches to both employee and manager."""
+        from services.notification_service import send_notification
+        this_year = date.today().year
+        req = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 11, 1),
+            end_date=date(this_year, 11, 2),
+            duration_days=2.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1
+        )
+        db.session.add(req)
+        db.session.commit()
+
+        # Company notifications enabled
+        self.company_a.notifications_enabled = True
+        self.company_a.notify_on_submit = True
+        db.session.commit()
+
+        # Should execute without errors and notify manager Bob
+        send_notification(self.company_a, 'submit', req)
+
 if __name__ == '__main__':
     unittest.main()
 

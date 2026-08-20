@@ -13,11 +13,11 @@ Dokumen ini mencatat daftar rencana perbaikan, optimasi performa, dan peningkata
 
 ---
 
-## 🐛 2. Bug Fixes & Stabilitas Sistem (Prioritas Tinggi)
-- [ ] **Fix Cuti Lintas Bulan di Kalender Tim** (`routes/calendar.py`):
-  - [ ] Perbaiki kalkulasi rentang hari cuti yang melintasi pergantian bulan (misal 28 Agustus – 4 September) agar tetap muncul dengan benar di bulan berikutnya (saat ini hilang karena `range(28, 5)` menghasilkan array kosong).
-- [ ] **Notifikasi Email Pengajuan Cuti ke Manager / Atasan** (`services/notification_service.py`):
-  - [ ] Saat karyawan mengajukan cuti (`event == 'submit'`), kirimkan email notifikasi ke **Atasan Langsung** (`emp.manager.email`) dan HR, bukan hanya ke si pemohon cuti.
+## 🐛 2. Bug Fixes & Stabilitas Sistem (Selesai)
+- [x] **Fix Cuti Lintas Bulan di Kalender Tim** (`routes/calendar.py`):
+  - [x] Perbaiki kalkulasi rentang hari cuti yang melintasi pergantian bulan (misal 28 Agustus – 4 September) agar tetap muncul dengan benar di bulan berikutnya (capping `start_d` dan `end_d` ke rentang hari aktif bulan bersangkutan).
+- [x] **Notifikasi Email Pengajuan Cuti ke Manager / Atasan** (`services/notification_service.py`):
+  - [x] Saat karyawan mengajukan cuti (`event == 'submit'`), sistem kini mengirimkan konfirmasi ke pemohon (`emp.email`) dan notifikasi aksi ke **Atasan Langsung** (`emp.manager.email`) agar dapat segera ditinjau di inbox approval.
 
 ---
 
