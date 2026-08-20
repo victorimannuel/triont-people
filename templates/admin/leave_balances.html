@@ -259,8 +259,6 @@
     </div>
 </div>
 
-{% endblock %}
-
 <!-- Rollover Modal -->
 <div id="rolloverModal" class="hidden fixed inset-0 z-[1050] bg-black/50 flex items-center justify-center p-4" onclick="if(event.target===this)closeRolloverModal()">
     <div class="w-full rounded-2xl bg-white p-6 shadow-xl animate-slideIn" style="max-width:600px">
@@ -342,10 +340,12 @@
             <div id="rolloverResultIcon" class="mb-4 text-5xl"></div>
             <p id="rolloverResultMsg" class="font-semibold text-gray-900"></p>
             <p id="rolloverResultDetail" class="mt-1 text-sm text-gray-500"></p>
-            <button type="button" onclick="closeRolloverModal()" class="btn btn-primary mt-6 px-8 py-2.5">Tutup</button>
+            <button type="button" onclick="closeRolloverModal(); window.location.reload();" class="btn btn-primary mt-6 px-8 py-2.5">Selesai & Muat Ulang</button>
         </div>
     </div>
 </div>
+
+{% endblock %}
 
 {% block extra_scripts %}
 <style>
