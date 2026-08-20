@@ -1,28 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Holidays & Long Weekend{% endblock %}
+{% block title %}{{ t('Holidays & Long Weekend') }}{% endblock %}
 {% block content %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
         <span class="eyebrow-rule"></span>
-        <p class="page-kicker">Leave planner</p>
-        <h1 class="page-title mt-1">Hari libur & Long Weekend</h1>
-        <p class="mt-2 text-sm text-gray-500">Daftar hari libur nasional, cuti bersama, dan strategi ambil cuti hemat sepanjang tahun {{ year }}.</p>
+        <p class="page-kicker">{{ t('Leave planner') }}</p>
+        <h1 class="page-title mt-1">{{ t('Holidays & Long Weekend') }}</h1>
+        <p class="mt-2 text-sm text-gray-500">{{ t('List of national holidays, collective leave, and smart leave strategies throughout the year') }} {{ year }}.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
         {% if current_user.role in ('manager', 'hr', 'admin') %}
         <button type="button" onclick="openAddHolidayModal()" class="inline-flex items-center gap-1.5 rounded-xl bg-triton-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-triton-700">
-            <i class="fa-solid fa-plus"></i> Tambah Hari Libur
+            <i class="fa-solid fa-plus"></i> {{ t('Add Holiday') }}
         </button>
         <form method="POST" action="{{ url_for('main.sync_holidays') }}">
             <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-semibold text-teal-700 transition hover:bg-teal-100">
-                <i class="fa-solid fa-arrows-rotate"></i> Sinkronkan Libur Nasional
+                <i class="fa-solid fa-arrows-rotate"></i> {{ t('Sync National Holidays') }}
             </button>
         </form>
         {% endif %}
         <form method="GET" class="w-32">
             <select id="weekend-year" name="year" onchange="this.form.submit()">
                 {% for y in years %}
-                <option value="{{ y }}" {% if y == year %}selected{% endif %}>Tahun {{ y }}</option>
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ t('Year') }} {{ y }}</option>
                 {% endfor %}
             </select>
         </form>
@@ -32,10 +32,10 @@
 <!-- Tabs Navigation -->
 <div class="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
     <button type="button" onclick="switchHolidayTab('planner')" id="tabBtnPlanner" class="rounded-lg px-4 py-2 text-xs font-bold transition bg-triton-600 text-white shadow-sm flex items-center gap-2">
-        <i class="fa-solid fa-sun"></i> Rencana Long Weekend ({{ suggestions|length }})
+        <i class="fa-solid fa-sun"></i> {{ t('Long Weekend Plans') }} ({{ suggestions|length }})
     </button>
     <button type="button" onclick="switchHolidayTab('list')" id="tabBtnList" class="rounded-lg px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 flex items-center gap-2">
-        <i class="fa-solid fa-calendar-days"></i> Daftar Hari Libur ({{ holidays|length }})
+        <i class="fa-solid fa-calendar-days"></i> {{ t('Holidays List') }} ({{ holidays|length }})
     </button>
 </div>
 
@@ -49,7 +49,7 @@
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                 <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Rencana Mendatang & Aktif ({{ upcoming_suggestions|length }})
+                {{ t('Upcoming & Active Plans') }} ({{ upcoming_suggestions|length }})
             </h2>
         </div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -63,18 +63,18 @@
                         </div>
                         {% if s.leave_needed == 0 %}
                         <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
-                            <i class="fa-solid fa-champagne-glasses"></i> Auto Libur
+                            <i class="fa-solid fa-champagne-glasses"></i> {{ t('Auto Holiday') }}
                         </span>
                         {% else %}
                         <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">
-                            <i class="fa-solid fa-lightbulb"></i> Cuti {{ s.leave_needed }} Hari
+                            <i class="fa-solid fa-lightbulb"></i> {{ t('Leave') }} {{ s.leave_needed }} {{ t('Days') }}
                         </span>
                         {% endif %}
                     </div>
 
                     <div class="mb-3 flex items-baseline gap-2 text-2xl font-black text-gray-900">
                         <span class="text-triton-600">{{ s.total_off }}</span>
-                        <span class="text-sm font-semibold text-gray-600">Hari Libur Beruntun</span>
+                        <span class="text-sm font-semibold text-gray-600">{{ t('Consecutive Days Off') }}</span>
                     </div>
 
                     <div class="mb-4 rounded-lg bg-gray-50 p-2.5 text-xs text-gray-600 border border-gray-100 flex items-center gap-2">
@@ -89,7 +89,7 @@
 
                 <div class="mt-4 border-t border-gray-100 pt-3 text-right">
                     <a href="{{ url_for('main.calendar') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-triton-700 hover:text-triton-800">
-                        Lihat di Kalender <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        {{ t('View on Calendar') }} <i class="fa-solid fa-arrow-right text-[10px]"></i>
                     </a>
                 </div>
             </div>
@@ -106,14 +106,14 @@
             </div>
             <div class="relative flex justify-center">
                 <span class="bg-slate-50 px-4 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 rounded-full border border-gray-200 shadow-sm flex items-center gap-1.5">
-                    <i class="fa-regular fa-clock text-gray-400"></i> Sudah Lewat / Tidak Aktif ({{ past_suggestions|length }})
+                    <i class="fa-regular fa-clock text-gray-400"></i> {{ t('Past / Inactive') }} ({{ past_suggestions|length }})
                 </span>
             </div>
         </div>
         {% else %}
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                <i class="fa-regular fa-clock"></i> Riwayat Long Weekend ({{ past_suggestions|length }})
+                <i class="fa-regular fa-clock"></i> {{ t('Long Weekend History') }} ({{ past_suggestions|length }})
             </h2>
         </div>
         {% endif %}
@@ -128,13 +128,13 @@
                             <h3 class="mt-0.5 text-base font-bold text-gray-700">{{ s.title }}</h3>
                         </div>
                         <span class="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600">
-                            <i class="fa-solid fa-check"></i> Sudah Lewat
+                            <i class="fa-solid fa-check"></i> {{ t('Past') }}
                         </span>
                     </div>
 
                     <div class="mb-3 flex items-baseline gap-2 text-2xl font-black text-gray-500">
                         <span>{{ s.total_off }}</span>
-                        <span class="text-sm font-semibold text-gray-400">Hari Libur Beruntun</span>
+                        <span class="text-sm font-semibold text-gray-400">{{ t('Consecutive Days Off') }}</span>
                     </div>
 
                     <div class="mb-4 rounded-lg bg-white/70 p-2.5 text-xs text-gray-500 border border-gray-200 flex items-center gap-2">
@@ -149,7 +149,7 @@
 
                 <div class="mt-4 border-t border-gray-200 pt-3 text-right">
                     <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400">
-                        Periode telah berakhir
+                        {{ t('Period has ended') }}
                     </span>
                 </div>
             </div>
@@ -160,8 +160,8 @@
     {% if not suggestions %}
     <div class="app-card py-16 text-center text-gray-400">
         <i class="fa-solid fa-calendar-xmark mb-3 text-4xl text-gray-300"></i>
-        <p class="text-base font-semibold text-gray-600">Belum ada data long weekend di tahun {{ year }}</p>
-        <p class="mt-1 text-xs text-gray-400">Pastikan data hari libur nasional sudah tersinkronkan atau tambahkan hari libur kustom.</p>
+        <p class="text-base font-semibold text-gray-600">{{ t('No long weekend data for year') }} {{ year }}</p>
+        <p class="mt-1 text-xs text-gray-400">{{ t('Make sure national holidays are synced or add custom holidays.') }}</p>
     </div>
     {% endif %}
 </div>
@@ -173,12 +173,12 @@
         <table class="w-full text-left text-sm">
             <thead class="bg-gray-50 border-b border-gray-100 text-xs font-semibold uppercase text-gray-500">
                 <tr>
-                    <th class="px-5 py-3.5">Tanggal</th>
-                    <th class="px-5 py-3.5">Hari</th>
-                    <th class="px-5 py-3.5">Nama Hari Libur</th>
-                    <th class="px-5 py-3.5 text-center">Kategori</th>
+                    <th class="px-5 py-3.5">{{ t('Date') }}</th>
+                    <th class="px-5 py-3.5">{{ t('Day') }}</th>
+                    <th class="px-5 py-3.5">{{ t('Holiday Name') }}</th>
+                    <th class="px-5 py-3.5 text-center">{{ t('Category') }}</th>
                     {% if current_user.role in ('manager', 'hr', 'admin') %}
-                    <th class="px-5 py-3.5 text-right">Aksi</th>
+                    <th class="px-5 py-3.5 text-right">{{ t('Actions') }}</th>
                     {% endif %}
                 </tr>
             </thead>
@@ -198,25 +198,25 @@
                     <td class="px-5 py-3.5 text-center">
                         {% if h.kind == 'company' %}
                         <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 border border-teal-200">
-                            <i class="fa-solid fa-building text-[10px]"></i> Libur Perusahaan
+                            <i class="fa-solid fa-building text-[10px]"></i> {{ t('Company Holiday') }}
                         </span>
                         {% elif h.kind == 'collective' %}
                         <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 border border-purple-200">
-                            <i class="fa-solid fa-people-arrows text-[10px]"></i> Cuti Bersama
+                            <i class="fa-solid fa-people-arrows text-[10px]"></i> {{ t('Collective Leave') }}
                         </span>
                         {% else %}
                         <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 border border-rose-200">
-                            <i class="fa-solid fa-flag text-[10px]"></i> Libur Nasional
+                            <i class="fa-solid fa-flag text-[10px]"></i> {{ t('National Holiday') }}
                         </span>
                         {% endif %}
                     </td>
                     {% if current_user.role in ('manager', 'hr', 'admin') %}
                     <td class="px-5 py-3.5">
                         <div class="flex justify-end gap-1">
-                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit="return confirm('Yakin ingin menghapus hari libur {{ h.name }}?')">
-                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="Hapus hari libur">
+                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit="return confirm('{{ t('Are you sure you want to delete holiday') }} {{ h.name }}?')">
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="{{ t('Delete holiday') }}">
                                     <i class="fa-solid fa-trash-can"></i>
-                                    <span class="sr-only">Hapus {{ h.name }}</span>
+                                    <span class="sr-only">{{ t('Delete') }} {{ h.name }}</span>
                                 </button>
                             </form>
                         </div>
@@ -230,7 +230,7 @@
     {% else %}
     <div class="app-card py-16 text-center text-gray-400">
         <i class="fa-solid fa-calendar-xmark mb-3 text-4xl text-gray-300"></i>
-        <p class="text-base font-semibold text-gray-600">Belum ada daftar hari libur di tahun {{ year }}</p>
+        <p class="text-base font-semibold text-gray-600">{{ t('Belum ada daftar hari libur di tahun') }} {{ year }}</p>
     </div>
     {% endif %}
 </div>
@@ -240,34 +240,34 @@
 <div id="addHolidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/40 p-4 backdrop-blur-xs">
     <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
         <div class="flex items-center justify-between border-b border-gray-100 pb-3">
-            <h3 class="text-base font-bold text-gray-900">Tambah Hari Libur</h3>
+            <h3 class="text-base font-bold text-gray-900">{{ t('Add Holiday') }}</h3>
             <button type="button" onclick="closeAddHolidayModal()" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
         <form method="POST" action="{{ url_for('main.add_holiday') }}" class="mt-4 space-y-4">
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Tanggal Libur</label>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">{{ t('Holiday Date') }}</label>
                 <input type="date" name="holiday_date" required class="field text-sm" value="{{ year }}-01-01">
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Nama Hari Libur</label>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">{{ t('Holiday Name') }}</label>
                 <input type="text" name="name" required placeholder="Contoh: HUT Perusahaan ke-10" class="field text-sm">
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Kategori Libur</label>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">{{ t('Holiday Category') }}</label>
                 <select name="kind" class="field text-sm">
-                    <option value="company">Libur Khusus Perusahaan</option>
-                    <option value="national">Libur Nasional</option>
-                    <option value="collective">Cuti Bersama</option>
+                    <option value="company">{{ t('Company Special Holiday') }}</option>
+                    <option value="national">{{ t('National Holiday') }}</option>
+                    <option value="collective">{{ t('Collective Leave') }}</option>
                 </select>
             </div>
             <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
                 <button type="button" onclick="closeAddHolidayModal()" class="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">
-                    Batal
+                    {{ t('Cancel') }}
                 </button>
                 <button type="submit" class="rounded-xl bg-triton-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-triton-700">
-                    Simpan Hari Libur
+                    {{ t('Save Holiday') }}
                 </button>
             </div>
         </form>
