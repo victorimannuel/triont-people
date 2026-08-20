@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}Leave Balances{% endblock %}
+{% block content %}
+<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <span class="eyebrow-rule"></span>
+        <p class="page-kicker">Leave</p>
+        <div class="flex items-center gap-2">
+            <h1 class="page-title mt-1">Saldo cuti</h1>
+            <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 border border-teal-200 shadow-2xs">
+                <i class="fa-solid fa-scale-balanced text-[10px]"></i> Tahun {{ year_filter }}
+            </span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Pantau alokasi kuota, penggunaan, dan sisa saldo cuti seluruh karyawan.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <a href="{{ url_for('main.admin_employees') }}" class="btn-secondary px-3.5 py-2 text-xs font-semibold">
+            <i class="fa-solid fa-users mr-1.5"></i>Karyawan
+        </a>
+        <a href="{{ url_for('main.export_excel') }}" class="btn-secondary px-3.5 py-2 text-xs font-semibold">
+            <i class="fa-solid fa-file-export mr-1.5"></i>Ekspor data
+        </a>
+    </div>
+</div>
+
+<!-- Modern KPI Stat Cards -->
+<div class="mb-6 grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
+    <div class="rounded-xl border border-gray-200/80 bg-white p-4 sm:p-5 shadow-2xs">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500">Total Karyawan</span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                <i class="fa-solid fa-users text-xs"></i>
+            </span>
+        </div>
+        <div class="mt-3">
+            <p class="text-2xl font-bold tracking-tight text-gray-900">{{ employees|length }}</p>
+            <p class="mt-1 text-xs text-gray-400">Tahun {{ year_filter }}</p>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200/80 bg-white p-4 sm:p-5 shadow-2xs">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500">Total Kuota</span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                <i class="fa-solid fa-layer-group text-xs"></i>
+            </span>
+        </div>
+        <div class="mt-3">
+            <p class="text-2xl font-bold tracking-tight text-gray-900">{{ "%.1f"|format(total_allocated)|replace('.0', '') }} <span class="text-xs font-normal text-gray-500">hari</span></p>
+            <p class="mt-1 text-xs text-gray-400">Alokasi seluruh jenis cuti</p>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200/80 bg-white p-4 sm:p-5 shadow-2xs">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500">Kuota Terpakai</span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <i class="fa-solid fa-calendar-check text-xs"></i>
+            </span>
+        </div>
+        <div class="mt-3">
+            <p class="text-2xl font-bold tracking-tight text-gray-900">{{ "%.1f"|format(total_used)|replace('.0', '') }} <span class="text-xs font-normal text-gray-500">hari</span></p>
+            <p class="mt-1 text-xs text-amber-600 font-medium">
+                {% if total_allocated > 0 %}
+                {{ "%.1f"|format((total_used / total_allocated) * 100)|replace('.0', '') }}% dari kuota
+                {% else %}
+                0% dari kuota
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200/80 bg-white p-4 sm:p-5 shadow-2xs">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500">Sisa Kuota</span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+            </span>
+        </div>
+        <div class="mt-3">
+            <p class="text-2xl font-bold tracking-tight text-emerald-600">{{ "%.1f"|format(total_remaining)|replace('.0', '') }} <span class="text-xs font-normal text-emerald-700/70">hari</span></p>
+            <p class="mt-1 text-xs text-emerald-600 font-medium">Siap digunakan</p>
+        </div>
+    </div>
+</div>
+
+<!-- Compact Sticky Filter -->
+<section class="app-card sticky top-16 z-30 mb-6 p-3.5 sm:p-4 bg-white border border-gray-200 shadow-sm">
+    <form method="GET" id="filterForm" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="w-full sm:w-36">
+            <select name="year" aria-label="Tahun">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year_filter %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="relative min-w-0 flex-1">
+            <label for="search-emp" class="sr-only">Cari karyawan</label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
+            <input id="search-emp" type="text" name="q" value="{{ q }}" class="field pl-9" placeholder="Cari nama atau email...">
+        </div>
+        <div class="w-full sm:w-56">
+            <select name="department_id" aria-label="Departemen">
+                <option value="">Semua departemen</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if department_filter == d.id %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if q or department_filter or year_filter != date.today().year %}
+        <a href="{{ url_for('main.admin_leave_balances') }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter">
+            <i class="fa-solid fa-xmark"></i>
+        </a>
+        {% endif %}
+    </form>
+</section>
+
+<!-- Matrix Table Section -->
+<div class="app-card overflow-hidden">
+    <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-6 py-2.5 text-xs text-gray-500 font-medium">
+        <span>Menampilkan <strong class="font-bold text-gray-900">{{ employees|length }}</strong> karyawan pada tahun <strong>{{ year_filter }}</strong></span>
+        {% if leave_types %}
+        <span class="text-gray-400 text-[11px]"><i class="fa-solid fa-circle-info mr-1"></i>Format: <strong>Sisa Hari</strong> (Terpakai / Total Kuota)</span>
+        {% endif %}
+    </div>
+    {% if employees %}
+    <div class="overflow-x-auto relative">
+        <table class="w-full text-sm border-separate border-spacing-0">
+            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr>
+                    <th class="sticky left-0 z-10 bg-gray-50 text-left px-5 py-3 font-medium min-w-[280px] border-b border-r border-gray-200/80 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                        Karyawan
+                    </th>
+                    <th class="text-left px-6 py-3 font-medium min-w-[160px] border-b border-gray-200/80">Departemen</th>
+                    {% for lt in leave_types %}
+                    <th class="text-left px-4 py-3 font-medium min-w-[150px] border-b border-gray-200/80">
+                        <div class="flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full" style="background-color: {{ lt.color or '#6366F1' }}"></span>
+                            <span class="truncate">{{ lt.name }}</span>
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for emp in employees %}
+                <tr class="group hover:bg-gray-50/70 transition">
+                    <td class="sticky left-0 z-[1] bg-white group-hover:bg-[#f9fafb] px-5 py-3.5 border-r border-gray-200/80 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] transition min-w-[280px]">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-2xs" style="background:{{ emp.avatar_color }}">{{ emp.name[0] }}</span>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate">{{ emp.name }}</p>
+                                    <p class="text-xs text-gray-400 truncate">{{ emp.email }}</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="openGrantLeave({{ emp.id }}, {{ emp.name|tojson }})" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition shadow-2xs" title="Grant / Sesuaikan Saldo Cuti">
+                                <i class="fa-solid fa-calendar-plus text-emerald-600"></i> Grant
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-600 border-b border-gray-100">
+                        {{ emp.department.name if emp.department else '-' }}
+                    </td>
+                    {% for lt in leave_types %}
+                    {% set bal = balance_map.get((emp.id, lt.id)) %}
+                    <td class="px-4 py-4 text-xs border-b border-gray-100">
+                        {% if bal %}
+                            {% set remaining = bal.total_days - bal.used_days %}
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 font-bold {% if remaining > 0 %}bg-emerald-50 text-emerald-700 border border-emerald-200/60{% elif remaining == 0 %}bg-gray-100 text-gray-600{% else %}bg-red-50 text-red-700 border border-red-200/60{% endif %}">
+                                        {{ "%.1f"|format(remaining)|replace('.0', '') }} hari
+                                    </span>
+                                    {% if bal.pending_days > 0 %}
+                                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200" title="{{ bal.pending_days }} hari menunggu persetujuan">
+                                        {{ "%.1f"|format(bal.pending_days)|replace('.0', '') }} pnd
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-[10.5px] text-gray-400">
+                                    Pakai: <strong class="text-gray-600">{{ "%.1f"|format(bal.used_days)|replace('.0', '') }}</strong> / Total: <strong class="text-gray-600">{{ "%.1f"|format(bal.total_days)|replace('.0', '') }}</strong>
+                                </p>
+                            </div>
+                        {% else %}
+                            <span class="text-gray-300 text-xs">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "components/pagination.html" %}
+    {% else %}
+    <div class="px-6 py-14 text-center text-gray-400">
+        <i class="fa-solid fa-scale-balanced mb-3 text-3xl text-gray-300"></i>
+        <p class="text-sm">Tidak ada karyawan yang sesuai dengan filter.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Grant Leave Modal -->
+<div id="grantLeaveModal" class="hidden fixed inset-0 z-[1050] bg-black/50 flex items-center justify-center p-4" onclick="if(event.target===this)closeGrantLeave()">
+    <div class="w-full rounded-2xl bg-white p-6 shadow-xl animate-slideIn" style="max-width:760px">
+        <div class="mb-6 flex items-center justify-between">
+            <div><h3 class="text-lg font-bold text-gray-900">Grant / Atur Saldo Cuti</h3><p id="grantEmployeeName" class="mt-1 text-sm text-gray-500"></p></div>
+            <button type="button" onclick="closeGrantLeave()" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        {% if leave_types %}
+        <form method="POST" action="" id="grantLeaveForm" class="modal-two-column-form">
+            <input type="hidden" name="grant_token" value="{{ grant_token }}">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Jenis cuti</label>
+                <select name="leave_type_id" id="grantLeaveType" class="input" required>
+                    {% for leave_type in leave_types %}<option value="{{ leave_type.id }}">{{ leave_type.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Tahun Periode</label>
+                <input type="number" name="year" id="grantLeaveYear" class="input" min="2000" max="{{ date.today().year + 5 }}" value="{{ year_filter }}" required>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Mode penyesuaian</label>
+                <select name="mode" class="input">
+                    <option value="add">Tambah kuota</option>
+                    <option value="set">Set total kuota</option>
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Jumlah hari</label>
+                <input type="number" name="amount" class="input" min="0" step="0.5" required placeholder="Contoh: 12">
+            </div>
+            <div id="grantBalancePreview" class="col-span-full grid grid-cols-2 gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm sm:grid-cols-4">
+                <div><span class="block text-xs text-gray-400">Total</span><strong data-balance="total">-</strong></div>
+                <div><span class="block text-xs text-gray-400">Dipakai</span><strong data-balance="used">-</strong></div>
+                <div><span class="block text-xs text-gray-400">Pending</span><strong data-balance="pending">-</strong></div>
+                <div><span class="block text-xs text-gray-400">Sisa</span><strong data-balance="remaining">-</strong></div>
+            </div>
+            <div class="modal-form-actions flex gap-3 pt-2">
+                <button type="submit" id="grantLeaveSubmit" class="btn btn-primary flex-1 py-2.5"><i class="fa-solid fa-check"></i>Simpan Perubahan</button>
+                <button type="button" onclick="closeGrantLeave()" class="btn btn-secondary flex-1 py-2.5">Batal</button>
+            </div>
+        </form>
+        {% else %}
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-center">
+            <i class="fa-solid fa-list-check mb-3 text-2xl text-amber-500"></i>
+            <p class="font-semibold text-gray-800">Belum ada jenis cuti aktif</p>
+            <p class="mt-1 text-sm text-gray-600">Buat jenis cuti terlebih dahulu sebelum memberikan kuota.</p>
+            <a href="{{ url_for('main.admin_leave_types') }}" class="btn-primary mt-4 inline-flex px-4 py-2.5"><i class="fa-solid fa-plus"></i>Buka Leave types</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.modal-two-column-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.modal-two-column-form .modal-form-actions { grid-column:1 / -1; }
+@media (max-width: 640px) { .modal-two-column-form { grid-template-columns:1fr; } }
+</style>
+<script>
+let grantEmployeeId = null;
+function openGrantLeave(id, name) {
+    grantEmployeeId = id;
+    const form = document.getElementById('grantLeaveForm');
+    if (form) form.action = '/admin/employees/' + id + '/grant-leave';
+    document.getElementById('grantEmployeeName').textContent = name;
+    document.getElementById('grantLeaveModal').classList.remove('hidden');
+    if (form) refreshGrantBalance();
+}
+function closeGrantLeave() {
+    document.getElementById('grantLeaveModal').classList.add('hidden');
+    grantEmployeeId = null;
+}
+async function refreshGrantBalance() {
+    if (!grantEmployeeId) return;
+    const typeInput = document.getElementById('grantLeaveType');
+    const yearInput = document.getElementById('grantLeaveYear');
+    if (!typeInput || !yearInput) return;
+    const type = typeInput.value;
+    const year = yearInput.value;
+    const response = await fetch('/admin/employees/' + grantEmployeeId + '/leave-balance?leave_type_id=' + encodeURIComponent(type) + '&year=' + encodeURIComponent(year));
+    if (!response.ok) return;
+    const data = await response.json();
+    for (const key of ['total', 'used', 'pending', 'remaining']) {
+        const target = document.querySelector('[data-balance="' + key + '"]');
+        if (target) {
+            const dayLabel = window.translateUi ? window.translateUi('hari') : 'hari';
+            target.textContent = Number(data[key + '_days']).toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' ' + dayLabel;
+        }
+    }
+}
+document.getElementById('grantLeaveType')?.addEventListener('change', refreshGrantBalance);
+document.getElementById('grantLeaveYear')?.addEventListener('change', refreshGrantBalance);
+document.getElementById('grantLeaveForm')?.addEventListener('submit', function (event) {
+    const button = document.getElementById('grantLeaveSubmit');
+    if (button.disabled) { event.preventDefault(); return; }
+    button.disabled = true;
+    button.classList.add('cursor-not-allowed', 'opacity-70');
+});
+window.addEventListener('pageshow', function () {
+    const button = document.getElementById('grantLeaveSubmit');
+    if (button) {
+        button.disabled = false;
+        button.classList.remove('cursor-not-allowed', 'opacity-70');
+    }
+});
+</script>
+{% endblock %}

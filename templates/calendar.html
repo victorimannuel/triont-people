@@ -1,74 +1,97 @@
 {% extends "base.html" %}
-{% block title %}Kalender Cuti{% endblock %}
+{% block title %}Team Calendar{% endblock %}
 {% block content %}
-
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Kalender Cuti 📅</h1>
-        <p class="text-gray-500 mt-1">Liat jadwal cuti team biar gak bentrok, stay organized!</p>
+<div class="mb-3 flex items-center justify-between gap-3 sm:mb-4 sm:items-end">
+    <div class="min-w-0">
+        <span class="eyebrow-rule hidden sm:block"></span>
+        <p class="page-kicker hidden sm:block">{{ t('Leave') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900 sm:mt-1 sm:text-3xl">{{ t('Kalender tim') }}</h1>
+        <p class="mt-2 hidden text-sm text-gray-500 sm:block">{{ t('Lihat rencana leave tim agar penjadwalan tetap seimbang.') }}</p>
     </div>
-    <a href="{{ url_for('main.apply_leave') }}"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
-        <i class="fa-solid fa-plus-circle"></i>
-        Ajukan Cuti
-    </a>
+    <div class="flex shrink-0 items-center gap-2">
+        <button type="button" onclick="openCalendarSyncModal()" class="btn-secondary h-10 px-3 text-xs sm:h-auto sm:px-3.5 sm:py-2.5">
+            <i class="fa-solid fa-arrows-rotate mr-1.5 text-triton-600"></i><span>{{ t('Sync kalender') }}</span>
+        </button>
+        {% if can_apply_leave %}
+        <a id="calendar-selection-apply" href="{{ url_for('main.apply_leave') }}" class="btn-primary h-10 px-3 sm:h-auto sm:px-4 sm:py-2.5">
+            <i class="fa-solid fa-plus"></i><span class="hidden min-[380px]:inline">{{ t('Ajukan') }}</span>
+        </a>
+        <button type="button" id="calendar-selection-clear" disabled class="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-400 transition disabled:cursor-not-allowed disabled:opacity-50 enabled:text-triton-700 enabled:hover:bg-triton-50 sm:h-auto sm:px-4 sm:py-2.5">{{ t('Reset') }}</button>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Calendar header -->
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="gradient-header px-6 py-5">
+<div class="flex h-[calc(100dvh-18rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:h-[calc(100vh-13rem)] sm:min-h-[560px]">
+    <div class="gradient-header shrink-0 px-4 py-3 sm:px-6 sm:py-4">
         <div class="flex items-center justify-between">
             <a href="?month={{ month - 1 if month > 1 else 12 }}&year={{ year if month > 1 else year - 1 }}"
-               class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all">
+               class="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white transition-all hover:bg-white/20">
                 <i class="fa-solid fa-chevron-left"></i>
             </a>
             <div class="text-center text-white">
-                <h2 class="text-xl font-bold">{{ month_name }} {{ year }}</h2>
-                <p class="text-teal-200 text-sm mt-0.5">{{ today.strftime('%d %B %Y') }}</p>
+                <h2 class="text-lg font-bold sm:text-xl">{{ month_name }} {{ year }}</h2>
+                <p class="mt-0.5 hidden text-sm text-teal-200 sm:block">{{ today.strftime('%d %B %Y') }}</p>
             </div>
             <a href="?month={{ month + 1 if month < 12 else 1 }}&year={{ year if month < 12 else year + 1 }}"
-               class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all">
+               class="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white transition-all hover:bg-white/20">
                 <i class="fa-solid fa-chevron-right"></i>
             </a>
         </div>
     </div>
 
-    <div class="p-4 sm:p-6">
+    <div class="relative flex min-h-0 flex-1 flex-col p-2 sm:p-4">
         <!-- Day headers -->
-        <div class="grid grid-cols-7 mb-2">
+        <div class="mb-1 grid shrink-0 grid-cols-7 sm:mb-2">
             {% set day_names = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] %}
             {% for d in day_names %}
-            <div class="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider py-2">{{ d }}</div>
+            <div class="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-gray-400 sm:py-2 sm:text-xs">{{ d }}</div>
             {% endfor %}
         </div>
 
         <!-- Calendar grid -->
-        <div class="grid grid-cols-7 border-t border-l border-gray-100 rounded-lg overflow-hidden">
+        <div id="leave-calendar-grid" class="grid min-h-0 flex-1 select-none grid-cols-7 overflow-hidden rounded-lg border-l border-t border-gray-100" style="grid-auto-rows:minmax(0,1fr);touch-action:none">
             <!-- Empty cells for days before the 1st -->
             {% for _ in range(first_weekday) %}
-            <div class="border-r border-b border-gray-100 bg-gray-50/50 p-1.5 min-h-[80px] sm:min-h-[100px]"></div>
+            <div class="min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/50 p-1 sm:p-1.5"></div>
             {% endfor %}
 
             <!-- Days of the month -->
             {% for day in range(1, days_in_month + 1) %}
             {% set is_today = day == today.day and month == today.month and year == today.year %}
             {% set leaves_on_day = leaves_by_date.get(day, []) %}
-            <div class="border-r border-b border-gray-100 p-1.5 min-h-[80px] sm:min-h-[100px] transition-colors {% if is_today %}bg-teal-50/50{% else %}hover:bg-gray-50{% endif %}">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-sm font-medium {% if is_today %}text-white w-7 h-7 rounded-full flex items-center justify-center{% else %}text-gray-700{% endif %}" style="{% if is_today %}background:var(--primary){% endif %}">
+            {% set holiday = holidays_by_date.get(day) if holidays_by_date else None %}
+            <div class="calendar-day group relative min-h-0 cursor-pointer overflow-hidden border-r border-b border-gray-100 p-1 transition-colors sm:p-1.5 {% if is_today %}bg-teal-50/50{% elif holiday %}bg-rose-50/30{% else %}hover:bg-gray-50{% endif %}" data-date="{{ '%04d-%02d-%02d'|format(year, month, day) }}" aria-label="Pilih {{ day }} {{ month_name }} {{ year }}">
+                <div class="pointer-events-none absolute inset-0 hidden bg-triton-50/70 ring-1 ring-inset ring-triton-600/20 calendar-selection"></div>
+                <div class="relative flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium sm:text-sm {% if is_today %}flex h-6 w-6 items-center justify-center rounded-full text-white sm:h-7 sm:w-7{% elif holiday %}text-rose-600 font-bold{% else %}text-gray-700{% endif %}" style="{% if is_today %}background:var(--primary){% endif %}">
                         {{ day }}
                     </span>
+                    {% if holiday %}
+                    <span class="hidden sm:inline-flex rounded bg-rose-100/80 px-1 py-0.2 text-[9px] font-bold text-rose-700" title="{{ holiday.name }}">Libur</span>
+                    {% endif %}
                 </div>
-                <div class="space-y-0.5">
+                {% if holiday %}
+                <div class="mb-1 hidden sm:flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 border border-rose-200/60 truncate" title="{{ holiday.name }}">
+                    <i class="fa-solid fa-flag text-[9px] text-rose-500 shrink-0"></i>
+                    <span class="truncate">{{ holiday.name }}</span>
+                </div>
+                {% endif %}
+                <div class="relative space-y-0.5">
                     {% for leave in leaves_on_day %}
                     {% set initials = leave.employee.name.split() | map('first') | join('') | upper %}
                     <div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium truncate"
                          style="background: {{ leave.leave_type.color }}15; color: {{ leave.leave_type.color }}"
-                         title="{{ leave.employee.name }} — {{ leave.leave_type.name }}">
+                         title="{{ leave.employee.name }} - {{ leave.leave_type.name }}{% if leave.day_part == 'morning' %} (0.5 Pagi){% elif leave.day_part == 'afternoon' %} (0.5 Siang){% endif %}">
                         <span class="w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style="background: {{ leave.employee.avatar_color }}">
                             {{ initials[0] }}
                         </span>
                         <span class="hidden sm:inline truncate">{{ leave.employee.name.split()[0] }}</span>
+                        {% if leave.day_part == 'morning' %}
+                        <span class="text-[9px] font-semibold opacity-75 shrink-0">(0.5 Pagi)</span>
+                        {% elif leave.day_part == 'afternoon' %}
+                        <span class="text-[9px] font-semibold opacity-75 shrink-0">(0.5 Siang)</span>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -79,29 +102,468 @@
             {% set total_cells = first_weekday + days_in_month %}
             {% set remaining = 42 - total_cells if total_cells <= 35 else 49 - total_cells %}
             {% for _ in range(remaining) %}
-            <div class="border-r border-b border-gray-100 bg-gray-50/50 p-1.5 min-h-[80px] sm:min-h-[100px]"></div>
+            <div class="min-h-0 overflow-hidden border-r border-b border-gray-100 bg-gray-50/50 p-1 sm:p-1.5"></div>
             {% endfor %}
         </div>
+        {% if can_apply_leave %}<span id="calendar-selection-text" class="pointer-events-none absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-triton-200 bg-white/95 px-4 py-2 text-xs font-semibold text-triton-800 shadow-lg backdrop-blur-sm sm:bottom-6">Pilih tanggal</span>{% endif %}
+    </div>
     </div>
 </div>
 
-<!-- Legend -->
-<div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-    <h4 class="text-sm font-medium text-gray-700 mb-2">Keterangan Warna</h4>
-    <div class="flex flex-wrap gap-3">
-        {% set seen = [] %}
-        {% for day_num, day_leaves in leaves_by_date.items() %}
-        {% for leave in day_leaves %}
-        {% if leave.leave_type_id not in seen %}
-        {% set _ = seen.append(leave.leave_type_id) %}
-        <div class="flex items-center gap-1.5 text-xs">
-            <span class="w-3 h-3 rounded" style="background: {{ leave.leave_type.color }}"></span>
-            <span class="text-gray-600">{{ leave.leave_type.name }}</span>
+{% if can_apply_leave %}
+<div id="leave-drawer-backdrop" class="fixed inset-0 z-40 hidden bg-gray-900/30 opacity-0 transition-opacity"></div>
+<aside id="leave-drawer" class="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl translate-x-full flex-col border-l border-gray-200 bg-white shadow-2xl transition-transform duration-200 sm:w-[34rem]" aria-hidden="true">
+    <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+        <div>
+            <p class="page-kicker">{{ t('Leave') }}</p>
+            <h2 class="mt-1 text-lg font-bold text-gray-900">{{ t('Ajukan cuti') }}</h2>
+            <p id="leave-drawer-range" class="mt-1 text-sm text-gray-500">{{ t('Pilih tanggal dari kalender.') }}</p>
         </div>
-        {% endif %}
-        {% endfor %}
-        {% endfor %}
+        <button type="button" id="leave-drawer-close" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="{{ t('Tutup') }}"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('main.apply_leave') }}" class="flex min-h-0 flex-1 flex-col" id="leave-drawer-form">
+        <div class="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+            <section>
+                <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Jenis cuti') }}</label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    {% for lt in leave_types %}
+                    {% set bal = balances.get(lt.id) %}
+                    {% set remaining = (bal.total_days - bal.used_days - bal.pending_days) if bal else 0 %}
+                    <label class="cursor-pointer">
+                        <input class="peer sr-only" type="radio" name="leave_type" value="{{ lt.id }}" required>
+                        <span class="flex h-full border border-gray-200 p-4 transition peer-checked:border-triton-600 peer-checked:bg-triton-50" style="border-radius:6px">
+                            <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-md" style="background:{{ lt.color }}18;color:{{ lt.color }}"><i class="fa-solid {{ lt.icon }}"></i></span>
+                            <span class="min-w-0"><strong class="block text-sm text-gray-800">{{ lt.name }}</strong><small class="mt-1 block text-xs text-gray-500">{% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} {{ t('dari') }} {{ bal.total_days|format_days }} {{ t('hari tersedia') }}{% else %}{{ t('Tanpa kuota') }}{% endif %}</small></span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </section>
+            <section>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tipe durasi') }}</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="cursor-pointer">
+                        <input class="peer sr-only" type="radio" name="day_part" value="full" checked onchange="handleDrawerDurationTypeChange()">
+                        <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-2 text-center text-xs font-semibold transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                            <i class="fa-regular fa-sun text-amber-500 mb-0.5"></i>
+                            <span>Full Day</span>
+                        </span>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input class="peer sr-only" type="radio" name="day_part" value="morning" onchange="handleDrawerDurationTypeChange()">
+                        <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-2 text-center text-xs font-semibold transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                            <i class="fa-solid fa-cloud-sun text-orange-400 mb-0.5"></i>
+                            <span>0.5 Pagi</span>
+                        </span>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input class="peer sr-only" type="radio" name="day_part" value="afternoon" onchange="handleDrawerDurationTypeChange()">
+                        <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-2 text-center text-xs font-semibold transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                            <i class="fa-solid fa-cloud-moon text-indigo-400 mb-0.5"></i>
+                            <span>0.5 Siang</span>
+                        </span>
+                    </label>
+                </div>
+            </section>
+            <section class="grid gap-4 sm:grid-cols-2">
+                <div><label id="drawer-start-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal mulai') }}</label><input id="drawer-start-date" class="field" type="date" name="start_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+                <div id="drawer-end-date-wrap"><label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal selesai') }}</label><input id="drawer-end-date" class="field" type="date" name="end_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+            </section>
+            <div id="drawer-duration-display" class="hidden rounded-md border border-triton-100 bg-triton-50 px-4 py-3 text-sm text-triton-700"><span id="drawer-duration-prefix">{{ t('Durasi pengajuan:') }}</span> <strong id="drawer-duration-days">0</strong></div>
+            {% if delegate_enabled %}<section>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegasi') }}</label>
+                <select name="delegate_id"><option value="">{{ t('Tidak ada delegasi') }}</option>{% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>{% endfor %}</select>
+                <p class="mt-2 text-xs text-gray-500">{{ t('Pilih rekan yang dapat membantu menjaga pekerjaan selama Anda tidak aktif.') }}</p>
+            </section>{% endif %}
+            <section>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Alasan') }} <span class="font-normal text-gray-400">({{ t('opsional') }})</span></label>
+                <textarea class="field resize-none" name="reason" rows="3" placeholder="{{ t('Tambahkan konteks singkat bila diperlukan.') }}" data-i18n-placeholder="Tambahkan konteks singkat bila diperlukan."></textarea>
+            </section>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <button type="button" id="leave-drawer-cancel" class="rounded-md px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+            <button type="button" id="leave-drawer-open-confirm" class="btn-primary px-5 py-2.5">{{ t('Kirim pengajuan') }}</button>
+        </div>
+    </form>
+</aside>
+<div id="leave-drawer-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-paper-plane"></i></div>
+        <h3 class="text-lg font-bold text-gray-900">{{ t('Kirim pengajuan cuti?') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ t('Pengajuan akan diteruskan ke approver sesuai flow approval perusahaan.') }}</p>
+        <div class="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" id="leave-drawer-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+            <button type="button" id="leave-drawer-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Kirim pengajuan') }}</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Calendar Sync (.ics / iCal Feed) Modal -->
+<div id="calendarSyncModal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
+    <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-start justify-between border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-triton-50 text-triton-600">
+                    <i class="fa-solid fa-calendar-check text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">{{ t('Sinkronisasi Kalender (.ics)') }}</h3>
+                    <p class="text-xs text-gray-500">{{ t('Langganan jadwal cuti tim & hari libur langsung di Google / Apple / Outlook') }}</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeCalendarSyncModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <div class="mt-4 space-y-4 text-sm">
+            <div>
+                <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('URL Feed Kalender Anda') }}</label>
+                <div class="flex gap-2">
+                    <input id="calendarFeedUrl" type="text" readonly value="{{ request.url_root.rstrip('/') }}/calendar/feed/{{ calendar_token }}.ics" class="field bg-gray-50 font-mono text-xs text-gray-700 select-all">
+                    <button type="button" onclick="copyCalendarFeedUrl()" id="copyFeedBtn" class="btn-primary shrink-0 px-3.5 text-xs">
+                        <i class="fa-regular fa-copy mr-1"></i><span id="copyFeedText">{{ t('Salin') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+                {% set webcal_url = (request.url_root.rstrip('/') ~ '/calendar/feed/' ~ calendar_token ~ '.ics')|replace('https://', 'webcal://')|replace('http://', 'webcal://') %}
+                <a href="https://calendar.google.com/calendar/r?cid={{ webcal_url|urlencode }}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white p-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-2xs">
+                    <i class="fa-brands fa-google text-red-500"></i><span>Google Calendar</span>
+                </a>
+                <a href="{{ webcal_url }}" class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white p-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-2xs">
+                    <i class="fa-brands fa-apple text-gray-900"></i><span>Apple Calendar</span>
+                </a>
+            </div>
+
+            <div class="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5 text-xs text-gray-600">
+                <p class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-circle-info mr-1 text-triton-600"></i>{{ t('Petunjuk Langganan:') }}</p>
+                <ul class="list-disc pl-4 space-y-1 text-gray-500">
+                    <li><strong>Google Calendar</strong>: Klik tombol Google Calendar di atas, atau buka Google Calendar Web > <em>Other calendars (+)</em> > <em>From URL</em> > Paste link di atas.</li>
+                    <li><strong>Apple Calendar (iOS / Mac)</strong>: Klik tombol Apple Calendar di atas, atau buka File > <em>New Calendar Subscription</em>.</li>
+                    <li><strong>Microsoft Outlook</strong>: Buka Outlook Calendar > <em>Add Calendar</em> > <em>Subscribe from web</em> > Paste link.</li>
+                </ul>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
+                <form method="POST" action="{{ url_for('main.regenerate_calendar_token_action') }}" onsubmit="return confirm('{{ t('Reset link feed kalender? Link lama yang tersambung di Google/Apple Calendar tidak akan berfungsi lagi.') }}')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>{{ t('Reset link baru') }}
+                    </button>
+                </form>
+                <a href="{{ url_for('main.calendar_feed', token=calendar_token) }}" download="people-calendar.ics" class="font-medium text-triton-600 hover:underline">
+                    <i class="fa-solid fa-download mr-1"></i>{{ t('Download file .ics') }}
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const grid = document.getElementById('leave-calendar-grid');
+    if (!grid) return;
+    const cells = Array.from(grid.querySelectorAll('.calendar-day'));
+    const text = document.getElementById('calendar-selection-text');
+    const apply = document.getElementById('calendar-selection-apply');
+    const clear = document.getElementById('calendar-selection-clear');
+    const drawer = document.getElementById('leave-drawer');
+    const backdrop = document.getElementById('leave-drawer-backdrop');
+    const closeDrawerButton = document.getElementById('leave-drawer-close');
+    const cancelDrawerButton = document.getElementById('leave-drawer-cancel');
+    const startInput = document.getElementById('drawer-start-date');
+    const endInput = document.getElementById('drawer-end-date');
+    const drawerRange = document.getElementById('leave-drawer-range');
+    const durationBox = document.getElementById('drawer-duration-display');
+    const durationDays = document.getElementById('drawer-duration-days');
+    const drawerForm = document.getElementById('leave-drawer-form');
+    const drawerSubmitButton = document.getElementById('leave-drawer-open-confirm');
+    const confirmModal = document.getElementById('leave-drawer-confirm-modal');
+    const confirmCancel = document.getElementById('leave-drawer-confirm-cancel');
+    const confirmSubmit = document.getElementById('leave-drawer-confirm-submit');
+    let anchor = null;
+    let current = null;
+    let selectedRange = null;
+    let dragging = false;
+    let activePointerId = null;
+
+    function openConfirmModal() {
+        if (!confirmModal) return;
+        confirmModal.classList.remove('hidden');
+        confirmModal.classList.add('flex');
+        confirmModal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { confirmModal.classList.remove('opacity-0'); });
+    }
+
+    function closeConfirmModal() {
+        if (!confirmModal) return;
+        confirmModal.classList.add('opacity-0');
+        confirmModal.setAttribute('aria-hidden', 'true');
+        setTimeout(function () { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); }, 160);
+    }
+
+    function getDrawerDayPart() {
+        const checked = drawerForm ? drawerForm.querySelector('[name=day_part]:checked') : null;
+        return checked ? checked.value : 'full';
+    }
+
+    window.handleDrawerDurationTypeChange = function() {
+        const part = getDrawerDayPart();
+        const endWrap = document.getElementById('drawer-end-date-wrap');
+        const startLabel = document.getElementById('drawer-start-label');
+        if (part === 'morning' || part === 'afternoon') {
+            if (endWrap) endWrap.classList.add('hidden');
+            if (endInput) {
+                endInput.removeAttribute('required');
+                if (startInput && startInput.value) endInput.value = startInput.value;
+            }
+            if (startLabel) startLabel.textContent = t('Tanggal cuti');
+        } else {
+            if (endWrap) endWrap.classList.remove('hidden');
+            if (endInput) {
+                endInput.setAttribute('required', 'required');
+                if (startInput && startInput.value && !endInput.value) endInput.value = startInput.value;
+            }
+            if (startLabel) startLabel.textContent = t('Tanggal mulai');
+        }
+        updateDrawerDuration();
+    };
+
+    function validateDrawerThenConfirm() {
+        if (!drawerForm) return;
+        const part = getDrawerDayPart();
+        if (part !== 'full' && startInput && endInput) {
+            endInput.value = startInput.value;
+        }
+        if (drawerForm.reportValidity && !drawerForm.reportValidity()) return;
+        openConfirmModal();
+    }
+
+    function parseDate(value) {
+        const parts = value.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function fmt(value) {
+        return parseDate(value).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
+    }
+
+    function normalizeRange(a, b) {
+        return a <= b ? [a, b] : [b, a];
+    }
+
+    function t(message) {
+        return window.translateUi ? window.translateUi(message) : message;
+    }
+
+    function rangeLabel(range) {
+        return range[0] === range[1] ? fmt(range[0]) : fmt(range[0]) + ' - ' + fmt(range[1]);
+    }
+
+    function updateDrawerDuration() {
+        if (!startInput || !durationBox || !durationDays) return;
+        const part = getDrawerDayPart();
+        const durationPrefix = document.getElementById('drawer-duration-prefix');
+        if (durationPrefix) durationPrefix.textContent = t('Durasi pengajuan:');
+
+        if (!startInput.value) {
+            durationBox.classList.add('hidden');
+            return;
+        }
+
+        if (part === 'morning') {
+            durationDays.textContent = t('0.5 hari (Pagi: 08:00 - 12:00)');
+            durationBox.classList.remove('hidden');
+            if (drawerRange) drawerRange.textContent = fmt(startInput.value) + ' (' + t('Pagi') + ')';
+        } else if (part === 'afternoon') {
+            durationDays.textContent = t('0.5 hari (Siang: 13:00 - 17:00)');
+            durationBox.classList.remove('hidden');
+            if (drawerRange) drawerRange.textContent = fmt(startInput.value) + ' (' + t('Siang') + ')';
+        } else {
+            if (endInput && endInput.value && endInput.value >= startInput.value) {
+                const count = Math.floor((parseDate(endInput.value) - parseDate(startInput.value)) / 86400000) + 1;
+                durationDays.textContent = count + ' ' + (count === 1 ? t('hari') : t('hari'));
+                durationBox.classList.remove('hidden');
+            } else {
+                durationBox.classList.add('hidden');
+            }
+            if (drawerRange && startInput.value && endInput && endInput.value) {
+                drawerRange.textContent = rangeLabel(normalizeRange(startInput.value, endInput.value));
+            }
+        }
+    }
+
+    function openDrawer(range) {
+        if (!drawer || !backdrop) {
+            if (apply) window.location.href = apply.href;
+            return;
+        }
+        const effectiveRange = range || selectedRange;
+        if (effectiveRange && startInput && endInput) {
+            startInput.value = effectiveRange[0];
+            endInput.value = effectiveRange[1];
+        }
+        updateDrawerDuration();
+        drawer.classList.remove('translate-x-full');
+        drawer.setAttribute('aria-hidden', 'false');
+        backdrop.classList.remove('hidden');
+        requestAnimationFrame(function () { backdrop.classList.remove('opacity-0'); });
+    }
+
+    function closeDrawer() {
+        if (!drawer || !backdrop) return;
+        drawer.classList.add('translate-x-full');
+        drawer.setAttribute('aria-hidden', 'true');
+        backdrop.classList.add('opacity-0');
+        setTimeout(function () { backdrop.classList.add('hidden'); }, 180);
+    }
+
+    function paintRange(start, end) {
+        const range = normalizeRange(start, end);
+        selectedRange = range;
+        cells.forEach(function (cell) {
+            const selected = cell.dataset.date >= range[0] && cell.dataset.date <= range[1];
+            cell.classList.toggle('bg-triton-50', selected);
+            cell.classList.toggle('ring-1', selected);
+            cell.classList.toggle('ring-inset', selected);
+            cell.classList.toggle('ring-triton-600/30', selected);
+            const overlay = cell.querySelector('.calendar-selection');
+            if (overlay) overlay.classList.toggle('hidden', !selected);
+        });
+        if (text) {
+            text.textContent = rangeLabel(range);
+            text.classList.remove('hidden');
+        }
+        if (apply) {
+            apply.href = {{ url_for('main.apply_leave')|tojson }} + '?start_date=' + encodeURIComponent(range[0]) + '&end_date=' + encodeURIComponent(range[1]);
+        }
+        if (clear) clear.disabled = false;
+    }
+
+    function clearSelection() {
+        anchor = null;
+        current = null;
+        selectedRange = null;
+        cells.forEach(function (cell) {
+            cell.classList.remove('bg-triton-50', 'ring-1', 'ring-inset', 'ring-triton-600/30');
+            const overlay = cell.querySelector('.calendar-selection');
+            if (overlay) overlay.classList.add('hidden');
+        });
+        if (text) {
+            text.textContent = t('Pilih tanggal');
+            text.classList.add('hidden');
+        }
+        if (apply) apply.href = {{ url_for('main.apply_leave')|tojson }};
+        if (clear) clear.disabled = true;
+    }
+
+    function choose(cell, extend) {
+        if (!cell) return;
+        if (!anchor || !extend) anchor = cell.dataset.date;
+        current = cell.dataset.date;
+        paintRange(anchor, current);
+    }
+
+    function cellAtPoint(x, y) {
+        const element = document.elementFromPoint(x, y);
+        const cell = element ? element.closest('.calendar-day') : null;
+        return cell && grid.contains(cell) ? cell : null;
+    }
+
+    cells.forEach(function (cell) {
+        cell.addEventListener('pointerdown', function (event) {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            event.preventDefault();
+            dragging = true;
+            activePointerId = event.pointerId;
+            cell.setPointerCapture(event.pointerId);
+            choose(cell, event.shiftKey && anchor);
+        });
+    });
+
+    grid.addEventListener('pointermove', function (event) {
+        if (!dragging || event.pointerId !== activePointerId || !anchor) return;
+        event.preventDefault();
+        const cell = cellAtPoint(event.clientX, event.clientY);
+        if (cell && cell.dataset.date !== current) choose(cell, true);
+    });
+
+    function finishPointerSelection(event) {
+        if (event.pointerId !== activePointerId) return;
+        dragging = false;
+        activePointerId = null;
+    }
+
+    grid.addEventListener('pointerup', finishPointerSelection);
+    grid.addEventListener('pointercancel', finishPointerSelection);
+    if (apply) {
+        apply.addEventListener('click', function (event) {
+            if (!drawer) return;
+            event.preventDefault();
+            openDrawer(selectedRange);
+        });
+    }
+    if (clear) clear.addEventListener('click', clearSelection);
+    [closeDrawerButton, cancelDrawerButton, backdrop].forEach(function (button) {
+        if (button) button.addEventListener('click', closeDrawer);
+    });
+    if (drawerSubmitButton) drawerSubmitButton.addEventListener('click', validateDrawerThenConfirm);
+    if (drawerForm) drawerForm.addEventListener('submit', function (event) { event.preventDefault(); validateDrawerThenConfirm(); });
+    if (confirmCancel) confirmCancel.addEventListener('click', closeConfirmModal);
+    if (confirmModal) confirmModal.addEventListener('click', function (event) { if (event.target === confirmModal) closeConfirmModal(); });
+    if (confirmSubmit) confirmSubmit.addEventListener('click', function () { if (drawerForm) drawerForm.submit(); });
+    if (startInput) startInput.addEventListener('change', updateDrawerDuration);
+    if (endInput) endInput.addEventListener('change', updateDrawerDuration);
+    document.addEventListener('people:language-change', function () {
+        if (selectedRange && text) {
+            text.textContent = rangeLabel(selectedRange);
+        } else if (text) {
+            text.textContent = t('Pilih tanggal');
+            text.classList.add('hidden');
+        }
+        updateDrawerDuration();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') { closeConfirmModal(); closeDrawer(); closeCalendarSyncModal(); }
+    });
+});
+
+function openCalendarSyncModal() {
+    const modal = document.getElementById('calendarSyncModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function () { modal.classList.remove('opacity-0'); });
+}
+
+function closeCalendarSyncModal() {
+    const modal = document.getElementById('calendarSyncModal');
+    if (!modal) return;
+    modal.classList.add('opacity-0');
+    modal.setAttribute('aria-hidden', 'true');
+    setTimeout(function () { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 160);
+}
+
+function copyCalendarFeedUrl() {
+    const input = document.getElementById('calendarFeedUrl');
+    const textSpan = document.getElementById('copyFeedText');
+    if (!input) return;
+    input.select();
+    navigator.clipboard.writeText(input.value).then(function () {
+        if (textSpan) {
+            const original = textSpan.textContent;
+            textSpan.textContent = window.translateUi ? window.translateUi('Tersalin!') : 'Tersalin!';
+            setTimeout(function () { textSpan.textContent = original; }, 2000);
+        }
+    });
+}
+</script>
 {% endblock %}

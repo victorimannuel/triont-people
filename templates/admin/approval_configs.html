@@ -1,19 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Approval — {{ leave_type.name }}{% endblock %}
+{% block title %}Approval Flow - {{ leave_type.name }}{% endblock %}
 {% block content %}
+<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><span class="eyebrow-rule"></span><p class="page-kicker">Leave settings</p><h1 class="page-title mt-1">Alur approval</h1><p class="mt-2 text-sm text-gray-500">{{ leave_type.name }} akan mengikuti urutan persetujuan berikut.</p></div><a href="{{ url_for('main.admin_leave_types') }}" class="btn btn-secondary px-4 py-2.5"><i class="fa-solid fa-arrow-left"></i>Kembali ke jenis cuti</a></div>
 
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Approval: {{ leave_type.name }} ⚙️</h1>
-        <p class="text-gray-500 mt-1">Atur flow approval biar pas sama policy perusahaan</p>
-    </div>
-    <a href="{{ url_for('main.admin_leave_types') }}"
-       class="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all text-sm">
-        <i class="fa-solid fa-arrow-left"></i> Kembali
-    </a>
-</div>
-
-<!-- Current Config -->
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6">
     <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
         <h3 class="font-semibold text-gray-900">
@@ -44,12 +33,12 @@
                             {% if c.approver_role == 'manager' %}bg-teal-100 text-teal-700
                             {% elif c.approver_role == 'hr' %}bg-emerald-100 text-emerald-700
                             {% else %}bg-purple-100 text-purple-700{% endif %}">
-                            {{ c.approver_role|capitalize }}
+                            {{ c.approver_role|format_role }}
                         </span> yang approve
                     </p>
                 </div>
             </div>
-            <form method="POST" action="{{ url_for('main.admin_delete_approval_config', config_id=c.id) }}" onsubmit="return confirm('Hapus level ini?')">
+            <form method="POST" action="{{ url_for('main.admin_delete_approval_config', config_id=c.id) }}" onsubmit="return confirm(window.translateUi ? window.translateUi('Hapus level ini?') : 'Hapus level ini?')">
                 <button type="submit" class="text-red-400 hover:text-red-600">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>
@@ -80,7 +69,7 @@
             {% if c.approver_role == 'manager' %}bg-teal-100 text-teal-700
             {% elif c.approver_role == 'hr' %}bg-emerald-100 text-emerald-700
             {% else %}bg-purple-100 text-purple-700{% endif %}">
-            {{ c.approver_role|capitalize }}
+            {{ c.approver_role|format_role }}
         </span>
         {% if not loop.last %}<i class="fa-solid fa-arrow-right text-gray-300 text-sm"></i>{% endif %}
         {% endfor %}

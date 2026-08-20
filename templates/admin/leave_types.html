@@ -1,121 +1,156 @@
 {% extends "base.html" %}
-{% block title %}Jenis Cuti{% endblock %}
+{% block title %}Leave Types{% endblock %}
 {% block content %}
-
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 stagger">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Jenis Cuti 🎭</h1>
-        <p class="text-gray-500 mt-1">Kelola tipe cuti & quota — custom sesuka hati</p>
+<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div><span class="eyebrow-rule"></span><p class="page-kicker">Leave settings</p><h1 class="page-title mt-1">Jenis cuti</h1><p class="mt-2 text-sm text-gray-500">Atur kebijakan leave, kuota, dan alur persetujuan organisasi.</p></div>
+    <div class="flex flex-wrap items-center gap-3">
+        <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-4 py-2.5"><i class="fa-solid fa-plus mr-1.5"></i>Tambah jenis cuti</button>
+        <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1">
+            <a href="{{ url_for('main.admin_leave_types') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if not show_archived %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-solid fa-list-check mr-1.5"></i>Aktif
+            </a>
+            <a href="{{ url_for('main.admin_leave_types', archived=1) }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if show_archived %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-solid fa-box-archive mr-1.5"></i>Diarsipkan
+            </a>
+        </div>
     </div>
-    <button onclick="document.getElementById('addModal').classList.remove('hidden')"
-        class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
-        <i class="fa-solid fa-plus-circle"></i>
-        Tambah Jenis Cuti
-    </button>
 </div>
-
-<!-- Filter Bar -->
-<div class="card p-4 mb-6 stagger">
-    <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="filterForm">
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Cari</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
-                </div>
-                <input type="text" name="q" value="{{ request.args.get('q', '') }}"
-                    class="input pl-10"
-                    placeholder="Nama cuti...">
-            </div>
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
-            <select name="status" class="input">
-                <option value="">Semua Status</option>
-                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Aktif</option>
-                <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Nonaktif</option>
-            </select>
-        </div>
-        <div class="flex items-end">
-            <button type="submit" class="btn btn-secondary w-full">
-                <i class="fa-solid fa-filter mr-1"></i> Filter
-            </button>
-        </div>
+<section class="app-card sticky top-16 z-10 mb-6 p-3 sm:p-4 bg-white border border-gray-200 shadow-sm">
+    <form method="GET" class="flex flex-col gap-3 lg:flex-row lg:items-center" id="filterForm">
+        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+        <div class="relative min-w-0 flex-1"><label for="leave-search" class="sr-only">Cari jenis cuti</label><i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i><input id="leave-search" type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="Cari jenis cuti"></div>
+        {% if request.args.get('q') %}<a href="{{ url_for('main.admin_leave_types', archived=1 if show_archived else none) }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter"><i class="fa-solid fa-xmark"></i></a>{% endif %}
     </form>
-    {% if request.args.get('q') or request.args.get('status') %}
-    <div class="mt-3 flex items-center justify-between">
-        <span class="text-sm text-gray-500">
-            Filter aktif:
-            {% if request.args.get('q') %}<span class="badge bg-teal-100 text-teal-700 ml-1">{{ request.args.get('q') }}</span>{% endif %}
-            {% if request.args.get('status') %}<span class="badge bg-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-100 text-{{ 'emerald' if request.args.get('status')=='active' else 'red' }}-700 ml-1">{{ request.args.get('status') }}</span>{% endif %}
-        </span>
-        <a href="{{ url_for('main.admin_leave_types') }}" class="text-sm text-teal-600 hover:underline">
-            <i class="fa-solid fa-xmark mr-1"></i> Clear
-        </a>
-    </div>
-    {% endif %}
-</div>
+</section>
+<div class="mb-4 flex items-center justify-between"><p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ leave_types|length }}</span> jenis cuti ditampilkan</p></div>
 
-<!-- Leave type cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-    {% for lt in leave_types %}
-    <div class="card p-5 card-hover">
-        <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: {{ lt.color }}20;">
-                <i class="fa-solid {{ lt.icon }}" style="color: {{ lt.color }}"></i>
-            </div>
-            <div class="flex-1">
-                <h3 class="font-semibold text-gray-900">{{ lt.name }}</h3>
-                {% if lt.description %}
-                <p class="text-xs text-gray-400">{{ lt.description }}</p>
-                {% endif %}
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="sr-only peer" {% if lt.is_active %}checked{% endif %} disabled>
-                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-            </label>
-        </div>
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-2xl font-bold text-gray-900">{{ lt.days_per_year }}</p>
-                <p class="text-xs text-gray-400">Hari per tahun</p>
-            </div>
-            <div class="text-right">
-                {% if lt.requires_approval %}
-                <span class="badge bg-teal-100 text-teal-700">Perlu Approval</span>
+<!-- Leave type list -->
+<div class="app-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm">
+            <thead class="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                    <th class="px-5 py-3.5">Jenis cuti</th>
+                    <th class="px-5 py-3.5">Kuota</th>
+                    <th class="px-5 py-3.5 min-w-[200px]">Alur approval</th>
+                    <th class="px-5 py-3.5">Status</th>
+                    <th class="px-5 py-3.5 text-right"><span class="sr-only">Aksi</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for lt in leave_types %}
+                <tr class="hover:bg-gray-50/70">
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md" style="background:{{ lt.color }}18; color:{{ lt.color }};"><i class="fa-solid {{ lt.icon }}"></i></span>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-gray-900">{{ lt.name }}</p>
+                                <p class="mt-0.5 max-w-md truncate text-xs text-gray-500">{{ lt.description or 'Belum ada deskripsi kebijakan.' }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-5 py-4">
+                        {% if lt.days_per_year > 0 %}
+                        <span class="font-semibold text-gray-900">{{ lt.days_per_year }} hari</span><span class="block text-xs text-gray-500">per tahun</span>
+                        {% else %}
+                        <span class="font-semibold text-gray-700">Sesuai kebutuhan</span><span class="block text-xs text-gray-500">tanpa kuota tahunan</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-4">
+                        {% if not lt.requires_approval %}
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                            <i class="fa-solid fa-bolt text-gray-400 text-[10px]"></i> Otomatis (Tanpa Approval)
+                        </span>
+                        {% else %}
+                        {% set custom_configs = type_configs_map.get(lt.id) if type_configs_map else none %}
+                        {% set configs = custom_configs if custom_configs else default_configs %}
+                        <div class="flex flex-col gap-1">
+                            {% if configs %}
+                            <div class="flex items-center gap-1 flex-wrap">
+                                {% for c in configs %}
+                                <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold
+                                    {% if c.approver_role == 'manager' %}bg-teal-50 text-teal-700 border border-teal-200/60
+                                    {% elif c.approver_role == 'hr' %}bg-emerald-50 text-emerald-700 border border-emerald-200/60
+                                    {% elif c.approver_role == 'director' %}bg-purple-50 text-purple-700 border border-purple-200/60
+                                    {% else %}bg-indigo-50 text-indigo-700 border border-indigo-200/60{% endif %}">
+                                    L{{ c.level }}: {{ c.approver_role|format_role }}
+                                </span>
+                                {% if not loop.last %}
+                                <i class="fa-solid fa-chevron-right text-[9px] text-gray-300"></i>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% if not custom_configs and default_configs %}
+                            <span class="text-[10px] text-gray-400 font-medium">(Mengikuti flow default)</span>
+                            {% endif %}
+                            {% else %}
+                            <div class="flex items-center gap-1.5">
+                                <span class="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 border border-teal-200/60">
+                                    <i class="fa-solid fa-user-tie text-[10px]"></i> L1: Manager
+                                </span>
+                                <span class="text-[10px] text-gray-400 font-medium">(Default)</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-4">
+                        {% if lt.is_active %}
+                        <span class="badge bg-emerald-100 text-emerald-700">Aktif</span>
+                        {% else %}
+                        <span class="badge bg-gray-100 text-gray-600">Nonaktif</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-4">
+                        <div class="flex justify-end gap-1">
+                            {% if lt.is_active %}
+                            <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-triton-50 hover:text-triton-700" title="Atur approval"><i class="fa-solid fa-layer-group"></i><span class="sr-only">Atur approval</span></a>
+                    <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }}, {{ lt.created_at_formatted|tojson }}, {{ lt.creator_name|tojson }}, {{ lt.updated_at_formatted|tojson }}, {{ lt.updater_name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
+                            <button type="button" onclick='openArchiveLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition" title="{{ t('Arsipkan jenis cuti') }}">
+                                <i class="fa-solid fa-box-archive"></i>
+                                <span class="sr-only">{{ t('Arsipkan') }}</span>
+                            </button>
+                            <button type="button" onclick='openDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus jenis cuti"><i class="fa-solid fa-trash-can"></i><span class="sr-only">Hapus {{ lt.name }}</span></button>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('main.admin_unarchive_leave_type', type_id=lt.id) }}" class="inline">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="Pulihkan / Buka arsip">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                                    <span class="sr-only">Pulihkan</span>
+                                </button>
+                            </form>
+                            <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
+                            <button type="button" onclick='openDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus permanen"><i class="fa-solid fa-trash-can"></i><span class="sr-only">Hapus permanen</span></button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
                 {% else %}
-                <span class="badge bg-gray-100 text-gray-600">Auto</span>
-                {% endif %}
-            </div>
-        </div>
-        <button onclick="openEditModal({{ lt.id }}, '{{ lt.name }}', '{{ lt.description }}', {{ lt.days_per_year }}, '{{ lt.color }}', {{ 'true' if lt.is_active else 'false' }})"
-            class="mt-4 w-full py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all btn btn-secondary">
-            <i class="fa-solid fa-pen mr-1"></i> Edit
-        </button>
-        <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}"
-            class="mt-2 w-full inline-block text-center py-2 bg-indigo-50 text-indigo-600 text-sm font-medium rounded-xl hover:bg-indigo-100 transition-all">
-            <i class="fa-solid fa-layer-group mr-1"></i> Atur Approval
-        </a>
+                <tr>
+                    <td colspan="5" class="px-5 py-14 text-center">
+                        <i class="fa-solid {% if show_archived %}fa-box-archive{% else %}fa-list-check{% endif %} mb-3 block text-2xl text-gray-300"></i>
+                        <p class="font-semibold text-gray-700">{% if show_archived %}Tidak ada jenis cuti diarsipkan{% else %}Belum ada jenis cuti aktif{% endif %}</p>
+                        <p class="mt-1 text-sm text-gray-500">{% if show_archived %}Jenis cuti yang dinonaktifkan atau diarsipkan akan muncul di sini.{% else %}Tambah kebijakan cuti pertama untuk perusahaan ini.{% endif %}</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% else %}
-    <div class="col-span-full empty-state">
-        <i class="fa-solid fa-list-check"></i>
-        <p>Belum ada jenis cuti</p>
-        <span class="text-sm">Klik "Tambah Jenis Cuti" untuk mulai</span>
-    </div>
-    {% endfor %}
+    {% include "components/pagination.html" %}
 </div>
 
 <!-- Add Modal -->
 <div id="addModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+    <div class="bg-white rounded-2xl shadow-xl w-full p-6 animate-slideIn" style="max-width:760px">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-gray-900">Tambah Jenis Cuti</h3>
             <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
-        <form method="POST" action="{{ url_for('main.admin_add_leave_type') }}" class="space-y-4">
+        <form method="POST" action="{{ url_for('main.admin_add_leave_type') }}" class="modal-two-column-form">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Company</label><select name="company_id" class="input">{% for c in companies %}<option value="{{ c.id }}" {% if active_company and c.id == active_company.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama Cuti</label>
                 <input type="text" name="name" required
@@ -138,7 +173,16 @@
                 <input type="color" name="color" value="#0d9488"
                     class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer">
             </div>
-            <div class="flex gap-3 pt-2">
+            <div class="col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="requires_attachment" id="addRequiresAttachment" value="1" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" onchange="document.getElementById('addAttachmentLabelRow').style.display=this.checked?'':'none'">
+                    <span class="text-sm text-gray-700 font-medium">{{ t('Wajib lampiran dokumen saat pengajuan') }}</span>
+                </label>
+                <div id="addAttachmentLabelRow" style="display:none" class="mt-2">
+                    <input type="text" name="attachment_label" class="input" placeholder="{{ t('Label upload, mis. Surat Dokter') }}" value="{{ t('Surat Dokter / Bukti Pendukung') }}">
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 modal-form-actions">
                 <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
                     <i class="fa-solid fa-plus mr-1"></i> Tambah
                 </button>
@@ -151,16 +195,42 @@
     </div>
 </div>
 
+<div id="archiveLeaveTypeModal" class="fixed inset-0 z-[1050] hidden items-center justify-center bg-gray-900/40 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slideIn">
+        <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600"><i class="fa-solid fa-box-archive"></i></div>
+        <h3 class="text-lg font-bold text-gray-900">{{ t('Arsipkan jenis cuti?') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ t('Jenis cuti') }} <span id="archiveLeaveTypeName" class="font-semibold text-gray-700"></span> {{ t('akan dinonaktifkan dan tidak dapat dipilih untuk pengajuan baru. Riwayat cuti sebelumnya tetap aman.') }}</p>
+        <form method="POST" action="" id="archiveLeaveTypeForm" class="mt-6 grid grid-cols-2 gap-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="button" id="archiveLeaveTypeCancel" onclick="closeArchiveLeaveType()" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+            <button type="submit" id="archiveLeaveTypeSubmit" class="inline-flex items-center justify-center rounded-md bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700">{{ t('Arsipkan') }}</button>
+        </form>
+    </div>
+</div>
+
+<div id="deleteLeaveTypeModal" class="fixed inset-0 z-[1050] hidden items-center justify-center bg-gray-900/40 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><i class="fa-solid fa-trash-can"></i></div>
+        <h3 class="text-lg font-bold text-gray-900">Hapus jenis cuti?</h3>
+        <p class="mt-2 text-sm text-gray-500"><span id="deleteLeaveTypeName" class="font-semibold text-gray-700"></span> akan dihapus. Jika sudah pernah digunakan, jenis cuti akan diarsipkan agar riwayat tetap aman.</p>
+        <form method="POST" action="" id="deleteLeaveTypeForm" class="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" id="deleteLeaveTypeCancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</button>
+            <button type="submit" id="deleteLeaveTypeSubmit" class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Hapus</button>
+        </form>
+    </div>
+</div>
+
 <!-- Edit Modal -->
 <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+    <div class="bg-white rounded-2xl shadow-xl w-full p-6 animate-slideIn" style="max-width:760px">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-gray-900">Edit Jenis Cuti</h3>
             <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
-        <form method="POST" action="" id="editForm" class="space-y-4">
+        <form method="POST" action="" id="editForm" class="modal-two-column-form">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Company</label><select name="company_id" class="input">{% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama Cuti</label>
                 <input type="text" name="name" id="editName" required
@@ -188,7 +258,28 @@
                     <span class="text-sm text-gray-700">Aktif</span>
                 </label>
             </div>
-            <div class="flex gap-3 pt-2">
+            <div class="col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="requires_attachment" id="editRequiresAttachment" value="1" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" onchange="document.getElementById('editAttachmentLabelRow').style.display=this.checked?'':'none'">
+                    <span class="text-sm text-gray-700 font-medium">{{ t('Wajib lampiran dokumen saat pengajuan') }}</span>
+                </label>
+                <div id="editAttachmentLabelRow" class="mt-2">
+                    <input type="text" name="attachment_label" id="editAttachmentLabel" class="input" placeholder="{{ t('Label upload, mis. Surat Dokter') }}">
+                </div>
+            </div>
+            <div class="col-span-2 rounded-xl border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-500 grid grid-cols-2 gap-3 mt-1">
+                <div>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Dibuat') }}</span>
+                    <p class="font-semibold text-gray-700" id="editLtCreatedAt">-</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editLtCreatedBy" class="font-medium text-gray-700">-</span></p>
+                </div>
+                <div>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Terakhir Diperbarui') }}</span>
+                    <p class="font-semibold text-gray-700" id="editLtUpdatedAt">-</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editLtUpdatedBy" class="font-medium text-gray-700">-</span></p>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 modal-form-actions">
                 <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
                     <i class="fa-solid fa-save mr-1"></i> Simpan
                 </button>
@@ -204,15 +295,82 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<style>
+.modal-two-column-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.modal-two-column-form .modal-form-actions { grid-column:1 / -1; }
+@media (max-width: 640px) { .modal-two-column-form { grid-template-columns:1fr; } }
+</style>
+
 <script>
-function openEditModal(id, name, description, days, color, isActive) {
+function formatAuditActor(actor) {
+    if (!actor || actor === '-' || actor.toLowerCase() === 'sistem' || actor.toLowerCase() === 'system') {
+        const lang = window.PEOPLE_LANGUAGE || 'en';
+        return (lang === 'en') ? 'System' : 'Sistem';
+    }
+    return actor;
+}
+
+function openEditModal(id, name, description, days, color, isActive, requiresAttachment, attachmentLabel, createdAt, createdBy, updatedAt, updatedBy) {
     document.getElementById('editForm').action = '/admin/leave-types/edit/' + id;
     document.getElementById('editName').value = name;
     document.getElementById('editDescription').value = description;
     document.getElementById('editDays').value = days;
     document.getElementById('editColor').value = color;
-    document.getElementById('editActive').checked = isActive;
+    document.getElementById('editActive').checked = (isActive === true || isActive === 'true');
+    const reqCb = document.getElementById('editRequiresAttachment');
+    const labelRow = document.getElementById('editAttachmentLabelRow');
+    const labelInput = document.getElementById('editAttachmentLabel');
+    if (reqCb) reqCb.checked = (requiresAttachment === true || requiresAttachment === 'true');
+    if (labelRow) labelRow.style.display = (requiresAttachment === true || requiresAttachment === 'true') ? '' : 'none';
+    if (labelInput) labelInput.value = attachmentLabel || 'Surat Dokter / Bukti Pendukung';
+
+    document.getElementById('editLtCreatedAt').textContent = createdAt || '-';
+    document.getElementById('editLtCreatedBy').textContent = formatAuditActor(createdBy);
+    document.getElementById('editLtUpdatedAt').textContent = updatedAt || '-';
+    document.getElementById('editLtUpdatedBy').textContent = formatAuditActor(updatedBy);
+
     document.getElementById('editModal').classList.remove('hidden');
 }
+function openArchiveLeaveType(id, name) {
+    document.getElementById('archiveLeaveTypeForm').action = '/admin/leave-types/archive/' + id;
+    document.getElementById('archiveLeaveTypeName').textContent = name;
+    const modal = document.getElementById('archiveLeaveTypeModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeArchiveLeaveType() {
+    const modal = document.getElementById('archiveLeaveTypeModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+document.getElementById('archiveLeaveTypeCancel')?.addEventListener('click', closeArchiveLeaveType);
+document.getElementById('archiveLeaveTypeModal')?.addEventListener('click', function(event) { if (event.target === this) closeArchiveLeaveType(); });
+document.getElementById('archiveLeaveTypeForm')?.addEventListener('submit', function(event) {
+    const button = document.getElementById('archiveLeaveTypeSubmit');
+    if (button.disabled) { event.preventDefault(); return; }
+    button.disabled = true;
+    button.classList.add('cursor-not-allowed', 'opacity-70');
+});
+
+function openDeleteLeaveType(id,name){
+    document.getElementById('deleteLeaveTypeForm').action='/admin/leave-types/delete/'+id;
+    document.getElementById('deleteLeaveTypeName').textContent=name;
+    const modal=document.getElementById('deleteLeaveTypeModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeDeleteLeaveType(){
+    const modal=document.getElementById('deleteLeaveTypeModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+document.getElementById('deleteLeaveTypeCancel')?.addEventListener('click',closeDeleteLeaveType);
+document.getElementById('deleteLeaveTypeModal')?.addEventListener('click',function(event){if(event.target===this)closeDeleteLeaveType();});
+document.getElementById('deleteLeaveTypeForm')?.addEventListener('submit',function(event){
+    const button=document.getElementById('deleteLeaveTypeSubmit');
+    if(button.disabled){event.preventDefault();return;}
+    button.disabled=true;
+    button.classList.add('cursor-not-allowed','opacity-70');
+});
 </script>
 {% endblock %}

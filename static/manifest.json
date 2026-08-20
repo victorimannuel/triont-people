@@ -1,0 +1,18 @@
+{
+  "name": "People by Triton",
+  "short_name": "People",
+  "description": "Smart Employee & Leave Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e5a52",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

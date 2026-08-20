@@ -1,128 +1,297 @@
 {% extends "base.html" %}
-{% block title %}Ajukan Cuti{% endblock %}
+{% block title %}Apply Leave{% endblock %}
 {% block content %}
-
-<div class="max-w-3xl mx-auto">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Ajukan Cuti Baru 🏖️</h1>
-        <p class="text-gray-500 mt-1">Gas isi form di bawah, nanti di-approve manager/HR ya!</p>
+<div class="mx-auto max-w-3xl">
+    <div class="mb-7">
+        <span class="eyebrow-rule"></span>
+        <p class="page-kicker">Leave</p>
+        <h1 class="page-title mt-1">{{ t('Buat pengajuan cuti') }}</h1>
+        <p class="mt-2 text-sm text-gray-500">{{ t('Lengkapi detail berikut untuk diteruskan ke approver Anda.') }}</p>
     </div>
 
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <form method="POST" class="p-6 sm:p-8 space-y-6">
-            <!-- Leave Type Selection -->
+    <form method="POST" enctype="multipart/form-data" class="app-card p-5 sm:p-7" id="leave-request-form">
+        <!-- Leave Type -->
+        <section>
+            <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Jenis cuti') }}</label>
+            <div class="grid gap-3 sm:grid-cols-2">
+                {% for lt in leave_types %}
+                {% set bal = balances.get(lt.id) %}
+                {% set remaining = (bal.total_days - bal.used_days - bal.pending_days) if bal else 0 %}
+                <label class="cursor-pointer">
+                    <input class="peer sr-only" type="radio" name="leave_type" value="{{ lt.id }}" required>
+                    <span class="flex border border-gray-200 p-4 transition peer-checked:border-triton-600 peer-checked:bg-triton-50" style="border-radius:6px">
+                        <span class="mr-3 flex h-9 w-9 items-center justify-center rounded-md" style="background:{{ lt.color }}18;color:{{ lt.color }}"><i class="fa-solid {{ lt.icon }}"></i></span>
+                        <span>
+                            <strong class="block text-sm text-gray-800">{{ lt.name }}</strong>
+                            <small class="mt-1 block text-xs text-gray-500">
+                                {% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} dari {{ bal.total_days|format_days }} {{ t('hari tersedia') }}{% else %}{{ t('Tanpa kuota') }}{% endif %}
+                            </small>
+                        </span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Duration Type: Full Day / Half Day Morning / Half Day Afternoon -->
+        <section class="mt-6">
+            <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Tipe durasi') }}</label>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label class="cursor-pointer">
+                    <input class="peer sr-only" type="radio" name="day_part" value="full" checked onchange="handleDurationTypeChange()">
+                    <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-3 text-center transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                        <i class="fa-regular fa-sun text-lg mb-1 text-amber-500"></i>
+                        <span class="text-sm font-bold text-gray-800 peer-checked:text-triton-900">{{ t('Sehari Penuh') }}</span>
+                        <span class="text-xs text-gray-500 mt-0.5">1+ {{ t('hari kerja') }}</span>
+                    </span>
+                </label>
+                <label class="cursor-pointer">
+                    <input class="peer sr-only" type="radio" name="day_part" value="morning" onchange="handleDurationTypeChange()">
+                    <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-3 text-center transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                        <i class="fa-solid fa-cloud-sun text-lg mb-1 text-orange-400"></i>
+                        <span class="text-sm font-bold text-gray-800 peer-checked:text-triton-900">{{ t('Setengah Hari (Pagi)') }}</span>
+                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('hari') }} (08:00 - 12:00)</span>
+                    </span>
+                </label>
+                <label class="cursor-pointer">
+                    <input class="peer sr-only" type="radio" name="day_part" value="afternoon" onchange="handleDurationTypeChange()">
+                    <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-3 text-center transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
+                        <i class="fa-solid fa-cloud-moon text-lg mb-1 text-indigo-400"></i>
+                        <span class="text-sm font-bold text-gray-800 peer-checked:text-triton-900">{{ t('Setengah Hari (Siang)') }}</span>
+                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('hari') }} (13:00 - 17:00)</span>
+                    </span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Date Range -->
+        <section class="mt-6 grid gap-4 sm:grid-cols-2" id="date-pickers-container">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Cuti</label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {% for lt in leave_types %}
-                    {% set bal = balances.get(lt.id) %}
-                    {% set remaining = (bal.total_days - bal.used_days - bal.pending_days) if bal else 0 %}
-                    <label class="relative">
-                        <input type="radio" name="leave_type" value="{{ lt.id }}" required
-                            class="peer sr-only">
-                        <div class="p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all
-                            peer-checked:border-teal-500 peer-checked:bg-teal-50 hover:border-gray-300">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: {{ lt.color }}20;">
-                                    <i class="fa-solid {{ lt.icon }}" style="color: {{ lt.color }}"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">{{ lt.name }}</p>
-                                    {% if bal and lt.days_per_year > 0 %}
-                                    <p class="text-xs text-gray-400">Sisa: <span class="font-medium {% if remaining <= 2 %}text-red-500{% else %}text-green-600{% endif %}">{{ "%.0f"|format(remaining) }}</span>/{{ "%.0f"|format(bal.total_days) }} hari</p>
-                                    {% else %}
-                                    <p class="text-xs text-gray-400">Tanpa quota</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </label>
-                    {% endfor %}
-                </div>
+                <label id="start-date-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal mulai') }}</label>
+                <input class="field" type="date" name="start_date" id="apply-start-date" value="{{ request.args.get('start_date', '') }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
             </div>
+            <div id="end-date-wrapper">
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal selesai') }}</label>
+                <input class="field" type="date" name="end_date" id="apply-end-date" value="{{ request.args.get('end_date', request.args.get('start_date', '')) }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
+            </div>
+        </section>
 
-            <!-- Date Range -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Mulai</label>
-                    <input type="date" name="start_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}"
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                        onchange="updateDuration()">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Selesai</label>
-                    <input type="date" name="end_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}"
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                        onchange="updateDuration()">
-                </div>
-            </div>
+        <div id="duration-display" class="mt-4 hidden rounded-md border border-triton-100 bg-triton-50 px-4 py-3 text-sm text-triton-700">
+            {{ t('Durasi pengajuan') }}: <strong id="duration-days">0</strong>
+        </div>
 
-            <!-- Duration indicator -->
-            <div id="duration-display" class="hidden px-4 py-3 bg-teal-50 border border-teal-100 rounded-xl text-sm text-teal-700">
-                <i class="fa-solid fa-clock mr-2"></i>
-                Durasi cuti: <span id="duration-days" class="font-bold">0</span> hari
-            </div>
+        {% if delegate_enabled %}
+        <section class="mt-6">
+            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegasi') }}</label>
+            <select name="delegate_id">
+                <option value="">{{ t('Tidak ada delegasi') }}</option>
+                {% for emp in employees %}
+                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>
+                {% endfor %}
+            </select>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Pilih rekan yang dapat membantu menjaga pekerjaan selama Anda tidak aktif.') }}</p>
+        </section>
+        {% endif %}
 
-            <!-- Reason -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Alasan Cuti</label>
-                <textarea name="reason" rows="3"
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
-                    placeholder="Liburan, urusan keluarga, refresh mind, whatever... just be honest! 😎"></textarea>
-            </div>
+        <section class="mt-6">
+            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Alasan') }} <span class="font-normal text-gray-400">({{ t('opsional') }})</span></label>
+            <textarea class="field resize-none" name="reason" rows="3" placeholder="{{ t('Tambahkan konteks singkat bila diperlukan.') }}"></textarea>
+        </section>
 
-            <!-- Delegate -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Pengganti / Delegate <span class="text-gray-400 font-normal">(opsional)</span></label>
-                <select name="delegate_id"
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
-                    <option value="">— Tidak ada —</option>
-                    {% for emp in employees %}
-                    <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>
-                    {% endfor %}
-                </select>
-                <p class="text-xs text-gray-400 mt-1.5">Pilih karyawan yang akan menggantikan tugas Anda selama cuti</p>
-            </div>
+        <!-- Attachment (conditionally required) -->
+        <section class="mt-6" id="attachment-section" style="display:none">
+            <label class="mb-2 block text-sm font-semibold text-gray-800" id="attachment-label-text">
+                {{ t('Lampiran') }} <span class="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">{{ t('Wajib') }}</span>
+            </label>
+            <label id="attachment-drop" class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center transition hover:border-triton-400 hover:bg-triton-50">
+                <i class="fa-solid fa-file-arrow-up text-2xl text-gray-300" id="attachment-icon"></i>
+                <span class="text-sm font-medium text-gray-500" id="attachment-hint">{{ t('Klik atau seret file ke sini') }}</span>
+                <span class="text-xs text-gray-400">PDF, JPG, PNG · {{ t('Maks.') }} 5 MB</span>
+                <input type="file" name="attachment" id="attachment-input" class="hidden" accept=".pdf,.jpg,.jpeg,.png">
+            </label>
+            <p class="mt-1.5 text-xs text-gray-400" id="attachment-filename"></p>
+        </section>
 
-            <!-- Actions -->
-            <div class="flex items-center gap-3 pt-2">
-                <button type="submit"
-                    class="px-6 py-3 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md" style="background:var(--primary)">
-                    <i class="fa-solid fa-paper-plane mr-2"></i> Ajukan Cuti
-                </button>
-                <a href="{{ url_for('main.dashboard') }}"
-                    class="px-6 py-3 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-all">
-                    Batal
-                </a>
+        <div class="mt-7 flex items-center gap-3 border-t border-gray-100 pt-5">
+            <button class="btn-primary px-5 py-2.5" type="button" id="leave-open-confirm">{{ t('Kirim pengajuan') }}</button>
+            <a href="{{ url_for('main.dashboard') }}" class="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900">{{ t('Batal') }}</a>
+        </div>
+    </form>
+
+    <div id="leave-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-paper-plane"></i></div>
+            <h3 class="text-lg font-bold text-gray-900">{{ t('Kirim pengajuan cuti?') }}</h3>
+            <p class="mt-2 text-sm text-gray-500">{{ t('Pengajuan akan diteruskan ke approver sesuai flow approval perusahaan.') }}</p>
+            <div class="mt-6 grid grid-cols-2 gap-3">
+                <button type="button" id="leave-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+                <button type="button" id="leave-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Kirim pengajuan') }}</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+function getSelectedDayPart() {
+    const checked = document.querySelector('[name=day_part]:checked');
+    return checked ? checked.value : 'full';
+}
+
+function handleDurationTypeChange() {
+    const part = getSelectedDayPart();
+    const endWrapper = document.getElementById('end-date-wrapper');
+    const endInput = document.getElementById('apply-end-date');
+    const startLabel = document.getElementById('start-date-label');
+    const startInput = document.getElementById('apply-start-date');
+
+    if (part === 'morning' || part === 'afternoon') {
+        if (endWrapper) endWrapper.classList.add('hidden');
+        if (endInput) {
+            endInput.removeAttribute('required');
+            if (startInput && startInput.value) endInput.value = startInput.value;
+        }
+        if (startLabel) startLabel.textContent = window.translateUi ? window.translateUi('Tanggal cuti') : 'Tanggal cuti';
+    } else {
+        if (endWrapper) endWrapper.classList.remove('hidden');
+        if (endInput) {
+            endInput.setAttribute('required', 'required');
+            if (startInput && startInput.value && !endInput.value) endInput.value = startInput.value;
+        }
+        if (startLabel) startLabel.textContent = window.translateUi ? window.translateUi('Tanggal mulai') : 'Tanggal mulai';
+    }
+    updateDuration();
+}
+
 function updateDuration() {
-    const startInput = document.querySelector('input[name="start_date"]');
-    const endInput = document.querySelector('input[name="end_date"]');
-    const display = document.getElementById('duration-display');
-    const daysSpan = document.getElementById('duration-days');
+    const a = document.getElementById('apply-start-date');
+    const b = document.getElementById('apply-end-date');
+    const box = document.getElementById('duration-display');
+    const textEl = document.getElementById('duration-days');
+    const part = getSelectedDayPart();
+    const tr = function(m) { return window.translateUi ? window.translateUi(m) : m; };
 
-    if (startInput.value && endInput.value) {
-        const start = new Date(startInput.value + 'T00:00:00');
-        const end = new Date(endInput.value + 'T00:00:00');
+    if (!a || !a.value) {
+        if (box) box.classList.add('hidden');
+        return;
+    }
 
-        if (end >= start) {
-            const diffTime = Math.abs(end - start);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            daysSpan.textContent = diffDays;
-            display.classList.remove('hidden');
+    if (part === 'morning') {
+        if (textEl) textEl.textContent = tr('0.5 hari (Pagi: 08:00 - 12:00)');
+        if (box) box.classList.remove('hidden');
+    } else if (part === 'afternoon') {
+        if (textEl) textEl.textContent = tr('0.5 hari (Siang: 13:00 - 17:00)');
+        if (box) box.classList.remove('hidden');
+    } else {
+        if (b && b.value && b.value >= a.value) {
+            const count = Math.floor((new Date(b.value) - new Date(a.value)) / 86400000) + 1;
+            if (textEl) textEl.textContent = count + ' ' + tr('hari');
+            if (box) box.classList.remove('hidden');
         } else {
-            display.classList.add('hidden');
+            if (box) box.classList.add('hidden');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    handleDurationTypeChange();
+    updateAttachmentSection();
+
+    // Leave type radio → update attachment section
+    document.querySelectorAll('[name=leave_type]').forEach(function(r) {
+        r.addEventListener('change', updateAttachmentSection);
+    });
+
+    // File input → show selected filename
+    const attachInput = document.getElementById('attachment-input');
+    if (attachInput) {
+        attachInput.addEventListener('change', function() {
+            const fn = document.getElementById('attachment-filename');
+            const hint = document.getElementById('attachment-hint');
+            const icon = document.getElementById('attachment-icon');
+            if (this.files && this.files[0]) {
+                const f = this.files[0];
+                if (fn) fn.textContent = f.name + ' (' + (f.size / 1024).toFixed(1) + ' KB)';
+                if (hint) hint.textContent = f.name;
+                if (icon) { icon.className = 'fa-solid fa-file-check text-2xl text-triton-500'; }
+            } else {
+                if (fn) fn.textContent = '';
+            }
+        });
+    }
+
+    const form = document.getElementById('leave-request-form');
+    const modal = document.getElementById('leave-confirm-modal');
+    const cancel = document.getElementById('leave-confirm-cancel');
+    const submit = document.getElementById('leave-confirm-submit');
+    const openButton = document.getElementById('leave-open-confirm');
+
+    function openModal() {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function() { modal.classList.remove('opacity-0'); });
+    }
+    function closeModal() {
+        modal.classList.add('opacity-0');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 160);
+    }
+    function validateThenOpen() {
+        if (!form) return;
+        const part = getSelectedDayPart();
+        const startInput = document.getElementById('apply-start-date');
+        const endInput = document.getElementById('apply-end-date');
+        if (part !== 'full' && startInput && endInput) {
+            endInput.value = startInput.value;
+        }
+        if (form.reportValidity && !form.reportValidity()) return;
+        openModal();
+    }
+    if (openButton) openButton.addEventListener('click', validateThenOpen);
+    if (form && modal) {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            validateThenOpen();
+        });
+    }
+    if (cancel) cancel.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(event) { if (event.target === modal) closeModal(); });
+    if (submit) submit.addEventListener('click', function() { if (form) form.submit(); });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeModal();
+    });
+});
+const LEAVE_TYPES_CFG = {{ leave_types_json | tojson }};
+
+function updateAttachmentSection() {
+    const radio = document.querySelector('[name=leave_type]:checked');
+    const section = document.getElementById('attachment-section');
+    const input = document.getElementById('attachment-input');
+    const labelEl = document.getElementById('attachment-label-text');
+    if (!section || !radio) { if (section) section.style.display = 'none'; return; }
+    const cfg = LEAVE_TYPES_CFG[parseInt(radio.value)];
+    if (cfg && cfg.requires_attachment) {
+        section.style.display = '';
+        if (input) input.setAttribute('required', 'required');
+        if (cfg.attachment_label && labelEl) {
+            const badge = labelEl.querySelector('span');
+            labelEl.textContent = cfg.attachment_label + ' ';
+            if (badge) labelEl.appendChild(badge);
         }
     } else {
-        display.classList.add('hidden');
+        section.style.display = 'none';
+        if (input) { input.removeAttribute('required'); input.value = ''; }
+        const fn = document.getElementById('attachment-filename');
+        const hint = document.getElementById('attachment-hint');
+        const icon = document.getElementById('attachment-icon');
+        if (fn) fn.textContent = '';
+        if (hint) hint.textContent = window.translateUi ? window.translateUi('Klik atau seret file ke sini') : 'Klik atau seret file ke sini';
+        if (icon) { icon.className = 'fa-solid fa-file-arrow-up text-2xl text-gray-300'; }
     }
 }
 </script>

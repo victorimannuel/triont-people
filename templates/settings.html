@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Settings') }}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div><span class="eyebrow-rule"></span><p class="page-kicker">{{ t('Account') }}</p><h1 class="page-title mt-1">{{ t('Settings') }}</h1><p class="mt-2 text-sm text-gray-500">{{ t('Manage your profile, default language, and password.') }}</p></div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <!-- Main Left Column -->
+    <div class="space-y-6">
+        <!-- Profile & Preferences Card -->
+        <form method="POST" enctype="multipart/form-data" class="app-card space-y-6 p-6">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <!-- Profile Avatar Section -->
+            <div>
+                <label class="mb-3 block text-sm font-semibold text-gray-700">{{ t('Foto Profil') }}</label>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div class="relative shrink-0">
+                        {% if current_user.avatar_path %}
+                        <img src="{{ url_for('main.user_avatar', user_id=current_user.id) }}" id="avatarPreviewImg" alt="{{ current_user.name }}" class="h-20 w-20 rounded-2xl object-cover border-2 border-teal-500 shadow-md">
+                        {% else %}
+                        <div id="avatarFallback" class="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-md transition-transform" style="background: {{ current_user.avatar_color }}">
+                            {{ current_user.name[:2]|upper }}
+                        </div>
+                        <img id="avatarPreviewImg" src="" alt="Preview" class="hidden h-20 w-20 rounded-2xl object-cover border-2 border-teal-500 shadow-md">
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <input type="file" name="avatar" id="avatarInput" accept="image/png, image/jpeg, image/jpg, image/webp" class="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer">
+                        <p class="text-[11px] text-gray-400">{{ t('Mendukung format JPG, PNG, WEBP. Maksimal 3MB.') }}</p>
+                    </div>
+                    {% if current_user.avatar_path %}
+                    <button type="button" onclick="document.getElementById('deleteAvatarForm').submit()" class="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 shrink-0">
+                        <i class="fa-solid fa-trash-can text-xs"></i> {{ t('Hapus Foto') }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-5">
+                <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Nama') }}</label>
+                <input class="field" name="name" value="{{ current_user.name }}" maxlength="100" required>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Bahasa utama') }}</label>
+                    <select name="language" class="field" data-native-select>
+                        {% for code, label in language_labels.items() %}
+                        <option value="{{ code }}" {% if current_user.language_preference == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Zona Waktu (Timezone)') }}</label>
+                    <select name="timezone" class="field" data-native-select>
+                        {% for tz_val, tz_lbl in timezone_choices %}
+                        <option value="{{ tz_val }}" {% if (current_user.timezone_preference or 'Asia/Jakarta') == tz_val %}selected{% endif %}>{{ tz_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="pt-2 flex justify-end">
+                <button type="submit" class="btn-primary px-5 py-2.5 text-xs font-semibold">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>{{ t('Simpan profil') }}
+                </button>
+            </div>
+        </form>
+
+        <!-- Security & Change Password Card with 2 Options -->
+        <div class="app-card p-6 border-indigo-100 bg-white shadow-2xs">
+            <div class="flex items-center gap-3 mb-5">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <i class="fa-solid fa-shield-halved text-base"></i>
+                </span>
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900">{{ t('Ubah Password') }}</h2>
+                    <p class="text-xs text-gray-500">{{ t('Pilih metode verifikasi kata sandi akun Anda') }}</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex border-b border-gray-200 mb-5 gap-2">
+                <button type="button" id="tabDirectBtn" onclick="switchPwTab('direct')"
+                        class="flex items-center gap-2 border-b-2 border-indigo-600 pb-2.5 px-3 text-xs font-bold text-indigo-600 transition">
+                    <i class="fa-solid fa-key text-xs"></i>
+                    <span>{{ t('Ingat Password Lama') }}</span>
+                </button>
+                <button type="button" id="tabOtpBtn" onclick="switchPwTab('otp')"
+                        class="flex items-center gap-2 border-b-2 border-transparent pb-2.5 px-3 text-xs font-semibold text-gray-500 hover:text-gray-900 transition">
+                    <i class="fa-solid fa-envelope-open-text text-xs"></i>
+                    <span>{{ t('Lupa Password? (OTP Email)') }}</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: Direct with Current Password -->
+            <div id="tabDirectContent" class="space-y-4">
+                <p class="text-xs text-gray-500 leading-relaxed">
+                    {{ t('Masukkan password saat ini dan tentukan password baru langsung tanpa perlu OTP.') }}
+                </p>
+                <form method="POST" action="{{ url_for('main.user_settings') }}" class="space-y-4">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password saat ini') }}</label>
+                        <div class="relative">
+                            <input class="field pr-9 text-xs" type="password" id="cur_pw_direct" name="current_password" required autocomplete="current-password" placeholder="{{ t('Masukkan password saat ini') }}">
+                            <button type="button" onclick="toggleFieldVis('cur_pw_direct', 'cur_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                <i class="fa-solid fa-eye text-xs" id="cur_pw_direct_icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password baru') }}</label>
+                            <div class="relative">
+                                <input class="field pr-9 text-xs" type="password" id="new_pw_direct" name="new_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('Minimal 8 karakter') }}">
+                                <button type="button" onclick="toggleFieldVis('new_pw_direct', 'new_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                    <i class="fa-solid fa-eye text-xs" id="new_pw_direct_icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Konfirmasi password') }}</label>
+                            <div class="relative">
+                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_direct" name="confirm_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('Ulangi password baru') }}">
+                                <button type="button" onclick="toggleFieldVis('cfm_pw_direct', 'cfm_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                    <i class="fa-solid fa-eye text-xs" id="cfm_pw_direct_icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500 space-y-0.5">
+                        <p class="font-semibold text-gray-600">{{ t('Syarat password:') }}</p>
+                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('Minimal 8 karakter (huruf & angka)') }}</p>
+                    </div>
+
+                    <div class="pt-1 flex justify-end">
+                        <button type="submit" class="btn-primary px-5 py-2.5 text-xs font-semibold">
+                            <i class="fa-solid fa-key mr-1.5"></i>{{ t('Perbarui Password') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 2: Forgot Current Password (OTP Email Verification) -->
+            <div id="tabOtpContent" class="hidden space-y-4">
+                <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5 text-xs text-indigo-900 leading-relaxed flex items-start gap-3">
+                    <i class="fa-solid fa-circle-info text-indigo-500 mt-0.5 text-sm"></i>
+                    <div>
+                        <p class="font-semibold">{{ t('Verifikasi Identitas via Email') }}</p>
+                        <p class="mt-0.5 text-indigo-700">{{ t('Kode OTP 6-digit akan dikirim ke email terdaftar Anda untuk verifikasi identitas.') }} (<strong>{{ current_user.email }}</strong>)</p>
+                    </div>
+                </div>
+
+                <div id="otpAlert" class="hidden rounded-lg p-3 text-xs"></div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-gray-100 rounded-xl p-3.5 bg-gray-50">
+                    <div>
+                        <p class="text-xs font-bold text-gray-900">{{ t('Langkah 1: Dapatkan Kode OTP') }}</p>
+                        <p class="text-[11px] text-gray-500">{{ t('Kirim kode 6 digit ke') }} {{ current_user.email }}</p>
+                    </div>
+                    <button type="button" id="btnSendOtp" onclick="handleSendOtp()" class="btn-secondary px-3.5 py-2 text-xs font-bold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 shrink-0">
+                        <i class="fa-solid fa-paper-plane mr-1.5"></i>{{ t('Kirim Kode OTP') }} <span id="cooldownTimer" class="hidden ml-1"></span>
+                    </button>
+                </div>
+
+                <div class="space-y-4 pt-1">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Langkah 2: Masukkan Kode OTP 6-Digit') }}</label>
+                        <input type="text" id="otp_code_input" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+                               class="field text-center font-mono text-xl tracking-[0.3em] font-bold text-gray-900 placeholder:text-gray-300 max-w-xs"
+                               placeholder="••••••">
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password baru') }}</label>
+                            <div class="relative">
+                                <input class="field pr-9 text-xs" type="password" id="new_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('Minimal 8 karakter') }}">
+                                <button type="button" onclick="toggleFieldVis('new_pw_otp', 'new_pw_otp_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                    <i class="fa-solid fa-eye text-xs" id="new_pw_otp_icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Konfirmasi password') }}</label>
+                            <div class="relative">
+                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('Ulangi password baru') }}">
+                                <button type="button" onclick="toggleFieldVis('cfm_pw_otp', 'cfm_pw_otp_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                    <i class="fa-solid fa-eye text-xs" id="cfm_pw_otp_icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500 space-y-0.5">
+                        <p class="font-semibold text-gray-600">{{ t('Syarat password:') }}</p>
+                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('Minimal 8 karakter (huruf & angka)') }}</p>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="button" id="btnVerifyOtpSave" onclick="handleVerifyOtpSave()" class="btn-primary px-5 py-2.5 text-xs font-semibold">
+                            <i class="fa-solid fa-shield-check mr-1.5"></i>{{ t('Verifikasi OTP & Simpan Password') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar Utilities -->
+    <aside class="space-y-5">
+        <div class="app-card p-5">
+            <p class="text-sm font-semibold text-gray-900">{{ t('Detail Akun') }}</p>
+            <dl class="mt-4 space-y-3 text-sm">
+                <div><dt class="text-xs font-semibold uppercase text-gray-400">Email</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.email }}</dd></div>
+                <div><dt class="text-xs font-semibold uppercase text-gray-400">Role</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.role|format_role }}</dd></div>
+                <div><dt class="text-xs font-semibold uppercase text-gray-400">{{ t('Perusahaan') }}</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.company.name }}</dd></div>
+            </dl>
+        </div>
+
+        {% if current_user.role == 'admin' %}
+        <!-- Database & System Backup Card for Admin -->
+        <div class="app-card p-5 border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white">
+            <div class="flex items-center gap-2">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><i class="fa-solid fa-database text-xs"></i></span>
+                <p class="text-sm font-bold text-gray-900">{{ t('Backup Database & Sistem') }}</p>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Unduh salinan cadangan lengkap database dan berkas lampiran sistem kapan saja.') }}</p>
+            <div class="mt-4 flex flex-col gap-2">
+                <a href="{{ url_for('main.admin_download_backup', format='zip') }}" class="btn-primary w-full justify-center text-xs py-2 bg-amber-600 hover:bg-amber-700 text-white shadow-xs">
+                    <i class="fa-solid fa-file-zipper mr-1.5"></i>{{ t('Download ZIP (Lengkap: SQL + JSON + Berkas)') }}
+                </a>
+                <div class="grid grid-cols-2 gap-2">
+                    <a href="{{ url_for('main.admin_download_backup', format='sql') }}" class="btn-secondary w-full justify-center text-xs py-2 border-gray-200 hover:bg-gray-50 text-gray-700">
+                        <i class="fa-solid fa-database mr-1.5 text-amber-600"></i>{{ t('SQL Dump (.sql)') }}
+                    </a>
+                    <a href="{{ url_for('main.admin_download_backup', format='json') }}" class="btn-secondary w-full justify-center text-xs py-2 border-gray-200 hover:bg-gray-50 text-gray-700">
+                        <i class="fa-solid fa-file-code mr-1.5 text-teal-600"></i>{{ t('JSON (.json)') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="app-card p-5">
+            <div class="flex items-center gap-2">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><i class="fa-solid fa-calendar-days text-xs"></i></span>
+                <p class="text-sm font-semibold text-gray-900">{{ t('Kalender Sync (.ics)') }}</p>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Hubungkan jadwal cuti tim ke Google Calendar, Apple Calendar, atau Outlook secara otomatis.') }}</p>
+            <div class="mt-4">
+                <a href="{{ url_for('main.calendar') }}" class="btn-secondary w-full justify-center text-xs py-2">
+                    <i class="fa-solid fa-arrows-rotate mr-1.5 text-teal-600"></i>{{ t('Buka Pengaturan Sync') }}
+                </a>
+            </div>
+        </div>
+
+        <div class="app-card p-5">
+            <div class="flex items-center gap-2">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><i class="fa-solid fa-mobile-screen-button text-xs"></i></span>
+                <p class="text-sm font-semibold text-gray-900">{{ t('Install Aplikasi (PWA)') }}</p>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Pasang People ke layar utama HP / Laptop untuk akses cepat & notifikasi tanpa address bar.') }}</p>
+            <div class="mt-4">
+                <button type="button" onclick="triggerPwaInstall()" class="btn-secondary w-full justify-center text-xs py-2 border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
+                    <i class="fa-solid fa-download mr-1.5 text-emerald-600"></i>{{ t('Install ke Layar Utama') }}
+                </button>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<form id="deleteAvatarForm" method="POST" action="{{ url_for('main.delete_avatar') }}" class="hidden"></form>
+
+<script>
+const avatarInput = document.getElementById('avatarInput');
+if (avatarInput) {
+    avatarInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = document.getElementById('avatarPreviewImg');
+                const fallback = document.getElementById('avatarFallback');
+                if (img) {
+                    img.src = evt.target.result;
+                    img.classList.remove('hidden');
+                }
+                if (fallback) {
+                    fallback.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+function toggleFieldVis(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (!input || !icon) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+function switchPwTab(tabName) {
+    const tabDirectBtn = document.getElementById('tabDirectBtn');
+    const tabOtpBtn = document.getElementById('tabOtpBtn');
+    const tabDirectContent = document.getElementById('tabDirectContent');
+    const tabOtpContent = document.getElementById('tabOtpContent');
+
+    if (tabName === 'direct') {
+        tabDirectBtn.classList.replace('border-transparent', 'border-indigo-600');
+        tabDirectBtn.classList.replace('text-gray-500', 'text-indigo-600');
+        tabDirectBtn.classList.add('font-bold');
+        tabDirectBtn.classList.remove('font-semibold');
+
+        tabOtpBtn.classList.replace('border-indigo-600', 'border-transparent');
+        tabOtpBtn.classList.replace('text-indigo-600', 'text-gray-500');
+        tabOtpBtn.classList.add('font-semibold');
+        tabOtpBtn.classList.remove('font-bold');
+
+        tabDirectContent.classList.remove('hidden');
+        tabOtpContent.classList.add('hidden');
+    } else {
+        tabOtpBtn.classList.replace('border-transparent', 'border-indigo-600');
+        tabOtpBtn.classList.replace('text-gray-500', 'text-indigo-600');
+        tabOtpBtn.classList.add('font-bold');
+        tabOtpBtn.classList.remove('font-semibold');
+
+        tabDirectBtn.classList.replace('border-indigo-600', 'border-transparent');
+        tabDirectBtn.classList.replace('text-indigo-600', 'text-gray-500');
+        tabDirectBtn.classList.add('font-semibold');
+        tabDirectBtn.classList.remove('font-bold');
+
+        tabOtpContent.classList.remove('hidden');
+        tabDirectContent.classList.add('hidden');
+    }
+}
+
+let resendCooldown = 0;
+let cooldownTimerInterval = null;
+
+function startCooldownTimer(seconds) {
+    resendCooldown = seconds;
+    const sendBtn = document.getElementById('btnSendOtp');
+    const timerSpan = document.getElementById('cooldownTimer');
+    if (!sendBtn || !timerSpan) return;
+
+    sendBtn.disabled = true;
+    timerSpan.classList.remove('hidden');
+    timerSpan.textContent = '(' + resendCooldown + 's)';
+
+    if (cooldownTimerInterval) clearInterval(cooldownTimerInterval);
+    cooldownTimerInterval = setInterval(() => {
+        resendCooldown--;
+        if (resendCooldown > 0) {
+            timerSpan.textContent = '(' + resendCooldown + 's)';
+        } else {
+            clearInterval(cooldownTimerInterval);
+            sendBtn.disabled = false;
+            timerSpan.classList.add('hidden');
+        }
+    }, 1000);
+}
+
+const otpCodeInput = document.getElementById('otp_code_input');
+if (otpCodeInput) {
+    otpCodeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+    });
+}
+
+function showOtpAlert(msg, type) {
+    const alert = document.getElementById('otpAlert');
+    if (!alert) return;
+    alert.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'border-red-200', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
+    if (type === 'danger') {
+        alert.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
+    } else {
+        alert.classList.add('bg-emerald-50', 'text-emerald-700', 'border', 'border-emerald-200');
+    }
+    alert.textContent = msg;
+}
+
+async function handleSendOtp() {
+    const btn = document.getElementById('btnSendOtp');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Mengirim...';
+
+    try {
+        const formData = new FormData();
+        formData.append('_csrf_token', window.PEOPLE_CSRF_TOKEN || '');
+
+        const resp = await fetch('{{ url_for("main.request_password_change_otp") }}', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            showOtpAlert(data.message, 'success');
+            startCooldownTimer(data.cooldown_remaining || 60);
+            const otpInput = document.getElementById('otp_code_input');
+            if (otpInput) setTimeout(() => otpInput.focus(), 150);
+        } else {
+            showOtpAlert(data.message || 'Gagal mengirim OTP.', 'danger');
+        }
+    } catch (err) {
+        showOtpAlert('Terjadi kesalahan koneksi server.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    }
+}
+
+async function handleVerifyOtpSave() {
+    const otpVal = document.getElementById('otp_code_input').value.trim();
+    const newPw = document.getElementById('new_pw_otp').value;
+    const cfmPw = document.getElementById('cfm_pw_otp').value;
+    const btn = document.getElementById('btnVerifyOtpSave');
+
+    if (!otpVal || otpVal.length !== 6) {
+        showOtpAlert('Masukkan 6 digit kode OTP yang lengkap dari email Anda.', 'danger');
+        return;
+    }
+
+    if (!newPw || !cfmPw) {
+        showOtpAlert('Harap isi password baru dan konfirmasi password.', 'danger');
+        return;
+    }
+
+    if (newPw !== cfmPw) {
+        showOtpAlert('Konfirmasi password baru tidak cocok.', 'danger');
+        return;
+    }
+
+    if (newPw.length < 8) {
+        showOtpAlert('Password baru minimal 8 karakter (huruf & angka).', 'danger');
+        return;
+    }
+
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Memproses...';
+
+    try {
+        const formData = new FormData();
+        formData.append('otp', otpVal);
+        formData.append('new_password', newPw);
+        formData.append('confirm_password', cfmPw);
+        formData.append('_csrf_token', window.PEOPLE_CSRF_TOKEN || '');
+
+        const resp = await fetch('{{ url_for("main.verify_password_change_otp") }}', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            showOtpAlert(data.message || 'Password berhasil diperbarui!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
+        } else {
+            showOtpAlert(data.message || 'Verifikasi OTP gagal.', 'danger');
+        }
+    } catch (err) {
+        showOtpAlert('Terjadi kesalahan saat memverifikasi OTP.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    }
+}
+</script>
+{% endblock %}

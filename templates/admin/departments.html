@@ -1,65 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Departemen{% endblock %}
+{% block title %}Departments{% endblock %}
 {% block content %}
-
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 stagger">
+<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Departemen 🏷️</h1>
-        <p class="text-gray-500 mt-1">Kelola departemen & kepala tim, keep it organized!</p>
+        <span class="eyebrow-rule"></span>
+        <p class="page-kicker">People directory</p>
+        <div class="flex items-center gap-2">
+            <h1 class="page-title mt-1">Departemen</h1>
+            <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 border border-teal-200 shadow-2xs">
+                <i class="fa-solid fa-sitemap text-[10px]"></i> {{ departments|length }} departemen
+            </span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Kelola struktur organisasi dan penanggung jawab setiap unit.</p>
     </div>
-    <button onclick="document.getElementById('addModal').classList.remove('hidden')"
-        class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm" style="background:var(--primary)">
-        <i class="fa-solid fa-plus-circle"></i>
-        Tambah Departemen
-    </button>
+    <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-4 py-2.5"><i class="fa-solid fa-plus mr-1.5"></i>Tambah departemen</button>
 </div>
-
-<!-- Filter Bar -->
-<div class="card p-4 mb-6 stagger">
-    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="filterForm">
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Cari</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
-                </div>
-                <input type="text" name="q" value="{{ request.args.get('q', '') }}"
-                    class="input pl-10"
-                    placeholder="Nama departemen...">
-            </div>
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Kepala</label>
-            <select name="head_id" class="input">
-                <option value="">Semua Kepala</option>
-                <option value="none" {% if request.args.get('head_id') == 'none' %}selected{% endif %}>Tanpa Kepala</option>
-                {% for m in managers %}
-                <option value="{{ m.id }}" {% if request.args.get('head_id') == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.role }})</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex items-end">
-            <button type="submit" class="btn btn-secondary w-full">
-                <i class="fa-solid fa-filter mr-1"></i> Filter
-            </button>
-        </div>
-    </form>
-    {% if request.args.get('q') or request.args.get('head_id') %}
-    <div class="mt-3 flex items-center justify-between">
-        <span class="text-sm text-gray-500">
-            Filter aktif:
-            {% if request.args.get('q') %}<span class="badge bg-teal-100 text-teal-700 ml-1">{{ request.args.get('q') }}</span>{% endif %}
-            {% if request.args.get('head_id') %}<span class="badge bg-indigo-100 text-indigo-700 ml-1">{{ 'Tanpa Kepala' if request.args.get('head_id') == 'none' else managers|selectattr('id','equalto',request.args.get('head_id')|int)|map(attribute='name')|first }}</span>{% endif %}
-        </span>
-        <a href="{{ url_for('main.admin_departments') }}" class="text-sm text-teal-600 hover:underline">
-            <i class="fa-solid fa-xmark mr-1"></i> Clear
-        </a>
-    </div>
-    {% endif %}
-</div>
+<section class="app-card sticky top-16 z-10 mb-6 p-3 sm:p-4 bg-white border border-gray-200 shadow-sm"><form method="GET" class="flex flex-col gap-3 lg:flex-row lg:items-center" id="filterForm"><div class="relative min-w-0 flex-1"><label for="department-search" class="sr-only">Cari departemen</label><i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i><input id="department-search" type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="Cari departemen"></div><div class="w-full lg:w-72"><label for="department-head" class="sr-only">Kepala departemen</label><select id="department-head" name="head_id"><option value="">Semua kepala</option><option value="none" {% if request.args.get('head_id') == 'none' %}selected{% endif %}>Tanpa kepala</option>{% for m in managers %}<option value="{{ m.id }}" {% if request.args.get('head_id') == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.role|format_role }})</option>{% endfor %}</select></div>{% if request.args.get('q') or request.args.get('head_id') %}<a href="{{ url_for('main.admin_departments') }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter"><i class="fa-solid fa-xmark"></i></a>{% endif %}</form></section>
 
 <!-- Department list -->
 <div class="card stagger">
+    <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-6 py-2.5 text-xs text-gray-500 font-medium">
+        <span>Menampilkan <strong class="font-bold text-gray-900">{{ departments|length }}</strong> departemen</span>
+    </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
@@ -80,15 +42,23 @@
                             {{ d.head.name }}
                         </span>
                         {% else %}
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-400">-</span>
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 text-gray-600">{{ d.members.count() }} orang</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="openEditModal({{ d.id }}, '{{ d.name }}', {{ d.head_id or 'null' }})"
-                            class="px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
-                            <i class="fa-solid fa-pen"></i> Edit
-                        </button>
+                    <td class="px-6 py-4">
+                        <div class="flex justify-end gap-1">
+                            <button type="button" onclick='openEditModal({{ d.id }}, {{ d.name|tojson }}, {{ d.head_id or "null" }}, {{ d.company_id }}, {{ d.created_at_formatted|tojson }}, {{ d.creator_name|tojson }}, {{ d.updated_at_formatted|tojson }}, {{ d.updater_name|tojson }})'
+                                class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition" title="Edit departemen">
+                                <i class="fa-solid fa-pen"></i>
+                                <span class="sr-only">Edit</span>
+                            </button>
+                            <button type="button" onclick='openDeleteDepartment({{ d.id }}, {{ d.name|tojson }})'
+                                class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="Hapus departemen">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span class="sr-only">Hapus</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% else %}
@@ -103,18 +73,23 @@
             </tbody>
         </table>
     </div>
+    {% include "components/pagination.html" %}
 </div>
 
 <!-- Add Modal -->
 <div id="addModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+    <div class="bg-white rounded-2xl shadow-xl w-full p-6 animate-slideIn" style="max-width:760px">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-gray-900">Tambah Departemen</h3>
             <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
-        <form method="POST" action="{{ url_for('main.admin_add_department') }}" class="space-y-4">
+        <form method="POST" action="{{ url_for('main.admin_add_department') }}" class="modal-two-column-form">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                <select name="company_id" class="input">{% for c in companies %}<option value="{{ c.id }}" {% if active_company and c.id == active_company.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama Departemen</label>
                 <input type="text" name="name" required
@@ -125,13 +100,13 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kepala Departemen (opsional)</label>
                 <select name="head_id"
                     class="input">
-                    <option value="">— Tidak Ada —</option>
+                    <option value="">- Tidak Ada -</option>
                     {% for m in managers %}
-                    <option value="{{ m.id }}">{{ m.name }} ({{ m.role }})</option>
+                    <option value="{{ m.id }}">{{ m.name }} ({{ m.role|format_role }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="flex gap-3 pt-2">
+            <div class="flex gap-3 pt-2 modal-form-actions">
                 <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
                     <i class="fa-solid fa-plus mr-1"></i> Tambah
                 </button>
@@ -146,14 +121,18 @@
 
 <!-- Edit Modal -->
 <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slideIn">
+    <div class="bg-white rounded-2xl shadow-xl w-full p-6 animate-slideIn" style="max-width:760px">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-gray-900">Edit Departemen</h3>
             <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 focus-visible">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
-        <form method="POST" action="" id="editForm" class="space-y-4">
+        <form method="POST" action="" id="editForm" class="modal-two-column-form">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                <select name="company_id" id="editCompanyId" class="input">{% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama Departemen</label>
                 <input type="text" name="name" id="editName" required
@@ -163,13 +142,25 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kepala Departemen</label>
                 <select name="head_id" id="editHeadId"
                     class="input">
-                    <option value="">— Tidak Ada —</option>
+                    <option value="">- Tidak Ada -</option>
                     {% for m in managers %}
-                    <option value="{{ m.id }}">{{ m.name }} ({{ m.role }})</option>
+                    <option value="{{ m.id }}">{{ m.name }} ({{ m.role|format_role }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="flex gap-3 pt-2">
+            <div class="col-span-full rounded-xl border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-500 grid grid-cols-2 gap-3 mt-1">
+                <div>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Dibuat') }}</span>
+                    <p class="font-semibold text-gray-700" id="editDeptCreatedAt">-</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editDeptCreatedBy" class="font-medium text-gray-700">-</span></p>
+                </div>
+                <div>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Terakhir Diperbarui') }}</span>
+                    <p class="font-semibold text-gray-700" id="editDeptUpdatedAt">-</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editDeptUpdatedBy" class="font-medium text-gray-700">-</span></p>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 modal-form-actions">
                 <button type="submit" class="flex-1 py-2.5 text-white font-medium rounded-xl transition-all btn btn-primary">
                     <i class="fa-solid fa-save mr-1"></i> Simpan
                 </button>
@@ -182,15 +173,75 @@
     </div>
 </div>
 
+<!-- Delete Modal -->
+<div id="deleteDepartmentModal" class="fixed inset-0 z-[1050] hidden items-center justify-center bg-gray-900/40 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slideIn">
+        <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><i class="fa-solid fa-trash-can"></i></div>
+        <h3 class="text-lg font-bold text-gray-900">Hapus departemen?</h3>
+        <p class="mt-2 text-sm text-gray-500">Departemen <span id="deleteDepartmentName" class="font-semibold text-gray-700"></span> akan dihapus. Anggota di dalamnya akan diatur menjadi tanpa departemen.</p>
+        <form method="POST" action="" id="deleteDepartmentForm" class="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" id="deleteDepartmentCancel" onclick="closeDeleteDepartment()" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</button>
+            <button type="submit" id="deleteDepartmentSubmit" class="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Hapus</button>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
+<style>
+.modal-two-column-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.modal-two-column-form .modal-form-actions { grid-column:1 / -1; }
+#addModal, #editModal { z-index:1000; isolation:isolate; }
+body > .ts-dropdown { z-index:1100; }
+@media (max-width: 640px) { .modal-two-column-form { grid-template-columns:1fr; } }
+</style>
+
 <script>
-function openEditModal(id, name, headId) {
+function formatAuditActor(actor) {
+    if (!actor || actor === '-' || actor.toLowerCase() === 'sistem' || actor.toLowerCase() === 'system') {
+        const lang = window.PEOPLE_LANGUAGE || 'en';
+        return (lang === 'en') ? 'System' : 'Sistem';
+    }
+    return actor;
+}
+
+function setSelectValue(select, value) {
+    if (!select) return;
+    const normalized = value === null || value === undefined ? '' : String(value);
+    if (select.tomselect) {
+        select.tomselect.setValue(normalized, true);
+    } else {
+        select.value = normalized;
+    }
+}
+function openEditModal(id, name, headId, companyId, createdAt, createdBy, updatedAt, updatedBy) {
     document.getElementById('editForm').action = '/admin/departments/edit/' + id;
     document.getElementById('editName').value = name;
-    document.getElementById('editHeadId').value = headId || '';
+    setSelectValue(document.getElementById('editCompanyId'), companyId);
+    setSelectValue(document.getElementById('editHeadId'), headId);
+
+    document.getElementById('editDeptCreatedAt').textContent = createdAt || '-';
+    document.getElementById('editDeptCreatedBy').textContent = formatAuditActor(createdBy);
+    document.getElementById('editDeptUpdatedAt').textContent = updatedAt || '-';
+    document.getElementById('editDeptUpdatedBy').textContent = formatAuditActor(updatedBy);
+
     document.getElementById('editModal').classList.remove('hidden');
 }
+function openDeleteDepartment(id, name) {
+    document.getElementById('deleteDepartmentForm').action = '/admin/departments/delete/' + id;
+    document.getElementById('deleteDepartmentName').textContent = name;
+    const modal = document.getElementById('deleteDepartmentModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeDeleteDepartment() {
+    const modal = document.getElementById('deleteDepartmentModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+document.getElementById('deleteDepartmentModal')?.addEventListener('click', function(event) {
+    if (event.target === this) closeDeleteDepartment();
+});
 </script>
 {% endblock %}

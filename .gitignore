@@ -4,10 +4,14 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.venv/
 venv/
 env/
 *.env
 .env
+*.tar.gz
+*.dump
+*.png
 
 # Database
 *.db
@@ -32,3 +36,5 @@ cookies*.txt
 
 # Backup
 *.backup
+.env.*
+!.env.example

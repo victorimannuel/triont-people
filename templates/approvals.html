@@ -1,11 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Persetujuan{% endblock %}
+{% block title %}Pending Approvals{% endblock %}
 {% block content %}
-
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Persetujuan Cuti 📋</h1>
-    <p class="text-gray-500 mt-1">Review pengajuan cuti team, approve/reject sesuka hati (tapi adil ya) ✌️</p>
-</div>
+<div class="mb-7"><span class="eyebrow-rule"></span><p class="page-kicker">Leave</p><h1 class="page-title mt-1">Inbox approval</h1><p class="mt-2 text-sm text-gray-500">Tinjau dan putuskan pengajuan leave yang menunggu persetujuan Anda.</p></div>
 
 <!-- Pending Requests -->
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6">
@@ -41,11 +37,11 @@
                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                         <div class="bg-gray-50 rounded-lg p-2.5">
                             <p class="text-gray-400 text-xs">Rentang</p>
-                            <p class="font-medium text-gray-700">{{ req.start_date.strftime('%d %b %Y') }} — {{ req.end_date.strftime('%d %b %Y') }}</p>
+                            <p class="font-medium text-gray-700">{{ req.start_date.strftime('%d %b %Y') }} - {{ req.end_date.strftime('%d %b %Y') }}</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-2.5">
                             <p class="text-gray-400 text-xs">Durasi</p>
-                            <p class="font-medium text-gray-700">{{ "%.0f"|format(req.duration_days) }} hari</p>
+                            <p class="font-medium text-gray-700">{{ req|format_duration }}</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-2.5">
                             <p class="text-gray-400 text-xs">Diajukan</p>
@@ -56,6 +52,14 @@
                     {% if req.reason %}
                     <div class="mt-2 text-sm text-gray-500 italic bg-gray-50 rounded-lg px-3 py-2">
                         "{{ req.reason }}"
+                    </div>
+                    {% endif %}
+                    {% if req.attachment_original_name %}
+                    <div class="mt-2">
+                        <a href="{{ url_for('main.download_leave_attachment', request_id=req.id) }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-triton-700 transition">
+                            <i class="fa-solid fa-paperclip text-gray-400"></i>
+                            {{ req.attachment_original_name }}
+                        </a>
                     </div>
                     {% endif %}
                     <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
@@ -70,17 +74,20 @@
 
                     <!-- Actions -->
                     <div class="mt-4 flex flex-col sm:flex-row gap-3">
-                        <form method="POST" action="{{ url_for('main.approve_leave', request_id=req.id) }}" class="flex-1 sm:flex-none">
-                            <button type="submit" name="action" value="approve"
+                        <form method="POST" action="{{ url_for('main.approve_leave', request_id=req.id) }}" class="approval-action-form flex-1 sm:flex-none" data-action-label="approve" data-employee-name="{{ req.employee.name|e }}">
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="expected_level" value="{{ req.current_approval_level }}">
+                            <button type="submit"
                                 class="w-full sm:w-auto px-5 py-2.5 text-white font-medium rounded-xl transition-all shadow-sm text-sm flex items-center justify-center gap-2" style="background:var(--primary)">
                                 <i class="fa-solid fa-check"></i> Setujui
                             </button>
                         </form>
                         <form method="POST" action="{{ url_for('main.approve_leave', request_id=req.id) }}" id="reject-form-{{ req.id }}" class="flex-1 sm:flex-none">
                             <input type="hidden" name="action" value="reject">
+                            <input type="hidden" name="expected_level" value="{{ req.current_approval_level }}">
                             <input type="hidden" name="notes" id="notes-{{ req.id }}">
-                            <button type="button" onclick="confirmReject({{ req.id }})"
-                                class="w-full sm:w-auto px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-xl transition-all text-sm flex items-center justify-center gap-2 border border-red-200">
+                            <button type="button" data-reject-request-id="{{ req.id }}" data-employee-name="{{ req.employee.name|e }}"
+                                class="reject-action-button w-full sm:w-auto px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-xl transition-all text-sm flex items-center justify-center gap-2 border border-red-200">
                                 <i class="fa-solid fa-xmark"></i> Tolak
                             </button>
                         </form>
@@ -90,6 +97,7 @@
         </div>
         {% endfor %}
     </div>
+    {% include "components/pagination.html" %}
     {% else %}
     <div class="text-center py-12 text-gray-400">
         <i class="fa-solid fa-inbox text-4xl mb-3"></i>
@@ -99,73 +107,78 @@
     {% endif %}
 </div>
 
-<!-- Approval History -->
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
-    <div class="px-6 py-4 border-b border-gray-50">
-        <h3 class="font-semibold text-gray-900">
-            <i class="fa-solid fa-clock-rotate-left text-gray-400 mr-2"></i>
-            Riwayat Persetujuan
-        </h3>
+<div id="approval-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div id="approval-confirm-icon" class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-check"></i></div>
+        <h3 id="approval-confirm-title" class="text-lg font-bold text-gray-900">{{ t('Konfirmasi approval') }}</h3>
+        <p id="approval-confirm-message" class="mt-2 text-sm text-gray-500"></p>
+        <div id="approval-reject-notes-wrap" class="mt-4 hidden">
+            <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Alasan penolakan (opsional):') }}</label>
+            <textarea id="approval-reject-notes" class="field resize-none" rows="3" placeholder="{{ t('Tambahkan catatan bila diperlukan.') }}"></textarea>
+        </div>
+        <div class="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" id="approval-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+            <button type="button" id="approval-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Konfirmasi') }}</button>
+        </div>
     </div>
-    {% if history %}
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                <tr>
-                    <th class="text-left px-6 py-3 font-medium">Karyawan</th>
-                    <th class="text-left px-6 py-3 font-medium">Jenis</th>
-                    <th class="text-left px-6 py-3 font-medium">Tanggal</th>
-                    <th class="text-left px-6 py-3 font-medium">Durasi</th>
-                    <th class="text-left px-6 py-3 font-medium">Status</th>
-                    <th class="text-left px-6 py-3 font-medium">Catatan</th>
-                    <th class="text-left px-6 py-3 font-medium">Delegate</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                {% for req in history %}
-                <tr class="hover:bg-gray-50/50">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: {{ req.employee.avatar_color }}">
-                                {{ req.employee.name[0] }}
-                            </div>
-                            <span class="font-medium text-gray-700">{{ req.employee.name }}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-gray-600">{{ req.leave_type.name }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ req.start_date.strftime('%d/%m') }} — {{ req.end_date.strftime('%d/%m') }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ "%.0f"|format(req.duration_days) }} hari</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium
-                            {% if req.status == 'approved' %}bg-emerald-100 text-emerald-700
-                            {% else %}bg-red-100 text-red-700{% endif %}">
-                            {{ 'Disetujui' if req.status == 'approved' else 'Ditolak' }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-gray-400 max-w-[200px] truncate">{{ req.notes or '-' }}</td>
-                    <td class="px-6 py-4 text-gray-400 text-xs">{{ req.delegate.name if req.delegate else '-' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="text-center py-8 text-gray-400">
-        <p class="text-sm">Belum ada riwayat persetujuan</p>
-    </div>
-    {% endif %}
 </div>
-
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-function confirmReject(id) {
-    const notes = prompt('Alasan penolakan (opsional):');
-    if (notes !== null) {
-        document.getElementById('notes-' + id).value = notes || '';
-        document.getElementById('reject-form-' + id).submit();
+(function(){
+    const modal=document.getElementById('approval-confirm-modal');
+    const icon=document.getElementById('approval-confirm-icon');
+    const title=document.getElementById('approval-confirm-title');
+    const message=document.getElementById('approval-confirm-message');
+    const notesWrap=document.getElementById('approval-reject-notes-wrap');
+    const notesInput=document.getElementById('approval-reject-notes');
+    const cancel=document.getElementById('approval-confirm-cancel');
+    const submit=document.getElementById('approval-confirm-submit');
+    let pendingForm=null;
+    let isSubmitting=false;
+    function tr(text){return window.translateUi?window.translateUi(text):text}
+    function openModal(){modal.classList.remove('hidden');modal.classList.add('flex');modal.setAttribute('aria-hidden','false');requestAnimationFrame(function(){modal.classList.remove('opacity-0')})}
+    function closeModal(){if(isSubmitting)return;modal.classList.add('opacity-0');modal.setAttribute('aria-hidden','true');setTimeout(function(){modal.classList.add('hidden');modal.classList.remove('flex')},160);pendingForm=null}
+    function configureApprove(form){
+        pendingForm=form;
+        const employee=form.dataset.employeeName||'';
+        icon.className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600';
+        icon.innerHTML='<i class="fa-solid fa-check"></i>';
+        title.textContent=tr('Setujui pengajuan cuti?');
+        message.textContent=employee?tr('Pengajuan cuti akan disetujui untuk')+' '+employee+'.':tr('Pengajuan cuti akan disetujui.');
+        notesWrap.classList.add('hidden');
+        submit.className='inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700';
+        submit.textContent=tr('Setujui');
+        openModal();
     }
-}
+    function openRejectModal(id, employee){
+        pendingForm=document.getElementById('reject-form-'+id);
+        icon.className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600';
+        icon.innerHTML='<i class="fa-solid fa-xmark"></i>';
+        title.textContent=tr('Tolak pengajuan cuti?');
+        message.textContent=employee?tr('Pengajuan cuti akan ditolak untuk')+' '+employee+'.':tr('Pengajuan cuti akan ditolak.');
+        notesWrap.classList.remove('hidden');
+        notesInput.value='';
+        submit.className='inline-flex items-center justify-center gap-2 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700';
+        submit.textContent=tr('Tolak');
+        openModal();
+        setTimeout(function(){notesInput.focus()},180);
+    }
+    document.querySelectorAll('.approval-action-form').forEach(function(form){form.addEventListener('submit',function(event){event.preventDefault();configureApprove(form)})});
+    document.querySelectorAll('.reject-action-button').forEach(function(button){button.addEventListener('click',function(){openRejectModal(button.dataset.rejectRequestId, button.dataset.employeeName || '')})});
+    if(cancel)cancel.addEventListener('click',closeModal);
+    if(modal)modal.addEventListener('click',function(event){if(event.target===modal)closeModal()});
+    if(submit)submit.addEventListener('click',function(){
+        if(!pendingForm||isSubmitting)return;
+        isSubmitting=true;
+        submit.disabled=true;
+        submit.classList.add('cursor-not-allowed','opacity-70');
+        if(cancel)cancel.disabled=true;
+        if(notesWrap&&!notesWrap.classList.contains('hidden')){const hidden=pendingForm.querySelector('input[name="notes"]');if(hidden)hidden.value=notesInput.value||'';}
+        pendingForm.submit();
+    });
+    document.addEventListener('keydown',function(event){if(event.key==='Escape'&&modal&&!modal.classList.contains('hidden'))closeModal()});
+})();
 </script>
 {% endblock %}

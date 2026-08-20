@@ -1,57 +1,314 @@
 {% extends "base.html" %}
-{% block title %}Long Weekend Calculator{% endblock %}
+{% block title %}Holidays & Long Weekend{% endblock %}
 {% block content %}
-
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Long Weekend Calculator 🎯</h1>
-        <p class="text-gray-500 mt-1">Cari combo cuti terbaik buat libur panjang maksimal, no waste!</p>
+        <span class="eyebrow-rule"></span>
+        <p class="page-kicker">Leave planner</p>
+        <h1 class="page-title mt-1">Hari libur & Long Weekend</h1>
+        <p class="mt-2 text-sm text-gray-500">Daftar hari libur nasional, cuti bersama, dan strategi ambil cuti hemat sepanjang tahun {{ year }}.</p>
     </div>
-    <form method="GET" class="flex items-center gap-2">
-        <select name="year" onchange="this.form.submit()"
-            class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
-            {% for y in years %}
-            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-        </select>
-    </form>
+    <div class="flex flex-wrap items-center gap-2">
+        {% if current_user.role in ('manager', 'hr', 'admin') %}
+        <button type="button" onclick="openAddHolidayModal()" class="inline-flex items-center gap-1.5 rounded-xl bg-triton-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-triton-700">
+            <i class="fa-solid fa-plus"></i> Tambah Hari Libur
+        </button>
+        <form method="POST" action="{{ url_for('main.sync_holidays') }}">
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-semibold text-teal-700 transition hover:bg-teal-100">
+                <i class="fa-solid fa-arrows-rotate"></i> Sinkronkan Libur Nasional
+            </button>
+        </form>
+        {% endif %}
+        <form method="GET" class="w-32">
+            <select id="weekend-year" name="year" onchange="this.form.submit()">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>Tahun {{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
 </div>
 
-{% if suggestions %}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {% for s in suggestions %}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 {% if s.leave_needed == 0 %}ring-2 ring-emerald-400{% endif %}">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-gray-900 text-lg">{{ s.month }}</h3>
-            {% if s.leave_needed == 0 %}
-            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">Auto 🎉</span>
-            {% else %}
-            <span class="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full font-medium">Ambil {{ s.leave_needed }} hari cuti</span>
-            {% endif %}
+<!-- Tabs Navigation -->
+<div class="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+    <button type="button" onclick="switchHolidayTab('planner')" id="tabBtnPlanner" class="rounded-lg px-4 py-2 text-xs font-bold transition bg-triton-600 text-white shadow-sm flex items-center gap-2">
+        <i class="fa-solid fa-sun"></i> Rencana Long Weekend ({{ suggestions|length }})
+    </button>
+    <button type="button" onclick="switchHolidayTab('list')" id="tabBtnList" class="rounded-lg px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 flex items-center gap-2">
+        <i class="fa-solid fa-calendar-days"></i> Daftar Hari Libur ({{ holidays|length }})
+    </button>
+</div>
+
+<!-- Tab 1: Long Weekend Suggestions -->
+<div id="tabPlannerSection" class="space-y-6">
+    {% set upcoming_suggestions = suggestions | selectattr('is_past', 'equalto', false) | list %}
+    {% set past_suggestions = suggestions | selectattr('is_past', 'equalto', true) | list %}
+
+    {% if upcoming_suggestions %}
+    <div>
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Rencana Mendatang & Aktif ({{ upcoming_suggestions|length }})
+            </h2>
         </div>
-        <div class="flex items-center gap-2 text-2xl font-bold text-gray-900 mb-1">
-            <i class="fa-solid fa-calendar-week text-teal-500"></i>
-            {{ s.total_off }} Hari Libur
-        </div>
-        <p class="text-sm text-gray-500 mb-3">
-            <i class="fa-solid fa-arrow-right text-gray-300 mr-1"></i> {{ s.detail }}
-        </p>
-        <div class="text-xs text-gray-400">
-            {% if s.leave_needed > 0 %}
-            Ambil cuti <strong>{{ s.leave_needed }} hari</strong> → dapet libur <strong>{{ s.total_off }} hari</strong> non-stop! 🔥
-            {% else %}
-            Libur panjang tanpa perlu ambil cuti! 🎊 Lucky you!
-            {% endif %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for s in upcoming_suggestions %}
+            <div class="app-card relative flex flex-col justify-between p-5 {% if s.leave_needed == 0 %}ring-2 ring-emerald-500/60 bg-emerald-50/10{% endif %}">
+                <div>
+                    <div class="mb-3 flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-400">{{ s.month_name }}</span>
+                            <h3 class="mt-0.5 text-base font-bold text-gray-900">{{ s.title }}</h3>
+                        </div>
+                        {% if s.leave_needed == 0 %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
+                            <i class="fa-solid fa-champagne-glasses"></i> Auto Libur
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">
+                            <i class="fa-solid fa-lightbulb"></i> Cuti {{ s.leave_needed }} Hari
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3 flex items-baseline gap-2 text-2xl font-black text-gray-900">
+                        <span class="text-triton-600">{{ s.total_off }}</span>
+                        <span class="text-sm font-semibold text-gray-600">Hari Libur Beruntun</span>
+                    </div>
+
+                    <div class="mb-4 rounded-lg bg-gray-50 p-2.5 text-xs text-gray-600 border border-gray-100 flex items-center gap-2">
+                        <i class="fa-regular fa-calendar text-triton-600"></i>
+                        <span><strong>{{ s.date_range }}</strong></span>
+                    </div>
+
+                    <p class="text-xs leading-relaxed text-gray-500">
+                        {{ s.strategy }}
+                    </p>
+                </div>
+
+                <div class="mt-4 border-t border-gray-100 pt-3 text-right">
+                    <a href="{{ url_for('main.calendar') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-triton-700 hover:text-triton-800">
+                        Lihat di Kalender <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
-    {% endfor %}
+    {% endif %}
+
+    {% if past_suggestions %}
+        {% if upcoming_suggestions %}
+        <div class="relative py-4">
+            <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                <div class="w-full border-t border-dashed border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center">
+                <span class="bg-slate-50 px-4 py-1 text-xs font-bold uppercase tracking-wider text-gray-500 rounded-full border border-gray-200 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock text-gray-400"></i> Sudah Lewat / Tidak Aktif ({{ past_suggestions|length }})
+                </span>
+            </div>
+        </div>
+        {% else %}
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <i class="fa-regular fa-clock"></i> Riwayat Long Weekend ({{ past_suggestions|length }})
+            </h2>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for s in past_suggestions %}
+            <div class="app-card relative flex flex-col justify-between p-5 bg-gray-50/80 border-gray-200 opacity-75 grayscale-[35%] hover:grayscale-0 hover:opacity-100 transition duration-200">
+                <div>
+                    <div class="mb-3 flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-400">{{ s.month_name }}</span>
+                            <h3 class="mt-0.5 text-base font-bold text-gray-700">{{ s.title }}</h3>
+                        </div>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600">
+                            <i class="fa-solid fa-check"></i> Sudah Lewat
+                        </span>
+                    </div>
+
+                    <div class="mb-3 flex items-baseline gap-2 text-2xl font-black text-gray-500">
+                        <span>{{ s.total_off }}</span>
+                        <span class="text-sm font-semibold text-gray-400">Hari Libur Beruntun</span>
+                    </div>
+
+                    <div class="mb-4 rounded-lg bg-white/70 p-2.5 text-xs text-gray-500 border border-gray-200 flex items-center gap-2">
+                        <i class="fa-regular fa-calendar text-gray-400"></i>
+                        <span><strong>{{ s.date_range }}</strong></span>
+                    </div>
+
+                    <p class="text-xs leading-relaxed text-gray-400">
+                        {{ s.strategy }}
+                    </p>
+                </div>
+
+                <div class="mt-4 border-t border-gray-200 pt-3 text-right">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                        Periode telah berakhir
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if not suggestions %}
+    <div class="app-card py-16 text-center text-gray-400">
+        <i class="fa-solid fa-calendar-xmark mb-3 text-4xl text-gray-300"></i>
+        <p class="text-base font-semibold text-gray-600">Belum ada data long weekend di tahun {{ year }}</p>
+        <p class="mt-1 text-xs text-gray-400">Pastikan data hari libur nasional sudah tersinkronkan atau tambahkan hari libur kustom.</p>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="text-center py-16 text-gray-400">
-    <i class="fa-solid fa-calendar-xmark text-5xl mb-4"></i>
-    <p class="text-lg font-medium text-gray-500">Tahun {{ year }} sepi long weekend-nya 😭</p>
-    <p class="text-sm mt-1">Coba pilih tahun lain deh</p>
+
+<!-- Tab 2: Full Holidays List -->
+<div id="tabListSection" class="hidden space-y-4">
+    {% if holidays %}
+    <div class="app-card overflow-hidden">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100 text-xs font-semibold uppercase text-gray-500">
+                <tr>
+                    <th class="px-5 py-3.5">Tanggal</th>
+                    <th class="px-5 py-3.5">Hari</th>
+                    <th class="px-5 py-3.5">Nama Hari Libur</th>
+                    <th class="px-5 py-3.5 text-center">Kategori</th>
+                    {% if current_user.role in ('manager', 'hr', 'admin') %}
+                    <th class="px-5 py-3.5 text-right">Aksi</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for h in holidays %}
+                {% set day_name = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][h.holiday_date.weekday()] %}
+                <tr class="hover:bg-gray-50/60 transition">
+                    <td class="px-5 py-3.5 font-semibold text-gray-900">
+                        {{ h.holiday_date|indonesian_date }}
+                    </td>
+                    <td class="px-5 py-3.5 text-gray-600">
+                        {{ day_name }}
+                    </td>
+                    <td class="px-5 py-3.5 text-gray-800 font-medium">
+                        {{ h.name }}
+                    </td>
+                    <td class="px-5 py-3.5 text-center">
+                        {% if h.kind == 'company' %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 border border-teal-200">
+                            <i class="fa-solid fa-building text-[10px]"></i> Libur Perusahaan
+                        </span>
+                        {% elif h.kind == 'collective' %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 border border-purple-200">
+                            <i class="fa-solid fa-people-arrows text-[10px]"></i> Cuti Bersama
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 border border-rose-200">
+                            <i class="fa-solid fa-flag text-[10px]"></i> Libur Nasional
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% if current_user.role in ('manager', 'hr', 'admin') %}
+                    <td class="px-5 py-3.5">
+                        <div class="flex justify-end gap-1">
+                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit="return confirm('Yakin ingin menghapus hari libur {{ h.name }}?')">
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="Hapus hari libur">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                    <span class="sr-only">Hapus {{ h.name }}</span>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="app-card py-16 text-center text-gray-400">
+        <i class="fa-solid fa-calendar-xmark mb-3 text-4xl text-gray-300"></i>
+        <p class="text-base font-semibold text-gray-600">Belum ada daftar hari libur di tahun {{ year }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Tambah Hari Libur Kustom -->
+{% if current_user.role in ('manager', 'hr', 'admin') %}
+<div id="addHolidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/40 p-4 backdrop-blur-xs">
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 class="text-base font-bold text-gray-900">Tambah Hari Libur</h3>
+            <button type="button" onclick="closeAddHolidayModal()" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('main.add_holiday') }}" class="mt-4 space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Tanggal Libur</label>
+                <input type="date" name="holiday_date" required class="field text-sm" value="{{ year }}-01-01">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Nama Hari Libur</label>
+                <input type="text" name="name" required placeholder="Contoh: HUT Perusahaan ke-10" class="field text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Kategori Libur</label>
+                <select name="kind" class="field text-sm">
+                    <option value="company">Libur Khusus Perusahaan</option>
+                    <option value="national">Libur Nasional</option>
+                    <option value="collective">Cuti Bersama</option>
+                </select>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeAddHolidayModal()" class="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                    Batal
+                </button>
+                <button type="submit" class="rounded-xl bg-triton-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-triton-700">
+                    Simpan Hari Libur
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endif %}
 
+<script>
+function switchHolidayTab(tab) {
+    const plannerSec = document.getElementById('tabPlannerSection');
+    const listSec = document.getElementById('tabListSection');
+    const tabBtnPlanner = document.getElementById('tabBtnPlanner');
+    const tabBtnList = document.getElementById('tabBtnList');
+
+    if (tab === 'planner') {
+        plannerSec.classList.remove('hidden');
+        listSec.classList.add('hidden');
+        tabBtnPlanner.className = 'rounded-lg px-4 py-2 text-xs font-bold transition bg-triton-600 text-white shadow-sm flex items-center gap-2';
+        tabBtnList.className = 'rounded-lg px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 flex items-center gap-2';
+    } else {
+        plannerSec.classList.add('hidden');
+        listSec.classList.remove('hidden');
+        tabBtnList.className = 'rounded-lg px-4 py-2 text-xs font-bold transition bg-triton-600 text-white shadow-sm flex items-center gap-2';
+        tabBtnPlanner.className = 'rounded-lg px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 flex items-center gap-2';
+    }
+}
+
+function openAddHolidayModal() {
+    const modal = document.getElementById('addHolidayModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeAddHolidayModal() {
+    const modal = document.getElementById('addHolidayModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+</script>
 {% endblock %}
