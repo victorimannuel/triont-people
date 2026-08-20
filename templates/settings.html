@@ -13,7 +13,7 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <!-- Profile Avatar Section -->
             <div>
-                <label class="mb-3 block text-sm font-semibold text-gray-700">{{ t('Foto Profil') }}</label>
+                <label class="mb-3 block text-sm font-semibold text-gray-700">{{ t('Profile Picture') }}</label>
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div class="relative shrink-0">
                         {% if current_user.avatar_path %}
@@ -27,23 +27,23 @@
                     </div>
                     <div class="flex-1 space-y-2">
                         <input type="file" name="avatar" id="avatarInput" accept="image/png, image/jpeg, image/jpg, image/webp" class="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer">
-                        <p class="text-[11px] text-gray-400">{{ t('Mendukung format JPG, PNG, WEBP. Maksimal 3MB.') }}</p>
+                        <p class="text-[11px] text-gray-400">{{ t('Supports JPG, PNG, WEBP. Max 3MB.') }}</p>
                     </div>
                     {% if current_user.avatar_path %}
                     <button type="button" onclick="document.getElementById('deleteAvatarForm').submit()" class="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 shrink-0">
-                        <i class="fa-solid fa-trash-can text-xs"></i> {{ t('Hapus Foto') }}
+                        <i class="fa-solid fa-trash-can text-xs"></i> {{ t('Delete Photo') }}
                     </button>
                     {% endif %}
                 </div>
             </div>
 
             <div class="border-t border-gray-100 pt-5">
-                <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Nama') }}</label>
+                <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Name') }}</label>
                 <input class="field" name="name" value="{{ current_user.name }}" maxlength="100" required>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Bahasa utama') }}</label>
+                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Primary Language') }}</label>
                     <select name="language" class="field" data-native-select>
                         {% for code, label in language_labels.items() %}
                         <option value="{{ code }}" {% if current_user.language_preference == code %}selected{% endif %}>{{ label }}</option>
@@ -61,7 +61,7 @@
             </div>
             <div class="pt-2 flex justify-end">
                 <button type="submit" class="btn-primary px-5 py-2.5 text-xs font-semibold">
-                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>{{ t('Simpan profil') }}
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>{{ t('Save Profile') }}
                 </button>
             </div>
         </form>
@@ -73,8 +73,8 @@
                     <i class="fa-solid fa-shield-halved text-base"></i>
                 </span>
                 <div>
-                    <h2 class="text-sm font-bold text-gray-900">{{ t('Ubah Password') }}</h2>
-                    <p class="text-xs text-gray-500">{{ t('Pilih metode verifikasi kata sandi akun Anda') }}</p>
+                    <h2 class="text-sm font-bold text-gray-900">{{ t('Change Password') }}</h2>
+                    <p class="text-xs text-gray-500">{{ t('Choose your account password verification method') }}</p>
                 </div>
             </div>
 
@@ -83,26 +83,26 @@
                 <button type="button" id="tabDirectBtn" onclick="switchPwTab('direct')"
                         class="flex items-center gap-2 border-b-2 border-indigo-600 pb-2.5 px-3 text-xs font-bold text-indigo-600 transition">
                     <i class="fa-solid fa-key text-xs"></i>
-                    <span>{{ t('Ingat Password Lama') }}</span>
+                    <span>{{ t('Remember Old Password') }}</span>
                 </button>
                 <button type="button" id="tabOtpBtn" onclick="switchPwTab('otp')"
                         class="flex items-center gap-2 border-b-2 border-transparent pb-2.5 px-3 text-xs font-semibold text-gray-500 hover:text-gray-900 transition">
                     <i class="fa-solid fa-envelope-open-text text-xs"></i>
-                    <span>{{ t('Lupa Password? (OTP Email)') }}</span>
+                    <span>{{ t('Forgot Password? (Email OTP)') }}</span>
                 </button>
             </div>
 
             <!-- TAB 1: Direct with Current Password -->
             <div id="tabDirectContent" class="space-y-4">
                 <p class="text-xs text-gray-500 leading-relaxed">
-                    {{ t('Masukkan password saat ini dan tentukan password baru langsung tanpa perlu OTP.') }}
+                    {{ t('Enter your current password and set a new password directly without OTP.') }}
                 </p>
                 <form method="POST" action="{{ url_for('main.user_settings') }}" class="space-y-4">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <div>
-                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password saat ini') }}</label>
+                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Current password') }}</label>
                         <div class="relative">
-                            <input class="field pr-9 text-xs" type="password" id="cur_pw_direct" name="current_password" required autocomplete="current-password" placeholder="{{ t('Masukkan password saat ini') }}">
+                            <input class="field pr-9 text-xs" type="password" id="cur_pw_direct" name="current_password" required autocomplete="current-password" placeholder="{{ t('Enter current password') }}">
                             <button type="button" onclick="toggleFieldVis('cur_pw_direct', 'cur_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
                                 <i class="fa-solid fa-eye text-xs" id="cur_pw_direct_icon"></i>
                             </button>
@@ -111,18 +111,18 @@
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password baru') }}</label>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('New password') }}</label>
                             <div class="relative">
-                                <input class="field pr-9 text-xs" type="password" id="new_pw_direct" name="new_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('Minimal 8 karakter') }}">
+                                <input class="field pr-9 text-xs" type="password" id="new_pw_direct" name="new_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('At least 8 characters') }}">
                                 <button type="button" onclick="toggleFieldVis('new_pw_direct', 'new_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
                                     <i class="fa-solid fa-eye text-xs" id="new_pw_direct_icon"></i>
                                 </button>
                             </div>
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Konfirmasi password') }}</label>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Confirm password') }}</label>
                             <div class="relative">
-                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_direct" name="confirm_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('Ulangi password baru') }}">
+                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_direct" name="confirm_password" required minlength="8" autocomplete="new-password" placeholder="{{ t('Repeat new password') }}">
                                 <button type="button" onclick="toggleFieldVis('cfm_pw_direct', 'cfm_pw_direct_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
                                     <i class="fa-solid fa-eye text-xs" id="cfm_pw_direct_icon"></i>
                                 </button>
@@ -131,13 +131,13 @@
                     </div>
 
                     <div class="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500 space-y-0.5">
-                        <p class="font-semibold text-gray-600">{{ t('Syarat password:') }}</p>
-                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('Minimal 8 karakter (huruf & angka)') }}</p>
+                        <p class="font-semibold text-gray-600">{{ t('Password requirements:') }}</p>
+                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('At least 8 characters (letters & numbers)') }}</p>
                     </div>
 
                     <div class="pt-1 flex justify-end">
                         <button type="submit" class="btn-primary px-5 py-2.5 text-xs font-semibold">
-                            <i class="fa-solid fa-key mr-1.5"></i>{{ t('Perbarui Password') }}
+                            <i class="fa-solid fa-key mr-1.5"></i>{{ t('Update Password') }}
                         </button>
                     </div>
                 </form>
@@ -148,8 +148,8 @@
                 <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5 text-xs text-indigo-900 leading-relaxed flex items-start gap-3">
                     <i class="fa-solid fa-circle-info text-indigo-500 mt-0.5 text-sm"></i>
                     <div>
-                        <p class="font-semibold">{{ t('Verifikasi Identitas via Email') }}</p>
-                        <p class="mt-0.5 text-indigo-700">{{ t('Kode OTP 6-digit akan dikirim ke email terdaftar Anda untuk verifikasi identitas.') }} (<strong>{{ current_user.email }}</strong>)</p>
+                        <p class="font-semibold">{{ t('Email Identity Verification') }}</p>
+                        <p class="mt-0.5 text-indigo-700">{{ t('A 6-digit OTP code will be sent to your registered email for identity verification.') }} (<strong>{{ current_user.email }}</strong>)</p>
                     </div>
                 </div>
 
@@ -157,17 +157,17 @@
 
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-gray-100 rounded-xl p-3.5 bg-gray-50">
                     <div>
-                        <p class="text-xs font-bold text-gray-900">{{ t('Langkah 1: Dapatkan Kode OTP') }}</p>
-                        <p class="text-[11px] text-gray-500">{{ t('Kirim kode 6 digit ke') }} {{ current_user.email }}</p>
+                        <p class="text-xs font-bold text-gray-900">{{ t('Step 1: Get OTP Code') }}</p>
+                        <p class="text-[11px] text-gray-500">{{ t('Send 6-digit code to') }} {{ current_user.email }}</p>
                     </div>
                     <button type="button" id="btnSendOtp" onclick="handleSendOtp()" class="btn-secondary px-3.5 py-2 text-xs font-bold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 shrink-0">
-                        <i class="fa-solid fa-paper-plane mr-1.5"></i>{{ t('Kirim Kode OTP') }} <span id="cooldownTimer" class="hidden ml-1"></span>
+                        <i class="fa-solid fa-paper-plane mr-1.5"></i>{{ t('Send OTP Code') }} <span id="cooldownTimer" class="hidden ml-1"></span>
                     </button>
                 </div>
 
                 <div class="space-y-4 pt-1">
                     <div>
-                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Langkah 2: Masukkan Kode OTP 6-Digit') }}</label>
+                        <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Step 2: Enter 6-Digit OTP Code') }}</label>
                         <input type="text" id="otp_code_input" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
                                class="field text-center font-mono text-xl tracking-[0.3em] font-bold text-gray-900 placeholder:text-gray-300 max-w-xs"
                                placeholder="••••••">
@@ -175,18 +175,18 @@
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Password baru') }}</label>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('New password') }}</label>
                             <div class="relative">
-                                <input class="field pr-9 text-xs" type="password" id="new_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('Minimal 8 karakter') }}">
+                                <input class="field pr-9 text-xs" type="password" id="new_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('At least 8 characters') }}">
                                 <button type="button" onclick="toggleFieldVis('new_pw_otp', 'new_pw_otp_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
                                     <i class="fa-solid fa-eye text-xs" id="new_pw_otp_icon"></i>
                                 </button>
                             </div>
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Konfirmasi password') }}</label>
+                            <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Confirm password') }}</label>
                             <div class="relative">
-                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('Ulangi password baru') }}">
+                                <input class="field pr-9 text-xs" type="password" id="cfm_pw_otp" required minlength="8" autocomplete="new-password" placeholder="{{ t('Repeat new password') }}">
                                 <button type="button" onclick="toggleFieldVis('cfm_pw_otp', 'cfm_pw_otp_icon')" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
                                     <i class="fa-solid fa-eye text-xs" id="cfm_pw_otp_icon"></i>
                                 </button>
@@ -195,13 +195,13 @@
                     </div>
 
                     <div class="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500 space-y-0.5">
-                        <p class="font-semibold text-gray-600">{{ t('Syarat password:') }}</p>
-                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('Minimal 8 karakter (huruf & angka)') }}</p>
+                        <p class="font-semibold text-gray-600">{{ t('Password requirements:') }}</p>
+                        <p><i class="fa-solid fa-check text-emerald-500 mr-1"></i>{{ t('At least 8 characters (letters & numbers)') }}</p>
                     </div>
 
                     <div class="pt-2 flex justify-end">
                         <button type="button" id="btnVerifyOtpSave" onclick="handleVerifyOtpSave()" class="btn-primary px-5 py-2.5 text-xs font-semibold">
-                            <i class="fa-solid fa-shield-check mr-1.5"></i>{{ t('Verifikasi OTP & Simpan Password') }}
+                            <i class="fa-solid fa-shield-check mr-1.5"></i>{{ t('Verify OTP & Save Password') }}
                         </button>
                     </div>
                 </div>
@@ -212,11 +212,11 @@
     <!-- Right Sidebar Utilities -->
     <aside class="space-y-5">
         <div class="app-card p-5">
-            <p class="text-sm font-semibold text-gray-900">{{ t('Detail Akun') }}</p>
+            <p class="text-sm font-semibold text-gray-900">{{ t('Account Details') }}</p>
             <dl class="mt-4 space-y-3 text-sm">
                 <div><dt class="text-xs font-semibold uppercase text-gray-400">Email</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.email }}</dd></div>
                 <div><dt class="text-xs font-semibold uppercase text-gray-400">Role</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.role|format_role }}</dd></div>
-                <div><dt class="text-xs font-semibold uppercase text-gray-400">{{ t('Perusahaan') }}</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.company.name }}</dd></div>
+                <div><dt class="text-xs font-semibold uppercase text-gray-400">{{ t('Company') }}</dt><dd class="mt-1 text-gray-700 font-medium">{{ current_user.company.name }}</dd></div>
             </dl>
         </div>
 
@@ -225,12 +225,12 @@
         <div class="app-card p-5 border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white">
             <div class="flex items-center gap-2">
                 <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><i class="fa-solid fa-database text-xs"></i></span>
-                <p class="text-sm font-bold text-gray-900">{{ t('Backup Database & Sistem') }}</p>
+                <p class="text-sm font-bold text-gray-900">{{ t('Database & System Backup') }}</p>
             </div>
-            <p class="mt-2 text-xs text-gray-500">{{ t('Unduh salinan cadangan lengkap database dan berkas lampiran sistem kapan saja.') }}</p>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Download a complete backup of the database and system attachments anytime.') }}</p>
             <div class="mt-4 flex flex-col gap-2">
                 <a href="{{ url_for('main.admin_download_backup', format='zip') }}" class="btn-primary w-full justify-center text-xs py-2 bg-amber-600 hover:bg-amber-700 text-white shadow-xs">
-                    <i class="fa-solid fa-file-zipper mr-1.5"></i>{{ t('Download ZIP (Lengkap: SQL + JSON + Berkas)') }}
+                    <i class="fa-solid fa-file-zipper mr-1.5"></i>{{ t('Download ZIP (Full: SQL + JSON + Files)') }}
                 </a>
                 <div class="grid grid-cols-2 gap-2">
                     <a href="{{ url_for('main.admin_download_backup', format='sql') }}" class="btn-secondary w-full justify-center text-xs py-2 border-gray-200 hover:bg-gray-50 text-gray-700">
@@ -249,10 +249,10 @@
                 <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><i class="fa-solid fa-calendar-days text-xs"></i></span>
                 <p class="text-sm font-semibold text-gray-900">{{ t('Kalender Sync (.ics)') }}</p>
             </div>
-            <p class="mt-2 text-xs text-gray-500">{{ t('Hubungkan jadwal cuti tim ke Google Calendar, Apple Calendar, atau Outlook secara otomatis.') }}</p>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Automatically connect team leave schedule to Google Calendar, Apple Calendar, or Outlook.') }}</p>
             <div class="mt-4">
                 <a href="{{ url_for('main.calendar') }}" class="btn-secondary w-full justify-center text-xs py-2">
-                    <i class="fa-solid fa-arrows-rotate mr-1.5 text-teal-600"></i>{{ t('Buka Pengaturan Sync') }}
+                    <i class="fa-solid fa-arrows-rotate mr-1.5 text-teal-600"></i>{{ t('Open Sync Settings') }}
                 </a>
             </div>
         </div>
@@ -260,12 +260,12 @@
         <div class="app-card p-5">
             <div class="flex items-center gap-2">
                 <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><i class="fa-solid fa-mobile-screen-button text-xs"></i></span>
-                <p class="text-sm font-semibold text-gray-900">{{ t('Install Aplikasi (PWA)') }}</p>
+                <p class="text-sm font-semibold text-gray-900">{{ t('Install App (PWA)') }}</p>
             </div>
-            <p class="mt-2 text-xs text-gray-500">{{ t('Pasang People ke layar utama HP / Laptop untuk akses cepat & notifikasi tanpa address bar.') }}</p>
+            <p class="mt-2 text-xs text-gray-500">{{ t('Add People to your phone/laptop home screen for quick access & clean view.') }}</p>
             <div class="mt-4">
                 <button type="button" onclick="triggerPwaInstall()" class="btn-secondary w-full justify-center text-xs py-2 border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
-                    <i class="fa-solid fa-download mr-1.5 text-emerald-600"></i>{{ t('Install ke Layar Utama') }}
+                    <i class="fa-solid fa-download mr-1.5 text-emerald-600"></i>{{ t('Install to Home Screen') }}
                 </button>
             </div>
         </div>

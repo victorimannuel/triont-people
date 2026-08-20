@@ -33,7 +33,7 @@ def login():
             return redirect(next_page or url_for('main.dashboard'))
         audit_log('auth.login_failed', details={'email': email})
         db.session.commit()
-        flash(translate('Email atau password salah.'), 'danger')
+        flash(translate('Email or password is incorrect.'), 'danger')
     return render_template('login.html')
 
 @auth_bp.route('/logout')

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ t('Bukti Cuti') }} - {{ ref_number }}</title>
+    <title>{{ t('Leave Slip') }} - {{ ref_number }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,7 +38,7 @@
     <!-- Action Bar -->
     <div class="no-print w-full max-w-3xl mb-4 flex items-center justify-end gap-3">
         <button onclick="window.print()" class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition">
-            <i class="fa-solid fa-print"></i>{{ t('Cetak / Simpan PDF') }}
+            <i class="fa-solid fa-print"></i>{{ t('Print / Save PDF') }}
         </button>
     </div>
 
@@ -53,14 +53,14 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-black tracking-tight text-gray-950">{{ company.name if company else 'Triton People' }}</h1>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('Bukti Pengajuan & Persetujuan Cuti') }}</p>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('Leave Request & Approval Slip') }}</p>
                 </div>
             </div>
             <div class="text-left sm:text-right">
                 <span class="inline-block rounded-md bg-gray-100 px-3 py-1 font-mono text-xs font-bold text-gray-700 border border-gray-200">
                     {{ ref_number }}
                 </span>
-                <p class="mt-1 text-[11px] text-gray-400">{{ t('Tanggal Cetak:') }} {{ printed_at.strftime('%d %b %Y, %H:%M') }}</p>
+                <p class="mt-1 text-[11px] text-gray-400">{{ t('Printed Date:') }} {{ printed_at.strftime('%d %b %Y, %H:%M') }}</p>
             </div>
         </div>
 
@@ -71,9 +71,9 @@
                     <i class="fa-solid fa-circle-check text-sm"></i>
                 </span>
                 <div>
-                    <p class="text-sm font-bold text-emerald-950 uppercase tracking-wide">{{ t('PENGAJUAN DISETUJUI') }}</p>
+                    <p class="text-sm font-bold text-emerald-950 uppercase tracking-wide">{{ t('REQUEST APPROVED') }}</p>
                     <p class="text-xs text-emerald-700">
-                        {{ t('Pengajuan cuti ini telah sah disetujui oleh atasan / HR.') }}
+                        {{ t('This leave request has been officially approved by manager / HR.') }}
                     </p>
                 </div>
             </div>
@@ -90,11 +90,11 @@
             <!-- Employee Info -->
             <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
                 <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-user text-teal-600"></i>{{ t('Informasi Karyawan') }}
+                    <i class="fa-solid fa-user text-teal-600"></i>{{ t('Employee Information') }}
                 </h2>
                 <dl class="space-y-2 text-xs">
                     <div class="flex justify-between py-1 border-b border-gray-100">
-                        <dt class="text-gray-500">{{ t('Nama Lengkap') }}</dt>
+                        <dt class="text-gray-500">{{ t('Full Name') }}</dt>
                         <dd class="font-semibold text-gray-900 text-right">{{ leave_request.employee.name if leave_request.employee else '-' }}</dd>
                     </div>
                     <div class="flex justify-between py-1 border-b border-gray-100">
@@ -102,11 +102,11 @@
                         <dd class="font-medium text-gray-700 text-right">{{ leave_request.employee.email if leave_request.employee else '-' }}</dd>
                     </div>
                     <div class="flex justify-between py-1 border-b border-gray-100">
-                        <dt class="text-gray-500">{{ t('Departemen') }}</dt>
+                        <dt class="text-gray-500">{{ t('Departments') }}</dt>
                         <dd class="font-semibold text-gray-900 text-right">{{ leave_request.employee.department.name if leave_request.employee and leave_request.employee.department else '-' }}</dd>
                     </div>
                     <div class="flex justify-between py-1">
-                        <dt class="text-gray-500">{{ t('Jabatan / Role') }}</dt>
+                        <dt class="text-gray-500">{{ t('Job Title / Role') }}</dt>
                         <dd class="font-medium text-gray-700 text-right uppercase">{{ leave_request.employee.role if leave_request.employee else '-' }}</dd>
                     </div>
                 </dl>
@@ -115,33 +115,33 @@
             <!-- Leave Info -->
             <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
                 <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-days text-teal-600"></i>{{ t('Rincian Cuti') }}
+                    <i class="fa-solid fa-calendar-days text-teal-600"></i>{{ t('Leave Details') }}
                 </h2>
                 <dl class="space-y-2 text-xs">
                     <div class="flex justify-between py-1 border-b border-gray-100">
-                        <dt class="text-gray-500">{{ t('Jenis Cuti') }}</dt>
+                        <dt class="text-gray-500">{{ t('Leave Types') }}</dt>
                         <dd class="font-semibold text-gray-900 flex items-center gap-1.5">
                             <span class="inline-block h-2.5 w-2.5 rounded-full" style="background-color: {{ leave_request.leave_type.color if leave_request.leave_type else '#0d9488' }}"></span>
                             {{ leave_request.leave_type.name if leave_request.leave_type else '-' }}
                         </dd>
                     </div>
                     <div class="flex justify-between py-1 border-b border-gray-100">
-                        <dt class="text-gray-500">{{ t('Periode') }}</dt>
+                        <dt class="text-gray-500">{{ t('Period') }}</dt>
                         <dd class="font-semibold text-gray-900 text-right">
                             {{ leave_request.start_date.strftime('%d %b %Y') }} &ndash; {{ leave_request.end_date.strftime('%d %b %Y') }}
                         </dd>
                     </div>
                     <div class="flex justify-between py-1 border-b border-gray-100">
-                        <dt class="text-gray-500">{{ t('Total Durasi') }}</dt>
+                        <dt class="text-gray-500">{{ t('Total Duration') }}</dt>
                         <dd class="font-bold text-teal-700 text-right">
-                            {{ "%.1f"|format(leave_request.duration_days)|replace('.0', '') }} {{ t('Hari Kerja') }}
+                            {{ "%.1f"|format(leave_request.duration_days)|replace('.0', '') }} {{ t('Working Days') }}
                             {% if leave_request.day_part and leave_request.day_part != 'full' %}
                             <span class="text-[10px] text-gray-500 font-normal">({{ leave_request.day_part }})</span>
                             {% endif %}
                         </dd>
                     </div>
                     <div class="flex justify-between py-1">
-                        <dt class="text-gray-500">{{ t('Delegasi / Backup') }}</dt>
+                        <dt class="text-gray-500">{{ t('Delegation / Backup') }}</dt>
                         <dd class="font-medium text-gray-700 text-right">{{ leave_request.delegate.name if leave_request.delegate else '-' }}</dd>
                     </div>
                 </dl>
@@ -152,14 +152,14 @@
         <div class="mt-6 space-y-4">
             {% if leave_request.reason %}
             <div class="rounded-xl border border-gray-100 bg-white p-4">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ t('Alasan Pengajuan:') }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ t('Request Reason:') }}</p>
                 <p class="text-xs text-gray-800 italic">&ldquo;{{ leave_request.reason }}&rdquo;</p>
             </div>
             {% endif %}
 
             {% if leave_request.notes %}
             <div class="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ t('Catatan Approver:') }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ t('Approver Notes:') }}</p>
                 <p class="text-xs text-gray-700">{{ leave_request.notes }}</p>
             </div>
             {% endif %}
@@ -171,21 +171,21 @@
                 <div>
                     <div class="flex items-center gap-2 text-xs text-gray-500 mb-2">
                         <i class="fa-solid fa-stamp text-teal-600"></i>
-                        <span>{{ t('Otorisasi Sistem & HR') }}</span>
+                        <span>{{ t('System & HR Authorization') }}</span>
                     </div>
                     <div class="p-3 rounded-lg border border-gray-200 bg-gray-50 text-[11px] text-gray-600 space-y-1">
-                        <p><strong>{{ t('Disetujui oleh:') }}</strong> {{ leave_request.approver.name if leave_request.approver else 'System / HR Administrator' }}</p>
+                        <p><strong>{{ t('Approved by:') }}</strong> {{ leave_request.approver.name if leave_request.approver else 'System / HR Administrator' }}</p>
                         {% if leave_request.approved_at %}
-                        <p><strong>{{ t('Waktu Approval:') }}</strong> {{ leave_request.approved_at.strftime('%d %B %Y, %H:%M WIB') }}</p>
+                        <p><strong>{{ t('Approval Time:') }}</strong> {{ leave_request.approved_at.strftime('%d %B %Y, %H:%M WIB') }}</p>
                         {% endif %}
                         <p class="text-[10px] text-gray-400 font-mono">HASH: {{ ref_number }}-VERIFIED-OK</p>
                     </div>
                 </div>
                 <div class="flex flex-col items-start sm:items-end justify-end text-right">
                     <div class="text-center sm:text-right">
-                        <p class="text-[11px] font-bold uppercase text-gray-400">{{ t('Status Dokumen') }}</p>
-                        <p class="mt-1 text-sm font-extrabold text-teal-900 tracking-tight">{{ t('Dokumen Resmi Terverifikasi') }}</p>
-                        <p class="text-[10px] text-gray-400 mt-0.5">{{ t('People by Triton • Sistem Manajemen SDM') }}</p>
+                        <p class="text-[11px] font-bold uppercase text-gray-400">{{ t('Document Status') }}</p>
+                        <p class="mt-1 text-sm font-extrabold text-teal-900 tracking-tight">{{ t('Official Verified Document') }}</p>
+                        <p class="text-[10px] text-gray-400 mt-0.5">{{ t('People by Triton • HR Management System') }}</p>
                     </div>
                 </div>
             </div>
@@ -195,7 +195,7 @@
 
     <!-- Footer Note -->
     <p class="no-print mt-6 text-xs text-gray-400 text-center">
-        {{ t('Gunakan tombol Cetak di atas untuk mencetak dokumen fisik atau menyimpannya sebagai file PDF.') }}
+        {{ t('Use the Print button above to print a physical document or save it as a PDF file.') }}
     </p>
 
 </body>

@@ -5,8 +5,8 @@
     <div class="min-w-0">
         <span class="eyebrow-rule hidden sm:block"></span>
         <p class="page-kicker hidden sm:block">{{ t('Leave') }}</p>
-        <h1 class="text-2xl font-bold text-gray-900 sm:mt-1 sm:text-3xl">{{ t('Kalender tim') }}</h1>
-        <p class="mt-2 hidden text-sm text-gray-500 sm:block">{{ t('Lihat rencana leave tim agar penjadwalan tetap seimbang.') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900 sm:mt-1 sm:text-3xl">{{ t('Team Calendar') }}</h1>
+        <p class="mt-2 hidden text-sm text-gray-500 sm:block">{{ t('View team leave plans to keep scheduling balanced.') }}</p>
     </div>
     <div class="flex shrink-0 items-center gap-2">
         <button type="button" onclick="openCalendarSyncModal()" class="btn-secondary h-10 px-3 text-xs sm:h-auto sm:px-3.5 sm:py-2.5">
@@ -14,7 +14,7 @@
         </button>
         {% if can_apply_leave %}
         <a id="calendar-selection-apply" href="{{ url_for('main.apply_leave') }}" class="btn-primary h-10 px-3 sm:h-auto sm:px-4 sm:py-2.5">
-            <i class="fa-solid fa-plus"></i><span class="hidden min-[380px]:inline">{{ t('Ajukan') }}</span>
+            <i class="fa-solid fa-plus"></i><span class="hidden min-[380px]:inline">{{ t('Request') }}</span>
         </a>
         <button type="button" id="calendar-selection-clear" disabled class="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-400 transition disabled:cursor-not-allowed disabled:opacity-50 enabled:text-triton-700 enabled:hover:bg-triton-50 sm:h-auto sm:px-4 sm:py-2.5">{{ t('Reset') }}</button>
         {% endif %}
@@ -133,14 +133,14 @@
         <div>
             <p class="page-kicker">{{ t('Leave') }}</p>
             <h2 class="mt-1 text-lg font-bold text-gray-900">{{ t('Ajukan cuti') }}</h2>
-            <p id="leave-drawer-range" class="mt-1 text-sm text-gray-500">{{ t('Pilih tanggal dari kalender.') }}</p>
+            <p id="leave-drawer-range" class="mt-1 text-sm text-gray-500">{{ t('Select dates from the calendar.') }}</p>
         </div>
         <button type="button" id="leave-drawer-close" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="{{ t('Tutup') }}"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <form method="POST" action="{{ url_for('main.apply_leave') }}" class="flex min-h-0 flex-1 flex-col" id="leave-drawer-form">
         <div class="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
             <section>
-                <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Jenis cuti') }}</label>
+                <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Leave Types') }}</label>
                 <div class="grid gap-3 sm:grid-cols-2">
                     {% for lt in leave_types %}
                     {% set bal = balances.get(lt.id) %}
@@ -149,7 +149,7 @@
                         <input class="peer sr-only" type="radio" name="leave_type" value="{{ lt.id }}" required>
                         <span class="flex h-full border border-gray-200 p-4 transition peer-checked:border-triton-600 peer-checked:bg-triton-50" style="border-radius:6px">
                             <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-md" style="background:{{ lt.color }}18;color:{{ lt.color }}"><i class="fa-solid {{ lt.icon }}"></i></span>
-                            <span class="min-w-0"><strong class="block text-sm text-gray-800">{{ lt.name }}</strong><small class="mt-1 block text-xs text-gray-500">{% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} {{ t('dari') }} {{ bal.total_days|format_days }} {{ t('hari tersedia') }}{% else %}{{ t('Tanpa kuota') }}{% endif %}</small></span>
+                            <span class="min-w-0"><strong class="block text-sm text-gray-800">{{ lt.name }}</strong><small class="mt-1 block text-xs text-gray-500">{% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} {{ t('of') }} {{ bal.total_days|format_days }} {{ t('days available') }}{% else %}{{ t('Unlimited') }}{% endif %}</small></span>
                         </span>
                     </label>
                     {% endfor %}
@@ -182,34 +182,34 @@
                 </div>
             </section>
             <section class="grid gap-4 sm:grid-cols-2">
-                <div><label id="drawer-start-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal mulai') }}</label><input id="drawer-start-date" class="field" type="date" name="start_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
-                <div id="drawer-end-date-wrap"><label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal selesai') }}</label><input id="drawer-end-date" class="field" type="date" name="end_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+                <div><label id="drawer-start-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Start date') }}</label><input id="drawer-start-date" class="field" type="date" name="start_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+                <div id="drawer-end-date-wrap"><label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('End date') }}</label><input id="drawer-end-date" class="field" type="date" name="end_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
             </section>
-            <div id="drawer-duration-display" class="hidden rounded-md border border-triton-100 bg-triton-50 px-4 py-3 text-sm text-triton-700"><span id="drawer-duration-prefix">{{ t('Durasi pengajuan:') }}</span> <strong id="drawer-duration-days">0</strong></div>
+            <div id="drawer-duration-display" class="hidden rounded-md border border-triton-100 bg-triton-50 px-4 py-3 text-sm text-triton-700"><span id="drawer-duration-prefix">{{ t('Request duration:') }}</span> <strong id="drawer-duration-days">0</strong></div>
             {% if delegate_enabled %}<section>
-                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegasi') }}</label>
-                <select name="delegate_id"><option value="">{{ t('Tidak ada delegasi') }}</option>{% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>{% endfor %}</select>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegate') }}</label>
+                <select name="delegate_id"><option value="">{{ t('No delegate') }}</option>{% for emp in employees %}<option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>{% endfor %}</select>
                 <p class="mt-2 text-xs text-gray-500">{{ t('Pilih rekan yang dapat membantu menjaga pekerjaan selama Anda tidak aktif.') }}</p>
             </section>{% endif %}
             <section>
-                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Alasan') }} <span class="font-normal text-gray-400">({{ t('opsional') }})</span></label>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Reason') }} <span class="font-normal text-gray-400">({{ t('optional') }})</span></label>
                 <textarea class="field resize-none" name="reason" rows="3" placeholder="{{ t('Tambahkan konteks singkat bila diperlukan.') }}" data-i18n-placeholder="Tambahkan konteks singkat bila diperlukan."></textarea>
             </section>
         </div>
         <div class="flex items-center justify-end gap-3 border-t border-gray-100 bg-white px-5 py-4">
-            <button type="button" id="leave-drawer-cancel" class="rounded-md px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
-            <button type="button" id="leave-drawer-open-confirm" class="btn-primary px-5 py-2.5">{{ t('Kirim pengajuan') }}</button>
+            <button type="button" id="leave-drawer-cancel" class="rounded-md px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
+            <button type="button" id="leave-drawer-open-confirm" class="btn-primary px-5 py-2.5">{{ t('Submit request') }}</button>
         </div>
     </form>
 </aside>
 <div id="leave-drawer-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-paper-plane"></i></div>
-        <h3 class="text-lg font-bold text-gray-900">{{ t('Kirim pengajuan cuti?') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ t('Pengajuan akan diteruskan ke approver sesuai flow approval perusahaan.') }}</p>
+        <h3 class="text-lg font-bold text-gray-900">{{ t('Submit leave request?') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ t('The request will be routed to the approver based on the company approval flow.') }}</p>
         <div class="mt-6 grid grid-cols-2 gap-3">
-            <button type="button" id="leave-drawer-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
-            <button type="button" id="leave-drawer-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Kirim pengajuan') }}</button>
+            <button type="button" id="leave-drawer-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
+            <button type="button" id="leave-drawer-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Submit request') }}</button>
         </div>
     </div>
 </div>
@@ -224,8 +224,8 @@
                     <i class="fa-solid fa-calendar-check text-lg"></i>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900">{{ t('Sinkronisasi Kalender (.ics)') }}</h3>
-                    <p class="text-xs text-gray-500">{{ t('Langganan jadwal cuti tim & hari libur langsung di Google / Apple / Outlook') }}</p>
+                    <h3 class="text-base font-bold text-gray-900">{{ t('Calendar Sync (.ics)') }}</h3>
+                    <p class="text-xs text-gray-500">{{ t('Subscribe to team leaves & public holidays in Google / Apple / Outlook') }}</p>
                 </div>
             </div>
             <button type="button" onclick="closeCalendarSyncModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
@@ -235,11 +235,11 @@
 
         <div class="mt-4 space-y-4 text-sm">
             <div>
-                <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('URL Feed Kalender Anda') }}</label>
+                <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Your Calendar Feed URL') }}</label>
                 <div class="flex gap-2">
                     <input id="calendarFeedUrl" type="text" readonly value="{{ request.url_root.rstrip('/') }}/calendar/feed/{{ calendar_token }}.ics" class="field bg-gray-50 font-mono text-xs text-gray-700 select-all">
                     <button type="button" onclick="copyCalendarFeedUrl()" id="copyFeedBtn" class="btn-primary shrink-0 px-3.5 text-xs">
-                        <i class="fa-regular fa-copy mr-1"></i><span id="copyFeedText">{{ t('Salin') }}</span>
+                        <i class="fa-regular fa-copy mr-1"></i><span id="copyFeedText">{{ t('Copy') }}</span>
                     </button>
                 </div>
             </div>
@@ -255,7 +255,7 @@
             </div>
 
             <div class="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5 text-xs text-gray-600">
-                <p class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-circle-info mr-1 text-triton-600"></i>{{ t('Petunjuk Langganan:') }}</p>
+                <p class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-circle-info mr-1 text-triton-600"></i>{{ t('Subscription Guide:') }}</p>
                 <ul class="list-disc pl-4 space-y-1 text-gray-500">
                     <li><strong>Google Calendar</strong>: Klik tombol Google Calendar di atas, atau buka Google Calendar Web > <em>Other calendars (+)</em> > <em>From URL</em> > Paste link di atas.</li>
                     <li><strong>Apple Calendar (iOS / Mac)</strong>: Klik tombol Apple Calendar di atas, atau buka File > <em>New Calendar Subscription</em>.</li>
@@ -264,14 +264,14 @@
             </div>
 
             <div class="flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-                <form method="POST" action="{{ url_for('main.regenerate_calendar_token_action') }}" onsubmit="return confirm('{{ t('Reset link feed kalender? Link lama yang tersambung di Google/Apple Calendar tidak akan berfungsi lagi.') }}')">
+                <form method="POST" action="{{ url_for('main.regenerate_calendar_token_action') }}" onsubmit="return confirm('{{ t('Reset calendar feed link? Old links connected to Google/Apple Calendar will stop working.') }}')">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline">
-                        <i class="fa-solid fa-arrows-rotate mr-1"></i>{{ t('Reset link baru') }}
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>{{ t('Reset new link') }}
                     </button>
                 </form>
                 <a href="{{ url_for('main.calendar_feed', token=calendar_token) }}" download="people-calendar.ics" class="font-medium text-triton-600 hover:underline">
-                    <i class="fa-solid fa-download mr-1"></i>{{ t('Download file .ics') }}
+                    <i class="fa-solid fa-download mr-1"></i>{{ t('Download .ics file') }}
                 </a>
             </div>
         </div>
@@ -339,14 +339,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 endInput.removeAttribute('required');
                 if (startInput && startInput.value) endInput.value = startInput.value;
             }
-            if (startLabel) startLabel.textContent = t('Tanggal cuti');
+            if (startLabel) startLabel.textContent = t('Leave date');
         } else {
             if (endWrap) endWrap.classList.remove('hidden');
             if (endInput) {
                 endInput.setAttribute('required', 'required');
                 if (startInput && startInput.value && !endInput.value) endInput.value = startInput.value;
             }
-            if (startLabel) startLabel.textContent = t('Tanggal mulai');
+            if (startLabel) startLabel.textContent = t('Start date');
         }
         updateDrawerDuration();
     };
@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!startInput || !durationBox || !durationDays) return;
         const part = getDrawerDayPart();
         const durationPrefix = document.getElementById('drawer-duration-prefix');
-        if (durationPrefix) durationPrefix.textContent = t('Durasi pengajuan:');
+        if (durationPrefix) durationPrefix.textContent = t('Request duration:');
 
         if (!startInput.value) {
             durationBox.classList.add('hidden');
@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (part === 'morning') {
-            durationDays.textContent = t('0.5 hari (Pagi: 08:00 - 12:00)');
+            durationDays.textContent = t('0.5 day (Morning: 08:00 - 12:00)');
             durationBox.classList.remove('hidden');
             if (drawerRange) drawerRange.textContent = fmt(startInput.value) + ' (' + t('Pagi') + ')';
         } else if (part === 'afternoon') {
@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (overlay) overlay.classList.add('hidden');
         });
         if (text) {
-            text.textContent = t('Pilih tanggal');
+            text.textContent = t('Select dates');
             text.classList.add('hidden');
         }
         if (apply) apply.href = {{ url_for('main.apply_leave')|tojson }};
@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectedRange && text) {
             text.textContent = rangeLabel(selectedRange);
         } else if (text) {
-            text.textContent = t('Pilih tanggal');
+            text.textContent = t('Select dates');
             text.classList.add('hidden');
         }
         updateDrawerDuration();

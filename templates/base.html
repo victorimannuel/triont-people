@@ -119,25 +119,25 @@
             <button type="button" id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar"><i class="fa-solid fa-chevron-left text-xs"></i></button>
         </div>
         <nav class="px-3 py-4">
-            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="fa-solid fa-house w-4 text-center"></i>{{ t('Beranda') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Kalender tim') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="fa-solid fa-house w-4 text-center"></i>{{ t('Home') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Team Calendar') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.long_weekend' %}active{% endif %}" href="{{ url_for('main.long_weekend') }}"><i class="fa-solid fa-sun w-4 text-center"></i>{{ t('Hari libur') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('Riwayat') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
             {% if current_user.role in ('manager', 'hr', 'admin') %}
             <p class="nav-label">{{ t('Approval') }}</p>
             <a class="nav-link {% if request.endpoint == 'main.approvals' %}active{% endif %}" href="{{ url_for('main.approvals') }}"><i class="fa-solid fa-circle-check w-4 text-center"></i>{{ t('Inbox') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.approval_history' %}active{% endif %}" href="{{ url_for('main.approval_history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
-            <p class="nav-label">{{ t('Pengaturan') }}</p>
-            <a class="nav-link {% if request.endpoint == 'main.admin_employees' %}active{% endif %}" href="{{ url_for('main.admin_employees') }}"><i class="fa-solid fa-users w-4 text-center"></i>{{ t('Karyawan') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.admin_leave_balances' %}active{% endif %}" href="{{ url_for('main.admin_leave_balances') }}"><i class="fa-solid fa-scale-balanced w-4 text-center"></i>{{ t('Saldo cuti') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Jenis cuti') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departemen') }}</a>
-            <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Ekspor data') }}</a>
+            <p class="nav-label">{{ t('Settings') }}</p>
+            <a class="nav-link {% if request.endpoint == 'main.admin_employees' %}active{% endif %}" href="{{ url_for('main.admin_employees') }}"><i class="fa-solid fa-users w-4 text-center"></i>{{ t('Employees') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_leave_balances' %}active{% endif %}" href="{{ url_for('main.admin_leave_balances') }}"><i class="fa-solid fa-scale-balanced w-4 text-center"></i>{{ t('Leave Balances') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Leave Types') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departments') }}</a>
+            <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Export Data') }}</a>
             {% if current_user.role == 'admin' %}
-            <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Perusahaan') }}</a>
-            <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Pengaturan email') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit log') }}</a>
-            <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Domain custom') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Company') }}</a>
+            <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
             {% endif %}
             {% endif %}
         </nav>
@@ -184,25 +184,25 @@
             </div>
             {% endif %}
             <nav class="space-y-1">
-                <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="fa-solid fa-house w-4 text-center"></i>{{ t('Beranda') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Kalender tim') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="fa-solid fa-house w-4 text-center"></i>{{ t('Home') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Team Calendar') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.long_weekend' %}active{% endif %}" href="{{ url_for('main.long_weekend') }}"><i class="fa-solid fa-sun w-4 text-center"></i>{{ t('Hari libur') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('Riwayat') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
                 {% if current_user.role in ('manager', 'hr', 'admin') %}
                 <p class="nav-label mt-4">{{ t('Approval') }}</p>
                 <a class="nav-link {% if request.endpoint == 'main.approvals' %}active{% endif %}" href="{{ url_for('main.approvals') }}"><i class="fa-solid fa-circle-check w-4 text-center"></i>{{ t('Inbox') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.approval_history' %}active{% endif %}" href="{{ url_for('main.approval_history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
-                <p class="nav-label mt-4">{{ t('Pengaturan') }}</p>
-                <a class="nav-link {% if request.endpoint == 'main.admin_employees' %}active{% endif %}" href="{{ url_for('main.admin_employees') }}"><i class="fa-solid fa-users w-4 text-center"></i>{{ t('Karyawan') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.admin_leave_balances' %}active{% endif %}" href="{{ url_for('main.admin_leave_balances') }}"><i class="fa-solid fa-scale-balanced w-4 text-center"></i>{{ t('Saldo cuti') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Jenis cuti') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departemen') }}</a>
-                <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Ekspor data') }}</a>
+                <p class="nav-label mt-4">{{ t('Settings') }}</p>
+                <a class="nav-link {% if request.endpoint == 'main.admin_employees' %}active{% endif %}" href="{{ url_for('main.admin_employees') }}"><i class="fa-solid fa-users w-4 text-center"></i>{{ t('Employees') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_leave_balances' %}active{% endif %}" href="{{ url_for('main.admin_leave_balances') }}"><i class="fa-solid fa-scale-balanced w-4 text-center"></i>{{ t('Leave Balances') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Leave Types') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departments') }}</a>
+                <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Export Data') }}</a>
                 {% if current_user.role == 'admin' %}
-                <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Perusahaan') }}</a>
-                <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Pengaturan email') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit log') }}</a>
-                <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Domain custom') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Company') }}</a>
+                <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
                 {% endif %}
                 {% endif %}
             </nav>
@@ -251,8 +251,8 @@
                         <i class="fa-brands fa-apple text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-gray-900">{{ t('Install di iPhone / iPad') }}</h3>
-                        <p class="text-xs text-gray-500">{{ t('Pasang ke Layar Utama') }}</p>
+                        <h3 class="text-base font-bold text-gray-900">{{ t('Install on iPhone / iPad') }}</h3>
+                        <p class="text-xs text-gray-500">{{ t('Add to Home Screen') }}</p>
                     </div>
                 </div>
                 <button type="button" onclick="closePwaIosModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
@@ -274,7 +274,7 @@
                 </div>
             </div>
             <div class="mt-5 flex justify-end">
-                <button type="button" onclick="closePwaIosModal()" class="btn-primary w-full py-2.5 text-xs font-semibold">{{ t('Mengerti') }}</button>
+                <button type="button" onclick="closePwaIosModal()" class="btn-primary w-full py-2.5 text-xs font-semibold">{{ t('Got it') }}</button>
             </div>
         </div>
     </div>
@@ -289,7 +289,7 @@
             <span class="flex h-7 w-12 items-center justify-center rounded-full transition-all {% if is_home %}bg-teal-600 text-white shadow-md shadow-teal-600/30 scale-105{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-house text-xs"></i>
             </span>
-            <span class="text-[10px] leading-tight transition-colors {% if is_home %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Beranda') }}</span>
+            <span class="text-[10px] leading-tight transition-colors {% if is_home %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Home') }}</span>
         </a>
 
         {% set is_holiday = (request.endpoint == 'main.long_weekend') %}
@@ -300,7 +300,7 @@
             <span class="flex h-7 w-12 items-center justify-center rounded-full transition-all {% if is_holiday %}bg-teal-600 text-white shadow-md shadow-teal-600/30 scale-105{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-sun text-xs"></i>
             </span>
-            <span class="text-[10px] leading-tight transition-colors {% if is_holiday %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Libur') }}</span>
+            <span class="text-[10px] leading-tight transition-colors {% if is_holiday %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Holidays') }}</span>
         </a>
 
         {% set is_calendar = (request.endpoint == 'main.calendar') %}
@@ -308,7 +308,7 @@
             <span class="flex h-12 w-12 items-center justify-center rounded-2xl border-4 border-white text-base shadow-lg transition-all {% if is_calendar %}ring-4 ring-teal-400 ring-offset-2 scale-110 shadow-xl shadow-teal-700/35{% endif %}" style="background:var(--primary);color:white">
                 <i class="fa-regular fa-calendar"></i>
             </span>
-            <span class="text-[10px] leading-tight transition-colors {% if is_calendar %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Kalender') }}</span>
+            <span class="text-[10px] leading-tight transition-colors {% if is_calendar %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Calendar') }}</span>
         </a>
 
         {% if current_user.role in ('manager', 'hr', 'admin') %}
@@ -331,7 +331,7 @@
             <span class="flex h-7 w-12 items-center justify-center rounded-full transition-all {% if is_history %}bg-teal-600 text-white shadow-md shadow-teal-600/30 scale-105{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-clock-rotate-left text-xs"></i>
             </span>
-            <span class="text-[10px] leading-tight transition-colors {% if is_history %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Riwayat') }}</span>
+            <span class="text-[10px] leading-tight transition-colors {% if is_history %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('History') }}</span>
         </a>
         {% endif %}
 
@@ -347,10 +347,10 @@
         <div class="w-full max-w-sm translate-y-2 rounded-lg border border-gray-200 bg-white p-5 shadow-2xl transition-transform">
             <div class="flex items-start gap-3">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600"><i class="fa-solid fa-arrow-right-from-bracket"></i></span>
-                <div class="min-w-0"><h2 class="text-base font-bold text-gray-900">{{ t('Logout dari People?') }}</h2><p class="mt-1 text-sm text-gray-500">{{ t('Session kamu akan ditutup dan kamu perlu login lagi untuk masuk workspace.') }}</p></div>
+                <div class="min-w-0"><h2 class="text-base font-bold text-gray-900">{{ t('Sign out from People?') }}</h2><p class="mt-1 text-sm text-gray-500">{{ t('Your session will be closed and you will need to sign in again to access workspace.') }}</p></div>
             </div>
             <div class="mt-5 flex justify-end gap-2">
-                <button type="button" id="logout-cancel" class="rounded-md border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+                <button type="button" id="logout-cancel" class="rounded-md border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
                 <a id="logout-confirm" href="{{ url_for('auth.logout') }}" class="inline-flex items-center justify-center gap-2 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout</a>
             </div>
         </div>
@@ -363,13 +363,13 @@
                     <i class="fa-solid fa-user-secret text-xs"></i>
                 </span>
                 <span class="truncate">
-                    <strong>{{ t('Mode Simulasi Akun:') }}</strong> {{ t('Anda sedang login sebagai') }} <strong>{{ current_user.name }}</strong> ({{ current_user.email }} &bull; {{ current_user.role|format_role }}).
+                    <strong>{{ t('Account Simulation Mode:') }}</strong> {{ t('You are currently logged in as') }} <strong>{{ current_user.name }}</strong> ({{ current_user.email }} &bull; {{ current_user.role|format_role }}).
                 </span>
             </div>
             <form method="POST" action="{{ url_for('main.admin_stop_impersonation') }}" class="inline shrink-0">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-950 px-3 py-1.5 text-xs font-bold text-amber-100 shadow-sm hover:bg-black transition active:scale-95">
-                    <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>{{ t('Kembali ke Akun Admin') }}
+                    <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>{{ t('Return to Admin Account') }}
                 </button>
             </form>
         </div>

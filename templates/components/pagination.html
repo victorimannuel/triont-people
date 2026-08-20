@@ -3,22 +3,22 @@
     <div class="flex flex-wrap items-center gap-4">
         <div>
             {% if pagination.total == 0 %}
-                {{ t('Menampilkan 0 data') }}
+                {{ t('Showing 0 records') }}
             {% elif per_page_str == 'all' or pagination.per_page >= 10000 %}
-                {{ t('Menampilkan semua') }} <span class="font-semibold text-gray-800">{{ pagination.total }}</span> {{ t('data') }}
+                {{ t('Showing all') }} <span class="font-semibold text-gray-800">{{ pagination.total }}</span> {{ t('records') }}
             {% else %}
                 {% set start_idx = ((pagination.page - 1) * pagination.per_page) + 1 %}
                 {% set end_idx = [pagination.page * pagination.per_page, pagination.total]|min %}
-                {{ t('Menampilkan') }} <span class="font-semibold text-gray-800">{{ start_idx }}</span> - <span class="font-semibold text-gray-800">{{ end_idx }}</span> {{ t('dari') }} <span class="font-semibold text-gray-800">{{ pagination.total }}</span> {{ t('data') }}
+                {{ t('Showing') }} <span class="font-semibold text-gray-800">{{ start_idx }}</span> - <span class="font-semibold text-gray-800">{{ end_idx }}</span> {{ t('of') }} <span class="font-semibold text-gray-800">{{ pagination.total }}</span> {{ t('records') }}
             {% endif %}
         </div>
         <div class="flex items-center gap-1.5">
-            <span class="text-gray-400 font-medium">{{ t('Per halaman:') }}</span>
+            <span class="text-gray-400 font-medium">{{ t('Per page:') }}</span>
             <select data-direction="up" data-compact="true" class="pagination-select" onchange="window.location.href=this.value">
                 <option value="{{ update_query_params(per_page=20, page=1) }}" {% if per_page_str == '20' or (not per_page_str and pagination.per_page == 20) %}selected{% endif %}>20</option>
                 <option value="{{ update_query_params(per_page=50, page=1) }}" {% if per_page_str == '50' %}selected{% endif %}>50</option>
                 <option value="{{ update_query_params(per_page=100, page=1) }}" {% if per_page_str == '100' %}selected{% endif %}>100</option>
-                <option value="{{ update_query_params(per_page='all', page=1) }}" {% if per_page_str == 'all' or pagination.per_page >= 10000 %}selected{% endif %}>{{ t('Semua') }}</option>
+                <option value="{{ update_query_params(per_page='all', page=1) }}" {% if per_page_str == 'all' or pagination.per_page >= 10000 %}selected{% endif %}>{{ t('All') }}</option>
             </select>
         </div>
     </div>
@@ -26,15 +26,15 @@
     {% if (per_page_str != 'all' and pagination.per_page < 10000) and pagination.pages > 1 %}
     <div class="flex items-center gap-1">
         {% if pagination.has_prev %}
-        <a href="{{ update_query_params(page=1) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('Halaman Pertama') }}">
+        <a href="{{ update_query_params(page=1) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('First Page') }}">
             <i class="fa-solid fa-angles-left text-[10px]"></i>
         </a>
         <a href="{{ update_query_params(page=pagination.prev_num) }}" class="inline-flex h-7 px-2.5 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs">
-            <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i> {{ t('Sebelumnya') }}
+            <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i> {{ t('Previous') }}
         </a>
         {% else %}
         <span class="inline-flex h-7 px-2.5 items-center justify-center rounded-md border border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed">
-            <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i> {{ t('Sebelumnya') }}
+            <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i> {{ t('Previous') }}
         </span>
         {% endif %}
 
@@ -54,14 +54,14 @@
 
         {% if pagination.has_next %}
         <a href="{{ update_query_params(page=pagination.next_num) }}" class="inline-flex h-7 px-2.5 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs">
-            {{ t('Berikutnya') }} <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+            {{ t('Next') }} <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
         </a>
-        <a href="{{ update_query_params(page=pagination.pages) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('Halaman Terakhir') }}">
+        <a href="{{ update_query_params(page=pagination.pages) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('Last Page') }}">
             <i class="fa-solid fa-angles-right text-[10px]"></i>
         </a>
         {% else %}
         <span class="inline-flex h-7 px-2.5 items-center justify-center rounded-md border border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed">
-            {{ t('Berikutnya') }} <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+            {{ t('Next') }} <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
         </span>
         {% endif %}
     </div>

@@ -136,7 +136,7 @@ def archive_approval_history(request_id):
     req.is_archived = True
     audit_log('approval_history.archived', 'leave_request', req.id)
     db.session.commit()
-    flash(translate('Riwayat approval berhasil diarsipkan!'), 'success')
+    flash(translate('Approval history archived.'), 'success')
     return redirect(request.referrer or url_for('main.approval_history'))
 
 @main_bp.route('/approval-history/unarchive/<int:request_id>', methods=['POST'])
@@ -148,7 +148,7 @@ def unarchive_approval_history(request_id):
     req.is_archived = False
     audit_log('approval_history.unarchived', 'leave_request', req.id)
     db.session.commit()
-    flash(translate('Riwayat approval berhasil dikembalikan dari arsip!'), 'success')
+    flash(translate('Approval history unarchived.'), 'success')
     return redirect(request.referrer or url_for('main.approval_history', archived=1))
 
 @main_bp.route('/approve/<int:request_id>', methods=['POST'])
@@ -164,7 +164,7 @@ def approve_leave(request_id):
     expected_level_raw = request.form.get('expected_level')
 
     if req.status != 'pending':
-        flash(translate('Pengajuan ini sudah diproses.'), 'warning')
+        flash(translate('This request has already been processed.'), 'warning')
         return redirect(url_for('main.approvals'))
 
     try:
@@ -173,7 +173,7 @@ def approve_leave(request_id):
         expected_level = None
 
     if expected_level != req.current_approval_level:
-        flash(translate('Status approval sudah berubah. Muat ulang halaman dan coba lagi.'), 'warning')
+        flash(translate('The approval status has changed. Reload the page and try again.'), 'warning')
         return redirect(url_for('main.approvals'))
 
     config = ApprovalConfig.query.filter(
@@ -239,7 +239,7 @@ def approve_leave(request_id):
         send_notification(company, 'reject', req)
 
     else:
-        flash(translate('Aksi tidak valid.'), 'danger')
+        flash(translate('Invalid action.'), 'danger')
         return redirect(url_for('main.approvals'))
 
     audit_log('leave.request_' + action, 'leave_request', req.id, details={'status': req.status}, company_id=req.company_id)

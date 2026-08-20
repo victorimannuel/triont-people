@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ t('Verifikasi Kode OTP') }}{% endblock %}
+{% block title %}{{ t('Verify OTP Code') }}{% endblock %}
 {% block guest_content %}
 <div class="grid min-h-screen lg:grid-cols-2">
     <section class="hidden bg-triton-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
@@ -14,9 +14,9 @@
         </a>
         <div class="max-w-lg">
             <span class="mb-6 block h-1 w-10 bg-amber-300"></span>
-            <p class="mb-4 text-xs font-bold uppercase tracking-[.16em] text-amber-200">{{ t('Keamanan Akun') }}</p>
-            <h1 class="text-5xl font-bold leading-tight">{{ t('Verifikasi identitas Anda.') }}</h1>
-            <p class="mt-6 text-lg leading-relaxed text-emerald-100">{{ t('Periksa kotak masuk email Anda dan masukkan 6-digit kode OTP untuk memverifikasi permintaan reset kata sandi.') }}</p>
+            <p class="mb-4 text-xs font-bold uppercase tracking-[.16em] text-amber-200">{{ t('Account Security') }}</p>
+            <h1 class="text-5xl font-bold leading-tight">{{ t('Verify your identity.') }}</h1>
+            <p class="mt-6 text-lg leading-relaxed text-emerald-100">{{ t('Check your email inbox and enter the 6-digit OTP code to verify your password reset request.') }}</p>
         </div>
         <p class="text-sm text-emerald-100">People by Triton</p>
     </section>
@@ -31,13 +31,13 @@
             </div>
 
             <a href="{{ url_for('auth.forgot_password') }}" class="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 transition mb-6">
-                <i class="fa-solid fa-arrow-left"></i> {{ t('Ubah Email') }}
+                <i class="fa-solid fa-arrow-left"></i> {{ t('Change Email') }}
             </a>
 
-            <p class="page-kicker">{{ t('Verifikasi OTP') }}</p>
-            <h2 class="mt-2 text-2xl font-bold text-gray-900">{{ t('Masukkan Kode Verifikasi') }}</h2>
+            <p class="page-kicker">{{ t('Verify OTP') }}</p>
+            <h2 class="mt-2 text-2xl font-bold text-gray-900">{{ t('Enter Verification Code') }}</h2>
             <p class="mt-2 text-sm text-gray-500">
-                {{ t('Kode 6-digit telah dikirim ke') }} <strong class="text-gray-800 break-all">{{ email }}</strong>.
+                {{ t('A 6-digit code has been sent to') }} <strong class="text-gray-800 break-all">{{ email }}</strong>.
             </p>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -55,19 +55,19 @@
             <form method="POST" action="{{ url_for('auth.verify_otp') }}" class="app-card mt-7 space-y-5 p-6 shadow-sm">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <div>
-                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Kode OTP (6 Digit)') }}</label>
+                    <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('OTP Code (6 Digits)') }}</label>
                     <div class="relative">
                         <input type="text" name="otp" id="otp-input" required autofocus maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
                                class="field text-center font-mono text-2xl tracking-[0.4em] font-bold text-gray-900 placeholder:text-gray-300"
                                placeholder="••••••">
                     </div>
                     <p class="mt-2 text-xs text-gray-400 text-center">
-                        <i class="fa-solid fa-clock mr-1"></i>{{ t('Kode berlaku selama 15 menit.') }}
+                        <i class="fa-solid fa-clock mr-1"></i>{{ t('Code expires in 15 minutes.') }}
                     </p>
                 </div>
 
                 <button type="submit" class="btn-primary w-full py-3 justify-center">
-                    <span>{{ t('Verifikasi & Lanjutkan') }}</span>
+                    <span>{{ t('Verify & Continue') }}</span>
                     <i class="fa-solid fa-arrow-right ml-1"></i>
                 </button>
             </form>
@@ -77,9 +77,9 @@
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <span id="cooldown-data" data-cooldown="{{ cooldown_remaining|default(0) }}" class="hidden"></span>
                     <p class="text-xs text-gray-500">
-                        {{ t('Tidak menerima kode?') }}
+                        {{ t('Did not receive the code?') }}
                         <button type="submit" id="resend-btn" class="font-semibold text-triton-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
-                            {{ t('Kirim Ulang OTP') }} <span id="cooldown-timer" class="hidden"></span>
+                            {{ t('Resend OTP') }} <span id="cooldown-timer" class="hidden"></span>
                         </button>
                     </p>
                 </form>

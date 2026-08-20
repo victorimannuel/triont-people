@@ -59,10 +59,10 @@ def admin_add_company():
     name = request.form.get('name', '').strip()
     primary_color = request.form.get('primary_color', '#0d9488')
     if not name:
-        flash(translate('Nama perusahaan harus diisi.'), 'danger')
+        flash(translate('Company name is required.'), 'danger')
         return redirect(url_for('main.admin_companies'))
     if Company.query.filter_by(name=name).first():
-        flash(translate('Perusahaan sudah ada.'), 'danger')
+        flash(translate('Company already exists.'), 'danger')
         return redirect(url_for('main.admin_companies'))
     company = Company(name=name, primary_color=primary_color, delegate_enabled=bool(request.form.get('delegate_enabled')))
     db.session.add(company)
@@ -101,7 +101,7 @@ def admin_smtp():
     company = db.session.get(Company, company_id)
     if request.method == 'POST':
         if not company:
-            flash(translate('Perusahaan tidak ditemukan.'), 'danger')
+            flash(translate('Company not found.'), 'danger')
             return redirect(url_for('main.admin_smtp'))
 
         company.notifications_enabled = bool(request.form.get('notifications_enabled'))
@@ -116,7 +116,7 @@ def admin_smtp():
 
         audit_log('company.smtp_updated', 'company', company.id)
         db.session.commit()
-        flash(translate('Pengaturan SMTP perusahaan berhasil diperbarui!'), 'success')
+        flash(translate('Company SMTP settings updated.'), 'success')
         return redirect(url_for('main.admin_smtp'))
 
     return render_template('admin/smtp.html', company=company)
@@ -128,7 +128,7 @@ def admin_smtp_test():
     company_id = get_active_company_id()
     company = db.session.get(Company, company_id)
     if not company or not company.smtp_host or not company.smtp_user:
-        flash(translate('Harap isi konfigurasi SMTP terlebih dahulu.'), 'warning')
+        flash(translate('Please fill in SMTP configuration first.'), 'warning')
         return redirect(url_for('main.admin_smtp'))
 
     test_recipient = request.form.get('test_recipient', current_user.email).strip() or current_user.email
@@ -323,7 +323,7 @@ def admin_send_employee_password_reset(user_id):
 def admin_stop_impersonation():
     admin_id = session.get('impersonator_admin_id')
     if not admin_id:
-        flash(translate('Anda tidak sedang dalam mode simulasi akun.'), 'info')
+        flash(translate('You are not currently in account simulation mode.'), 'info')
         return redirect(url_for('main.dashboard'))
 
     admin_user = db.session.get(User, admin_id)
@@ -345,7 +345,7 @@ def admin_stop_impersonation():
     audit_log('admin.stop_impersonation', 'user', admin_user.id, company_id=admin_user.company_id)
     db.session.commit()
 
-    flash(translate('Kembali ke sesi Super Admin.'), 'success')
+    flash(translate('Returned to Super Admin session.'), 'success')
     return redirect(url_for('main.admin_employees'))
 
 @main_bp.route('/admin/leave-balances')
@@ -574,7 +574,7 @@ def admin_add_employee():
     department_id = request.form.get('department_id', type=int)
 
     if not all([name, email, password]):
-        flash(translate('Harap isi nama, email, dan password.'), 'danger')
+        flash(translate('Please enter name, email, and password.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     if not validate_password_strength(password):
@@ -582,7 +582,7 @@ def admin_add_employee():
         return redirect(url_for('main.admin_employees'))
 
     if User.query.filter_by(email=email).first():
-        flash(translate('Email sudah terdaftar.'), 'danger')
+        flash(translate('Email is already registered.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     user = User(name=name, email=email, role=role, company_id=target_company_id)
@@ -675,7 +675,7 @@ def admin_edit_employee(user_id):
     target_company_id = get_manageable_company_id(request.form.get('company_id', type=int))
     email = request.form.get('email', user.email).strip()
     if User.query.filter(User.email == email, User.id != user.id).first():
-        flash(translate('Email sudah terdaftar.'), 'danger')
+        flash(translate('Email is already registered.'), 'danger')
         return redirect(url_for('main.admin_employees'))
     new_role = request.form.get('role', user.role)
 
@@ -753,11 +753,11 @@ def admin_grant_leave(user_id):
         or mode not in ('add', 'set')
         or (mode == 'add' and amount == 0)
     ):
-        flash(translate('Data grant cuti tidak valid.'), 'danger')
+        flash(translate('The leave grant data is invalid.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     if LeaveGrant.query.filter_by(request_token=request_token).first():
-        flash(translate('Grant cuti ini sudah diproses.'), 'info')
+        flash(translate('This leave grant has already been processed.'), 'info')
         return redirect(url_for('main.admin_employees'))
 
     leave_type = LeaveType.query.filter_by(
@@ -766,7 +766,7 @@ def admin_grant_leave(user_id):
         is_active=True,
     ).first()
     if not leave_type:
-        flash(translate('Jenis cuti tidak tersedia.'), 'danger')
+        flash(translate('Leave type is not available.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     balance = LeaveBalance.query.filter_by(
@@ -789,7 +789,7 @@ def admin_grant_leave(user_id):
     if mode == 'set':
         committed_days = balance.used_days + balance.pending_days
         if amount < committed_days:
-            flash(translate('Total kuota tidak boleh lebih kecil dari kuota terpakai dan pending.'), 'danger')
+            flash(translate('The total allocation cannot be lower than used and pending leave.'), 'danger')
             return redirect(url_for('main.admin_employees'))
         balance.total_days = amount
     else:
@@ -823,10 +823,10 @@ def admin_grant_leave(user_id):
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        flash(translate('Grant cuti ini sudah diproses.'), 'info')
+        flash(translate('This leave grant has already been processed.'), 'info')
         return redirect(url_for('main.admin_employees'))
 
-    flash(translate('Grant cuti berhasil disimpan.'), 'success')
+    flash(translate('Leave grant saved.'), 'success')
     return redirect(url_for('main.admin_employees'))
 
 @main_bp.route('/admin/employees/delete/<int:user_id>', methods=['GET', 'POST'])
@@ -834,13 +834,13 @@ def admin_grant_leave(user_id):
 @role_required('manager', 'hr', 'admin')
 def admin_delete_employee(user_id):
     if request.method == 'GET':
-        flash(translate('Penghapusan karyawan harus dilakukan melalui tombol Hapus di halaman Admin.'), 'warning')
+        flash(translate('Employee deletion must be done via the Delete button on the Admin page.'), 'warning')
         return redirect(url_for('main.admin_employees'))
 
     my_company = get_active_company_id()
     user = User.query.filter_by(id=user_id, company_id=my_company).first_or_404()
     if user.role == 'admin':
-        flash(translate('Tidak bisa menghapus admin.'), 'danger')
+        flash(translate('Admin users cannot be deleted.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     action = request.form.get('action', 'delete')
@@ -951,7 +951,7 @@ def admin_add_leave_type():
     attachment_label = request.form.get('attachment_label', '').strip() or 'Surat Dokter / Bukti Pendukung'
 
     if not name:
-        flash(translate('Nama cuti harus diisi.'), 'danger')
+        flash(translate('Leave name is required.'), 'danger')
         return redirect(url_for('main.admin_leave_types'))
 
     lt = LeaveType(name=name, description=description, days_per_year=days_per_year, color=color,
@@ -1033,7 +1033,7 @@ def admin_delete_leave_type(type_id):
             leave_type.is_active = False
             audit_log('admin.leave_type_archived', 'leave_type', leave_type.id, details={'name': leave_type.name}, company_id=company_id)
             db.session.commit()
-        flash(translate('Jenis cuti sudah dipakai dan telah diarsipkan.'), 'warning')
+        flash(translate('This leave type is already in use and has been archived.'), 'warning')
         return redirect(url_for('main.admin_leave_types'))
 
     ApprovalConfig.query.filter_by(company_id=company_id, leave_type_id=leave_type.id).delete(synchronize_session=False)
@@ -1077,7 +1077,7 @@ def admin_add_department():
     head_id = request.form.get('head_id', type=int)
 
     if not name:
-        flash(translate('Nama departemen harus diisi.'), 'danger')
+        flash(translate('Department name is required.'), 'danger')
         return redirect(url_for('main.admin_departments'))
 
     dept = Department(name=name, company_id=my_company, head_id=head_id)
@@ -1141,7 +1141,7 @@ def admin_add_approval_config(type_id):
     approver_role = request.form.get('approver_role')
 
     if not level or not approver_role:
-        flash(translate('Level dan role harus diisi.'), 'danger')
+        flash(translate('Level and role are required.'), 'danger')
         return redirect(url_for('main.admin_approval_configs', type_id=type_id))
 
     leave_type = LeaveType.query.filter_by(id=type_id, company_id=my_company).first_or_404()
@@ -1149,7 +1149,7 @@ def admin_add_approval_config(type_id):
     db.session.add(config)
     db.session.commit()
     audit_log('admin.approval_config_added', 'approval_config', config.id, details={'leave_type_id': type_id, 'level': level, 'role': approver_role}, company_id=my_company)
-    flash(translate('Level approval berhasil ditambahkan!'), 'success')
+    flash(translate('Approval level added.'), 'success')
     return redirect(url_for('main.admin_approval_configs', type_id=type_id))
 
 @main_bp.route('/admin/approval-configs/delete/<int:config_id>', methods=['POST'])
@@ -1164,7 +1164,7 @@ def admin_delete_approval_config(config_id):
     db.session.delete(config)
     db.session.commit()
     audit_log('admin.approval_config_deleted', 'approval_config', config_id_val, details={'leave_type_id': type_id, 'level': config_level}, company_id=config_comp)
-    flash(translate('Level approval berhasil dihapus!'), 'success')
+    flash(translate('Approval level deleted.'), 'success')
     return redirect(url_for('main.admin_approval_configs', type_id=type_id))
 
 # ── ADMIN: HOLIDAY MANAGEMENT ──
@@ -1175,7 +1175,7 @@ def admin_delete_approval_config(config_id):
 def sync_holidays():
     company_id = get_active_company_id()
     sync_company_holidays(company_id)
-    flash(translate('Daftar hari libur nasional dan cuti bersama berhasil disinkronkan! ✅'), 'success')
+    flash(translate('National holidays and collective leave list synchronized! ✅'), 'success')
     return redirect(url_for('main.long_weekend'))
 
 @main_bp.route('/admin/holidays/add', methods=['POST'])
@@ -1188,13 +1188,13 @@ def add_holiday():
     kind = request.form.get('kind', 'company').strip()
 
     if not h_date_str or not name:
-        flash(translate('Tanggal dan nama hari libur wajib diisi.'), 'danger')
+        flash(translate('Date and holiday name are required.'), 'danger')
         return redirect(url_for('main.long_weekend'))
 
     try:
         h_date = datetime.strptime(h_date_str, '%Y-%m-%d').date()
     except ValueError:
-        flash(translate('Format tanggal tidak valid.'), 'danger')
+        flash(translate('Date format is invalid.'), 'danger')
         return redirect(url_for('main.long_weekend'))
 
     existing = PublicHoliday.query.filter_by(company_id=company_id, holiday_date=h_date).first()
@@ -1202,7 +1202,7 @@ def add_holiday():
         existing.name = name
         existing.kind = kind
         existing.is_active = True
-        flash(translate('Hari libur berhasil diperbarui! ✅'), 'success')
+        flash(translate('Holiday updated! ✅'), 'success')
     else:
         new_h = PublicHoliday(
             company_id=company_id,
@@ -1212,7 +1212,7 @@ def add_holiday():
             is_active=True
         )
         db.session.add(new_h)
-        flash(translate('Hari libur baru berhasil ditambahkan! ✅'), 'success')
+        flash(translate('New holiday added! ✅'), 'success')
 
     db.session.commit()
     return redirect(url_for('main.long_weekend', year=h_date.year))
@@ -1226,7 +1226,7 @@ def delete_holiday(holiday_id):
     year = h.holiday_date.year
     db.session.delete(h)
     db.session.commit()
-    flash(translate('Hari libur berhasil dihapus! 🗑️'), 'success')
+    flash(translate('Holiday deleted! 🗑️'), 'success')
     return redirect(url_for('main.long_weekend', year=year))
 
 # ── ADMIN: EXCEL REPORT EXPORT ──

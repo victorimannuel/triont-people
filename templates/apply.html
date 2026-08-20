@@ -12,7 +12,7 @@
     <form method="POST" enctype="multipart/form-data" class="app-card p-5 sm:p-7" id="leave-request-form">
         <!-- Leave Type -->
         <section>
-            <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Jenis cuti') }}</label>
+            <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Leave Types') }}</label>
             <div class="grid gap-3 sm:grid-cols-2">
                 {% for lt in leave_types %}
                 {% set bal = balances.get(lt.id) %}
@@ -24,7 +24,7 @@
                         <span>
                             <strong class="block text-sm text-gray-800">{{ lt.name }}</strong>
                             <small class="mt-1 block text-xs text-gray-500">
-                                {% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} dari {{ bal.total_days|format_days }} {{ t('hari tersedia') }}{% else %}{{ t('Tanpa kuota') }}{% endif %}
+                                {% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} dari {{ bal.total_days|format_days }} {{ t('days available') }}{% else %}{{ t('Unlimited') }}{% endif %}
                             </small>
                         </span>
                     </span>
@@ -50,7 +50,7 @@
                     <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-3 text-center transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
                         <i class="fa-solid fa-cloud-sun text-lg mb-1 text-orange-400"></i>
                         <span class="text-sm font-bold text-gray-800 peer-checked:text-triton-900">{{ t('Setengah Hari (Pagi)') }}</span>
-                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('hari') }} (08:00 - 12:00)</span>
+                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('days') }} (08:00 - 12:00)</span>
                     </span>
                 </label>
                 <label class="cursor-pointer">
@@ -58,7 +58,7 @@
                     <span class="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-3 text-center transition hover:bg-gray-50 peer-checked:border-triton-600 peer-checked:bg-triton-50 peer-checked:text-triton-800">
                         <i class="fa-solid fa-cloud-moon text-lg mb-1 text-indigo-400"></i>
                         <span class="text-sm font-bold text-gray-800 peer-checked:text-triton-900">{{ t('Setengah Hari (Siang)') }}</span>
-                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('hari') }} (13:00 - 17:00)</span>
+                        <span class="text-xs text-gray-500 mt-0.5">0.5 {{ t('days') }} (13:00 - 17:00)</span>
                     </span>
                 </label>
             </div>
@@ -67,11 +67,11 @@
         <!-- Date Range -->
         <section class="mt-6 grid gap-4 sm:grid-cols-2" id="date-pickers-container">
             <div>
-                <label id="start-date-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal mulai') }}</label>
+                <label id="start-date-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Start date') }}</label>
                 <input class="field" type="date" name="start_date" id="apply-start-date" value="{{ request.args.get('start_date', '') }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
             </div>
             <div id="end-date-wrapper">
-                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Tanggal selesai') }}</label>
+                <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('End date') }}</label>
                 <input class="field" type="date" name="end_date" id="apply-end-date" value="{{ request.args.get('end_date', request.args.get('start_date', '')) }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
             </div>
         </section>
@@ -82,9 +82,9 @@
 
         {% if delegate_enabled %}
         <section class="mt-6">
-            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegasi') }}</label>
+            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Delegate') }}</label>
             <select name="delegate_id">
-                <option value="">{{ t('Tidak ada delegasi') }}</option>
+                <option value="">{{ t('No delegate') }}</option>
                 {% for emp in employees %}
                 <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.email }})</option>
                 {% endfor %}
@@ -94,7 +94,7 @@
         {% endif %}
 
         <section class="mt-6">
-            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Alasan') }} <span class="font-normal text-gray-400">({{ t('opsional') }})</span></label>
+            <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Reason') }} <span class="font-normal text-gray-400">({{ t('optional') }})</span></label>
             <textarea class="field resize-none" name="reason" rows="3" placeholder="{{ t('Tambahkan konteks singkat bila diperlukan.') }}"></textarea>
         </section>
 
@@ -113,19 +113,19 @@
         </section>
 
         <div class="mt-7 flex items-center gap-3 border-t border-gray-100 pt-5">
-            <button class="btn-primary px-5 py-2.5" type="button" id="leave-open-confirm">{{ t('Kirim pengajuan') }}</button>
-            <a href="{{ url_for('main.dashboard') }}" class="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900">{{ t('Batal') }}</a>
+            <button class="btn-primary px-5 py-2.5" type="button" id="leave-open-confirm">{{ t('Submit request') }}</button>
+            <a href="{{ url_for('main.dashboard') }}" class="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900">{{ t('Cancel') }}</a>
         </div>
     </form>
 
     <div id="leave-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-paper-plane"></i></div>
-            <h3 class="text-lg font-bold text-gray-900">{{ t('Kirim pengajuan cuti?') }}</h3>
-            <p class="mt-2 text-sm text-gray-500">{{ t('Pengajuan akan diteruskan ke approver sesuai flow approval perusahaan.') }}</p>
+            <h3 class="text-lg font-bold text-gray-900">{{ t('Submit leave request?') }}</h3>
+            <p class="mt-2 text-sm text-gray-500">{{ t('The request will be routed to the approver based on the company approval flow.') }}</p>
             <div class="mt-6 grid grid-cols-2 gap-3">
-                <button type="button" id="leave-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
-                <button type="button" id="leave-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Kirim pengajuan') }}</button>
+                <button type="button" id="leave-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
+                <button type="button" id="leave-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Submit request') }}</button>
             </div>
         </div>
     </div>

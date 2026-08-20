@@ -302,7 +302,7 @@ def select_active_company():
     company_id = request.form.get('company_id', type=int)
     company = db.session.get(Company, company_id) if company_id else None
     if not company or not company.is_active:
-        flash(translate('Perusahaan tidak tersedia.'), 'danger')
+        flash(translate('Company is not available.'), 'danger')
     else:
         session['active_company_id'] = company.id
         audit_log('workspace.company_switched', 'company', company.id)

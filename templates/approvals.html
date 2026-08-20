@@ -110,15 +110,15 @@
 <div id="approval-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-gray-900/40 p-4 opacity-0 transition-opacity" aria-hidden="true">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <div id="approval-confirm-icon" class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-triton-50 text-triton-600"><i class="fa-solid fa-check"></i></div>
-        <h3 id="approval-confirm-title" class="text-lg font-bold text-gray-900">{{ t('Konfirmasi approval') }}</h3>
+        <h3 id="approval-confirm-title" class="text-lg font-bold text-gray-900">{{ t('Approval confirmation') }}</h3>
         <p id="approval-confirm-message" class="mt-2 text-sm text-gray-500"></p>
         <div id="approval-reject-notes-wrap" class="mt-4 hidden">
             <label class="mb-2 block text-sm font-semibold text-gray-700">{{ t('Alasan penolakan (opsional):') }}</label>
-            <textarea id="approval-reject-notes" class="field resize-none" rows="3" placeholder="{{ t('Tambahkan catatan bila diperlukan.') }}"></textarea>
+            <textarea id="approval-reject-notes" class="field resize-none" rows="3" placeholder="{{ t('Add notes if needed.') }}"></textarea>
         </div>
         <div class="mt-6 grid grid-cols-2 gap-3">
-            <button type="button" id="approval-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
-            <button type="button" id="approval-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Konfirmasi') }}</button>
+            <button type="button" id="approval-confirm-cancel" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
+            <button type="button" id="approval-confirm-submit" class="btn-primary justify-center px-4 py-2.5">{{ t('Confirm') }}</button>
         </div>
     </div>
 </div>

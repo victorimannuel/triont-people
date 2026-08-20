@@ -65,22 +65,22 @@ def apply_leave():
         delegate_id = request.form.get('delegate_id', type=int) if delegate_enabled else None
 
         if not leave_type_id or not start_date_str or (day_part == 'full' and not end_date_str):
-            flash(translate('Harap isi semua field yang wajib.'), 'danger')
+            flash(translate('Please complete all required fields.'), 'danger')
             return _render_apply()
 
         try:
             start_date = date.fromisoformat(start_date_str)
             end_date = date.fromisoformat(end_date_str)
         except:
-            flash(translate('Format tanggal tidak valid.'), 'danger')
+            flash(translate('Date format is invalid.'), 'danger')
             return _render_apply()
 
         if end_date < start_date:
-            flash(translate('Tanggal selesai harus setelah atau sama dengan tanggal mulai.'), 'danger')
+            flash(translate('End date must be after or equal to start date.'), 'danger')
             return _render_apply()
 
         if start_date < date.today():
-            flash(translate('Tidak bisa mengajukan cuti di masa lalu.'), 'danger')
+            flash(translate('You cannot request leave in the past.'), 'danger')
             return _render_apply()
 
         # Check overlapping leave
@@ -103,16 +103,16 @@ def apply_leave():
                 break
 
         if has_conflict:
-            flash(translate('Anda sudah memiliki pengajuan cuti di tanggal tersebut.'), 'danger')
+            flash(translate('You already have a leave request on those dates.'), 'danger')
             return _render_apply()
 
         # Check balance
         lt = LeaveType.query.filter_by(id=leave_type_id, company_id=my_company, is_active=True).first()
         if not lt:
-            flash(translate('Jenis cuti tidak tersedia.'), 'danger')
+            flash(translate('Leave type is not available.'), 'danger')
             return _render_apply()
         if delegate_id and not User.query.filter(User.id == delegate_id, User.id != current_user.id, User.company_id == my_company, User.is_active == True).first():
-            flash(translate('Delegate tidak tersedia.'), 'danger')
+            flash(translate('Delegate is not available.'), 'danger')
             return _render_apply()
 
         # Check attachment requirement
@@ -145,7 +145,7 @@ def apply_leave():
             exclude_holidays=True
         )
         if duration <= 0:
-            flash(translate('Tanggal yang dipilih merupakan akhir pekan atau hari libur (0 hari kerja).'), 'danger')
+            flash(translate('Selected dates fall entirely on weekends or public holidays (0 working days).'), 'danger')
             return _render_apply()
 
         if lt and bal and lt.days_per_year > 0:
@@ -190,7 +190,7 @@ def apply_leave():
         company = db.session.get(Company, my_company)
         send_notification(company, 'submit', req)
 
-        flash(translate('Pengajuan cuti berhasil dikirim! Menunggu persetujuan.'), 'success')
+        flash(translate('Leave request submitted. Waiting for approval.'), 'success')
         return redirect(url_for('main.dashboard'))
 
     return _render_apply()
@@ -298,11 +298,11 @@ def cancel_leave(request_id):
     is_admin_or_hr = (current_user.role in ('admin', 'hr'))
 
     if not (is_owner or is_admin_or_hr):
-        flash(translate('Anda tidak memiliki izin untuk membatalkan pengajuan ini.'), 'danger')
+        flash(translate('You do not have permission to cancel this leave request.'), 'danger')
         return redirect(url_for('main.history'))
 
     if req.status != 'pending':
-        flash(translate('Hanya pengajuan cuti yang berstatus pending yang dapat dibatalkan.'), 'danger')
+        flash(translate('Only pending leave requests can be cancelled.'), 'danger')
         return redirect(url_for('main.history'))
 
     # Refund pending days in balance
@@ -327,6 +327,6 @@ def cancel_leave(request_id):
     })
     db.session.commit()
 
-    flash(translate('Pengajuan cuti berhasil dibatalkan.'), 'success')
+    flash(translate('Leave request cancelled successfully.'), 'success')
     return redirect(url_for('main.history'))
 

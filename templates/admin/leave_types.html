@@ -106,7 +106,7 @@
                             {% if lt.is_active %}
                             <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-triton-50 hover:text-triton-700" title="Atur approval"><i class="fa-solid fa-layer-group"></i><span class="sr-only">Atur approval</span></a>
                     <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }}, {{ lt.created_at_formatted|tojson }}, {{ lt.creator_name|tojson }}, {{ lt.updated_at_formatted|tojson }}, {{ lt.updater_name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
-                            <button type="button" onclick='openArchiveLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition" title="{{ t('Arsipkan jenis cuti') }}">
+                            <button type="button" onclick='openArchiveLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition" title="{{ t('Archive leave type') }}">
                                 <i class="fa-solid fa-box-archive"></i>
                                 <span class="sr-only">{{ t('Arsipkan') }}</span>
                             </button>
@@ -176,10 +176,10 @@
             <div class="col-span-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" name="requires_attachment" id="addRequiresAttachment" value="1" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" onchange="document.getElementById('addAttachmentLabelRow').style.display=this.checked?'':'none'">
-                    <span class="text-sm text-gray-700 font-medium">{{ t('Wajib lampiran dokumen saat pengajuan') }}</span>
+                    <span class="text-sm text-gray-700 font-medium">{{ t('Mandatory document attachment on request') }}</span>
                 </label>
                 <div id="addAttachmentLabelRow" style="display:none" class="mt-2">
-                    <input type="text" name="attachment_label" class="input" placeholder="{{ t('Label upload, mis. Surat Dokter') }}" value="{{ t('Surat Dokter / Bukti Pendukung') }}">
+                    <input type="text" name="attachment_label" class="input" placeholder="{{ t('Upload label, e.g. Doctor Certificate') }}" value="{{ t('Surat Dokter / Bukti Pendukung') }}">
                 </div>
             </div>
             <div class="flex gap-3 pt-2 modal-form-actions">
@@ -198,11 +198,11 @@
 <div id="archiveLeaveTypeModal" class="fixed inset-0 z-[1050] hidden items-center justify-center bg-gray-900/40 p-4">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-slideIn">
         <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600"><i class="fa-solid fa-box-archive"></i></div>
-        <h3 class="text-lg font-bold text-gray-900">{{ t('Arsipkan jenis cuti?') }}</h3>
-        <p class="mt-2 text-sm text-gray-500">{{ t('Jenis cuti') }} <span id="archiveLeaveTypeName" class="font-semibold text-gray-700"></span> {{ t('akan dinonaktifkan dan tidak dapat dipilih untuk pengajuan baru. Riwayat cuti sebelumnya tetap aman.') }}</p>
+        <h3 class="text-lg font-bold text-gray-900">{{ t('Archive leave type?') }}</h3>
+        <p class="mt-2 text-sm text-gray-500">{{ t('Leave Types') }} <span id="archiveLeaveTypeName" class="font-semibold text-gray-700"></span> {{ t('will be deactivated and cannot be selected for new requests. Previous leave history remains safe.') }}</p>
         <form method="POST" action="" id="archiveLeaveTypeForm" class="mt-6 grid grid-cols-2 gap-3">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="button" id="archiveLeaveTypeCancel" onclick="closeArchiveLeaveType()" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Batal') }}</button>
+            <button type="button" id="archiveLeaveTypeCancel" onclick="closeArchiveLeaveType()" class="rounded-md border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
             <button type="submit" id="archiveLeaveTypeSubmit" class="inline-flex items-center justify-center rounded-md bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700">{{ t('Arsipkan') }}</button>
         </form>
     </div>
@@ -261,22 +261,22 @@
             <div class="col-span-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" name="requires_attachment" id="editRequiresAttachment" value="1" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" onchange="document.getElementById('editAttachmentLabelRow').style.display=this.checked?'':'none'">
-                    <span class="text-sm text-gray-700 font-medium">{{ t('Wajib lampiran dokumen saat pengajuan') }}</span>
+                    <span class="text-sm text-gray-700 font-medium">{{ t('Mandatory document attachment on request') }}</span>
                 </label>
                 <div id="editAttachmentLabelRow" class="mt-2">
-                    <input type="text" name="attachment_label" id="editAttachmentLabel" class="input" placeholder="{{ t('Label upload, mis. Surat Dokter') }}">
+                    <input type="text" name="attachment_label" id="editAttachmentLabel" class="input" placeholder="{{ t('Upload label, e.g. Doctor Certificate') }}">
                 </div>
             </div>
             <div class="col-span-2 rounded-xl border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-500 grid grid-cols-2 gap-3 mt-1">
                 <div>
-                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Dibuat') }}</span>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Created') }}</span>
                     <p class="font-semibold text-gray-700" id="editLtCreatedAt">-</p>
-                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editLtCreatedBy" class="font-medium text-gray-700">-</span></p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('By:') }}</span> <span id="editLtCreatedBy" class="font-medium text-gray-700">-</span></p>
                 </div>
                 <div>
-                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Terakhir Diperbarui') }}</span>
+                    <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Last Updated') }}</span>
                     <p class="font-semibold text-gray-700" id="editLtUpdatedAt">-</p>
-                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editLtUpdatedBy" class="font-medium text-gray-700">-</span></p>
+                    <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('By:') }}</span> <span id="editLtUpdatedBy" class="font-medium text-gray-700">-</span></p>
                 </div>
             </div>
             <div class="flex gap-3 pt-2 modal-form-actions">

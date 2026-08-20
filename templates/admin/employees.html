@@ -88,15 +88,15 @@
                             {% if current_user.role == 'admin' and emp.id != current_user.id and emp.is_active %}
                             <button type="button" onclick='openImpersonateModal({{ emp.id }}, {{ emp.name|tojson }}, {{ emp.email|tojson }}, {{ emp.role|format_role|tojson }})'
                                     class="flex h-9 w-9 items-center justify-center rounded-md text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 transition"
-                                    title="{{ t('Login sebagai') }} {{ emp.name }}">
+                                    title="{{ t('Login as') }} {{ emp.name }}">
                                 <i class="fa-solid fa-right-to-bracket"></i>
-                                <span class="sr-only">{{ t('Login sebagai') }} {{ emp.name }}</span>
+                                <span class="sr-only">{{ t('Login as') }} {{ emp.name }}</span>
                             </button>
                             <button type="button" onclick='openSendResetPasswordModal({{ emp.id }}, {{ emp.name|tojson }}, {{ emp.email|tojson }})'
                                     class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition"
-                                    title="{{ t('Kirim Link Reset Password ke') }} {{ emp.name }}">
+                                    title="{{ t('Send Password Reset Link to') }} {{ emp.name }}">
                                 <i class="fa-solid fa-key"></i>
-                                <span class="sr-only">{{ t('Kirim Reset Password') }}</span>
+                                <span class="sr-only">{{ t('Send Password Reset') }}</span>
                             </button>
                             {% endif %}
                             {% if emp.role != 'admin' %}
@@ -167,7 +167,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" name="email" required
                     class="input"
-                    placeholder="{{ t('email@perusahaan.com') }}">
+                    placeholder="{{ t('email@company.com') }}">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
@@ -304,14 +304,14 @@
    </div>
    <div class="col-span-full rounded-xl border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-500 grid grid-cols-2 gap-3 mt-1">
        <div>
-           <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Dibuat') }}</span>
+           <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Created') }}</span>
            <p class="font-semibold text-gray-700" id="editEmpCreatedAt">-</p>
-           <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editEmpCreatedBy" class="font-medium text-gray-700">-</span></p>
+           <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('By:') }}</span> <span id="editEmpCreatedBy" class="font-medium text-gray-700">-</span></p>
        </div>
        <div>
-           <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Terakhir Diperbarui') }}</span>
+           <span class="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">{{ t('Last Updated') }}</span>
            <p class="font-semibold text-gray-700" id="editEmpUpdatedAt">-</p>
-           <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('Oleh:') }}</span> <span id="editEmpUpdatedBy" class="font-medium text-gray-700">-</span></p>
+           <p class="text-[11px] text-gray-500 mt-0.5"><span class="audit-prefix">{{ t('By:') }}</span> <span id="editEmpUpdatedBy" class="font-medium text-gray-700">-</span></p>
        </div>
    </div>
    <div class="flex gap-3 pt-2 modal-form-actions"><button class="flex-1 py-2.5 text-white font-medium rounded-xl btn btn-primary">Simpan</button><button type="button" onclick="document.getElementById('editEmployeeModal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl btn btn-secondary">Batal</button></div>
@@ -400,8 +400,8 @@
                     <i class="fa-solid fa-user-secret text-lg"></i>
                 </span>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900" id="impModalTitle">{{ t('Login sebagai Karyawan') }}</h3>
-                    <p class="text-xs text-gray-500">{{ t('Buka sesi simulasi atau salin link akses cepat.') }}</p>
+                    <h3 class="text-base font-bold text-gray-900" id="impModalTitle">{{ t('Login as Employee') }}</h3>
+                    <p class="text-xs text-gray-500">{{ t('Open simulation session or copy quick access link.') }}</p>
                 </div>
             </div>
             <button type="button" onclick="closeImpersonateModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
@@ -428,14 +428,14 @@
 
             <!-- Link Box -->
             <div>
-                <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Link Akses Masuk Langsung:') }}</label>
+                <label class="mb-1.5 block text-xs font-semibold text-gray-700">{{ t('Direct Login Link:') }}</label>
                 <div class="flex gap-2">
                     <input type="text" id="impUrlInput" readonly class="field text-xs font-mono bg-gray-50 text-gray-700 select-all cursor-pointer">
                     <button type="button" id="btnCopyImpUrl" onclick="copyImpersonateUrl()" class="btn-secondary px-3.5 py-2 text-xs font-bold shrink-0">
-                        <i class="fa-solid fa-copy mr-1.5"></i><span id="copyBtnText">{{ t('Salin Link') }}</span>
+                        <i class="fa-solid fa-copy mr-1.5"></i><span id="copyBtnText">{{ t('Copy Link') }}</span>
                     </button>
                 </div>
-                <p class="mt-1.5 text-[11px] text-gray-400">{{ t('Link ini dapat dibuka di tab browser baru selama Anda login sebagai Super Admin.') }}</p>
+                <p class="mt-1.5 text-[11px] text-gray-400">{{ t('This link can be opened in a new browser tab while logged in as Super Admin.') }}</p>
             </div>
 
             <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 border-t border-gray-100 pt-4">
@@ -443,12 +443,12 @@
                     {{ t('Tutup') }}
                 </button>
                 <a id="impOpenTabBtn" href="#" target="_blank" class="btn-secondary px-4 py-2 text-xs font-bold text-indigo-700 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 inline-flex items-center justify-center">
-                    <i class="fa-solid fa-arrow-up-right-from-square mr-1.5"></i>{{ t('Buka di Tab Baru') }}
+                    <i class="fa-solid fa-arrow-up-right-from-square mr-1.5"></i>{{ t('Open in New Tab') }}
                 </a>
                 <form id="impDirectForm" method="POST" action="" class="inline">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-primary w-full sm:w-auto px-5 py-2 text-xs font-bold">
-                        <i class="fa-solid fa-right-to-bracket mr-1.5"></i>{{ t('Masuk Sekarang') }}
+                        <i class="fa-solid fa-right-to-bracket mr-1.5"></i>{{ t('Enter Now') }}
                     </button>
                 </form>
             </div>
@@ -465,8 +465,8 @@
                     <i class="fa-solid fa-key text-lg"></i>
                 </span>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900">{{ t('Kirim Link Reset Password') }}</h3>
-                    <p class="text-xs text-gray-500">{{ t('Kirim tautan langsung untuk mengatur ulang kata sandi') }}</p>
+                    <h3 class="text-base font-bold text-gray-900">{{ t('Send Password Reset Link') }}</h3>
+                    <p class="text-xs text-gray-500">{{ t('Send direct link to reset password') }}</p>
                 </div>
             </div>
             <button type="button" onclick="closeSendResetPasswordModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
@@ -476,23 +476,23 @@
 
         <div class="mt-4 space-y-4">
             <div class="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5">
-                <p class="text-xs text-gray-400 font-medium uppercase">{{ t('Karyawan Penerima') }}</p>
+                <p class="text-xs text-gray-400 font-medium uppercase">{{ t('Recipient Employee') }}</p>
                 <p class="text-sm font-bold text-gray-900 mt-0.5" id="resetEmpName">-</p>
                 <p class="text-xs text-gray-600" id="resetEmpEmail">-</p>
             </div>
 
             <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 leading-relaxed flex items-start gap-2.5">
                 <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 text-sm shrink-0"></i>
-                <p>{{ t('Sistem akan mengirimkan email berisi tautan langsung (berlaku 60 menit) ke alamat email terdaftar karyawan agar mereka dapat langsung membuat kata sandi baru tanpa perlu OTP.') }}</p>
+                <p>{{ t('The system will send an email containing a direct link (valid for 60 minutes) to the employee registered email so they can create a new password directly without OTP.') }}</p>
             </div>
 
             <form id="sendResetPasswordForm" method="POST" action="" onsubmit="submitSendResetPassword(event)" class="flex items-center justify-end gap-2.5 border-t border-gray-100 pt-4">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button type="button" onclick="closeSendResetPasswordModal()" class="btn-secondary px-4 py-2 text-xs font-semibold">
-                    {{ t('Batal') }}
+                    {{ t('Cancel') }}
                 </button>
                 <button type="submit" id="btnSubmitResetPassword" class="btn-primary bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold">
-                    <i class="fa-solid fa-paper-plane mr-1.5"></i>{{ t('Kirim Link Reset') }}
+                    <i class="fa-solid fa-paper-plane mr-1.5"></i>{{ t('Send Reset Link') }}
                 </button>
             </form>
         </div>
@@ -506,7 +506,7 @@
             <i class="fa-solid fa-paper-plane text-2xl"></i>
         </div>
         
-        <h3 class="text-lg font-bold text-gray-900" id="resetSuccessTitle">{{ t('Link Berhasil Dikirim!') }}</h3>
+        <h3 class="text-lg font-bold text-gray-900" id="resetSuccessTitle">{{ t('Link Sent Successfully!') }}</h3>
         
         <div class="mt-3.5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-xs text-emerald-950 text-left">
             <p class="font-medium text-gray-800 leading-relaxed" id="resetSuccessMessage">
@@ -515,12 +515,12 @@
         </div>
         
         <p class="mt-3 text-xs text-gray-500">
-            {{ t('Tautan reset password berlaku selama 60 menit dan karyawan dapat langsung mengkliknya untuk membuat password baru.') }}
+            {{ t('The password reset link is valid for 60 minutes and the employee can click it to create a new password directly.') }}
         </p>
 
         <div class="mt-6 flex justify-center">
             <button type="button" onclick="closeResetPasswordSuccessModal()" class="btn-primary w-full py-2.5 text-xs font-bold shadow-xs">
-                <i class="fa-solid fa-check mr-1.5"></i>{{ t('Selesai') }}
+                <i class="fa-solid fa-check mr-1.5"></i>{{ t('Done') }}
             </button>
         </div>
     </div>
@@ -615,7 +615,7 @@ function openImpersonateModal(id, name, email, role) {
     document.getElementById('impDirectForm').action = '/admin/impersonate/' + id;
 
     const copyBtnText = document.getElementById('copyBtnText');
-    if (copyBtnText) copyBtnText.textContent = '{{ t("Salin Link") }}';
+    if (copyBtnText) copyBtnText.textContent = '{{ t("Copy Link") }}';
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -642,17 +642,17 @@ function copyImpersonateUrl() {
     input.select();
     navigator.clipboard.writeText(input.value).then(() => {
         if (copyBtnText) {
-            copyBtnText.textContent = '{{ t("Link Disalin!") }}';
+            copyBtnText.textContent = '{{ t("Link Copied!") }}';
             setTimeout(() => {
-                copyBtnText.textContent = '{{ t("Salin Link") }}';
+                copyBtnText.textContent = '{{ t("Copy Link") }}';
             }, 2000);
         }
     }).catch(() => {
         document.execCommand('copy');
         if (copyBtnText) {
-            copyBtnText.textContent = '{{ t("Link Disalin!") }}';
+            copyBtnText.textContent = '{{ t("Link Copied!") }}';
             setTimeout(() => {
-                copyBtnText.textContent = '{{ t("Salin Link") }}';
+                copyBtnText.textContent = '{{ t("Copy Link") }}';
             }, 2000);
         }
     });
@@ -712,7 +712,7 @@ async function submitSendResetPassword(event) {
     const originalBtnHtml = submitBtn.innerHTML;
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> {{ t("Sedang mengirim...") }}';
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> {{ t("Sending...") }}';
 
     try {
         const formData = new FormData(form);
