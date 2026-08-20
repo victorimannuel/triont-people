@@ -90,6 +90,8 @@ def calendar():
 
     prev_month_days = (first_day - timedelta(days=1)).day
 
+    holidays_json = [h.holiday_date.isoformat() for h in holidays_query]
+
     return render_template('calendar.html',
         month=month, year=year,
         prev_month=prev_month, prev_year=prev_year,
@@ -100,6 +102,7 @@ def calendar():
         prev_month_days=prev_month_days,
         leaves_by_date=leaves_by_date,
         holidays_by_date=holidays_by_date,
+        holidays_json=holidays_json,
         today=today,
         can_apply_leave=can_apply_leave,
         leave_types=leave_types,

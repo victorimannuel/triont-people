@@ -282,6 +282,7 @@
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const HOLIDAYS_SET = new Set({{ (holidays_json or []) | tojson }});
     const grid = document.getElementById('leave-calendar-grid');
     if (!grid) return;
     const cells = Array.from(grid.querySelectorAll('.calendar-day'));
@@ -410,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 while (curr <= end) {
                     const day = curr.getDay();
                     const iso = curr.toISOString().split('T')[0];
-                    const isHol = Array.isArray(holidays) && holidays.some(h => h.date === iso);
+                    const isHol = typeof HOLIDAYS_SET !== 'undefined' && HOLIDAYS_SET.has(iso);
                     if (day !== 0 && day !== 6 && !isHol) {
                         workDays += 1;
                     }
