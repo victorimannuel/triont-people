@@ -30,15 +30,14 @@ Dokumen ini mencatat daftar rencana perbaikan, modernisasi, dan peningkatan fitu
 ---
 
 ## 🛠️ 4. Code Quality & Modernisasi (Backend)
-- [ ] **Migrasi `datetime.utcnow()` ke `datetime.now(timezone.utc)`**:
-  - Mengganti seluruh penggunaan `datetime.utcnow()` yang berstatus *deprecated* di Python 3.12/3.13 pada:
-    - `models/base.py`
-    - `routes/admin.py`
-    - `routes/approvals.py`
-    - `services/`
-  - Menghilangkan warning `DeprecationWarning` dari log test runner dan production output.
-- [ ] **Penanganan SQLite / SQLAlchemy Foreign Key Warnings**:
-  - Menyesuaikan definisi `ForeignKeyConstraint` dengan parameter `use_alter=True` untuk relasi siklik antara tabel `companies`, `departments`, dan `users` saat eksekusi test drop/create table.
+- [x] **Migrasi `datetime.utcnow()` ke `datetime.now(timezone.utc)`**:
+  - [x] Mengganti seluruh penggunaan `datetime.utcnow()` yang berstatus *deprecated* di Python 3.12/3.13 pada:
+    - `models/base.py`, `models/auth.py`, `models/audit.py`
+    - `routes/admin.py`, `routes/approvals.py`, `routes/dashboard.py`, `routes/auth.py`
+    - `tests/test_app.py`
+  - [x] Menghilangkan warning `DeprecationWarning` dari log test runner dan production output.
+- [x] **Penanganan SQLite / SQLAlchemy Foreign Key Warnings**:
+  - [x] Menyesuaikan definisi `ForeignKeyConstraint` dengan parameter `use_alter=True` untuk relasi siklik antara tabel `companies`, `departments`, dan `users` saat eksekusi test drop/create table.
 
 ---
 

@@ -3,11 +3,12 @@ from flask import has_request_context
 from flask_login import current_user
 from sqlalchemy import event
 from extensions import db
+from core.time_util import utcnow
 
 class AuditMixin:
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
     updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     @property
@@ -53,7 +54,7 @@ def init_audit_events():
     @event.listens_for(db.session, 'before_flush')
     def auto_populate_audit_fields(session, flush_context, instances):
         actor_id = _get_current_actor_id()
-        now = datetime.utcnow()
+        now = utcnow()
         for obj in session.new:
             if isinstance(obj, AuditMixin):
                 if getattr(obj, 'created_at', None) is None:

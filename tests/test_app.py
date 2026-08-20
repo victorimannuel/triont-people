@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from config import Config
 from extensions import db
 from app import create_app
+from core.time_util import utcnow
 from models import User, Company, Department, LeaveType, LeaveRequest, LeaveBalance, LeaveGrant, PublicHoliday, ApprovalConfig, PasswordReset
 from services.holiday_service import calculate_long_weekends, ensure_company_holidays
 
@@ -899,7 +900,7 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertIsNotNone(reset_entry)
         self.assertFalse(reset_entry.is_used)
         self.assertEqual(reset_entry.attempts, 0)
-        self.assertGreater(reset_entry.expires_at, datetime.utcnow())
+        self.assertGreater(reset_entry.expires_at, utcnow())
 
         # 2. Immediate second request triggers 60s cooldown warning
         res_cd = self.client.post('/auth/forgot-password', data={'email': 'alice@test.com'}, follow_redirects=True)
@@ -937,7 +938,7 @@ class PeopleAppTestCase(unittest.TestCase):
         # 4. Now create a fresh valid OTP entry and verify successfully
         reset_fresh = PasswordReset(
             user_id=self.employee_user.id,
-            expires_at=datetime.utcnow() + timedelta(minutes=15),
+            expires_at=utcnow() + timedelta(minutes=15),
             created_by_id=self.employee_user.id
         )
         reset_fresh.set_otp('789123')
@@ -962,7 +963,7 @@ class PeopleAppTestCase(unittest.TestCase):
         # 2. Setup verified session
         reset_entry = PasswordReset(
             user_id=self.employee_user.id,
-            expires_at=datetime.utcnow() + timedelta(minutes=15),
+            expires_at=utcnow() + timedelta(minutes=15),
             created_by_id=self.employee_user.id,
             reset_token='test-valid-reset-token-xyz'
         )
@@ -1206,7 +1207,7 @@ class PeopleAppTestCase(unittest.TestCase):
             reason="Holiday trip",
             status="approved",
             approved_by=self.manager_user.id,
-            approved_at=datetime.utcnow()
+            approved_at=utcnow()
         )
         db.session.add(req)
         db.session.commit()
@@ -1232,7 +1233,7 @@ class PeopleAppTestCase(unittest.TestCase):
             reason="Family gathering",
             status="approved",
             approved_by=self.manager_user.id,
-            approved_at=datetime.utcnow(),
+            approved_at=utcnow(),
             notes="Enjoy your leave!"
         )
         db.session.add(req)

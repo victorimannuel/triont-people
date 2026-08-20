@@ -4,6 +4,10 @@ from flask_login import current_user
 
 DEFAULT_TIMEZONE = 'Asia/Jakarta'
 
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 TIMEZONE_CHOICES = [
     ('Asia/Jakarta', 'WIB - Jakarta, Surabaya, Sumatera (UTC+7)'),
     ('Asia/Makassar', 'WITA - Bali, Balikpapan, Makassar (UTC+8)'),

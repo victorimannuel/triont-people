@@ -14,6 +14,7 @@ from services.audit_service import audit_log
 from services.notification_service import send_notification
 from services.import_service import parse_file_headers_and_preview, execute_leave_history_import
 from core.pagination import get_pagination_args
+from core.time_util import utcnow
 from routes.common import main_bp
 
 @main_bp.route('/approvals')
@@ -194,7 +195,7 @@ def approve_leave(request_id):
 
     if action == 'approve':
         req.approved_by = current_user.id
-        req.approved_at = datetime.utcnow()
+        req.approved_at = utcnow()
         req.notes = notes
 
         if req.current_approval_level >= req.max_approval_level:

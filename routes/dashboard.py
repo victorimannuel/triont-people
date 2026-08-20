@@ -14,6 +14,7 @@ from models.leave import LeaveBalance, LeaveType, LeaveRequest
 from models.auth import PasswordReset
 from core.i18n import translate, normalize_language, SUPPORTED_LANGUAGES
 from core.auth import get_active_company_id, role_required, validate_password_strength
+from core.time_util import utcnow
 from services.audit_service import audit_log
 from services.notification_service import send_password_reset_otp_email
 from routes.common import main_bp
@@ -189,7 +190,7 @@ def request_password_change_otp():
     # Check cooldown (60 seconds)
     last_reset = PasswordReset.query.filter_by(user_id=current_user.id).order_by(PasswordReset.created_at.desc()).first()
     if last_reset and last_reset.created_at:
-        elapsed = (datetime.utcnow() - last_reset.created_at).total_seconds()
+        elapsed = (utcnow() - last_reset.created_at).total_seconds()
         if elapsed < 60:
             rem = int(60 - elapsed)
             return jsonify(ok=False, message=translate(f'Harap tunggu {rem} detik sebelum meminta kode OTP baru.'), cooldown_remaining=rem), 429
@@ -198,7 +199,7 @@ def request_password_change_otp():
     PasswordReset.query.filter_by(user_id=current_user.id, is_used=False).update({'is_used': True})
 
     otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
+    expires_at = utcnow() + timedelta(minutes=15)
 
     reset_entry = PasswordReset(
         user_id=current_user.id,

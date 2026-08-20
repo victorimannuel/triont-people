@@ -1,6 +1,6 @@
 import json
-from datetime import datetime
 from extensions import db
+from core.time_util import utcnow
 
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
@@ -13,7 +13,7 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(64), nullable=True)
     user_agent = db.Column(db.String(255), nullable=True)
     details = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     company = db.relationship('Company')
     actor = db.relationship('User')

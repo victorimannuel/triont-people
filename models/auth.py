@@ -1,7 +1,7 @@
-from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from models.base import AuditMixin
+from core.time_util import utcnow
 
 class PasswordReset(AuditMixin, db.Model):
     __tablename__ = 'password_resets'
@@ -25,7 +25,7 @@ class PasswordReset(AuditMixin, db.Model):
 
     @property
     def is_expired(self) -> bool:
-        now = datetime.utcnow()
+        now = utcnow()
         return now > self.expires_at
 
     @property

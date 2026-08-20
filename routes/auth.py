@@ -9,6 +9,7 @@ from models.company import Company
 from models.auth import PasswordReset
 from core.i18n import translate, normalize_language, SUPPORTED_LANGUAGES
 from core.auth import role_required, validate_password_strength
+from core.time_util import utcnow
 from services.audit_service import audit_log
 from services.notification_service import send_password_reset_otp_email
 
@@ -67,7 +68,7 @@ def forgot_password():
         # Check cooldown (60 seconds)
         last_reset = PasswordReset.query.filter_by(user_id=user.id).order_by(PasswordReset.created_at.desc()).first()
         if last_reset and last_reset.created_at:
-            elapsed = (datetime.utcnow() - last_reset.created_at).total_seconds()
+            elapsed = (utcnow() - last_reset.created_at).total_seconds()
             if elapsed < 60:
                 rem = int(60 - elapsed)
                 flash(translate(f'Harap tunggu {rem} detik sebelum meminta kode OTP baru.'), 'warning')
@@ -78,7 +79,7 @@ def forgot_password():
 
         # Generate 6-digit numeric OTP
         otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
-        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        expires_at = utcnow() + timedelta(minutes=15)
 
         reset_entry = PasswordReset(
             user_id=user.id,
@@ -115,7 +116,7 @@ def verify_otp():
     if user:
         last_reset = PasswordReset.query.filter_by(user_id=user.id).order_by(PasswordReset.created_at.desc()).first()
         if last_reset and last_reset.created_at:
-            elapsed = (datetime.utcnow() - last_reset.created_at).total_seconds()
+            elapsed = (utcnow() - last_reset.created_at).total_seconds()
             if elapsed < 60:
                 cooldown_remaining = int(60 - elapsed)
 
@@ -178,7 +179,7 @@ def resend_otp():
 
     last_reset = PasswordReset.query.filter_by(user_id=user.id).order_by(PasswordReset.created_at.desc()).first()
     if last_reset and last_reset.created_at:
-        elapsed = (datetime.utcnow() - last_reset.created_at).total_seconds()
+        elapsed = (utcnow() - last_reset.created_at).total_seconds()
         if elapsed < 60:
             rem = int(60 - elapsed)
             flash(translate(f'Harap tunggu {rem} detik sebelum meminta kode baru.'), 'warning')
@@ -188,7 +189,7 @@ def resend_otp():
     PasswordReset.query.filter_by(user_id=user.id, is_used=False).update({'is_used': True})
 
     otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
+    expires_at = utcnow() + timedelta(minutes=15)
 
     reset_entry = PasswordReset(
         user_id=user.id,

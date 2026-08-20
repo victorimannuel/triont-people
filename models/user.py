@@ -8,7 +8,7 @@ class Department(AuditMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    head_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    head_id = db.Column(db.Integer, db.ForeignKey('users.id', use_alter=True, name='fk_departments_head_id'), nullable=True)
 
     company = db.relationship('Company')
     head = db.relationship('User', foreign_keys=[head_id])

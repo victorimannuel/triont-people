@@ -20,6 +20,7 @@ from services.holiday_service import sync_company_holidays
 from services.import_service import parse_file_headers_and_preview, execute_employee_import
 from services.notification_service import send_password_reset_otp_email, send_password_reset_link_email
 from core.pagination import get_pagination_args
+from core.time_util import utcnow
 from routes.common import main_bp
 
 def get_manageable_company_id(company_id=None):
@@ -268,7 +269,7 @@ def admin_send_employee_password_reset(user_id):
 
         reset_token = secrets.token_urlsafe(32)
         otp_placeholder = f"{secrets.randbelow(900000) + 100000:06d}"
-        expires_at = datetime.utcnow() + timedelta(minutes=60)
+        expires_at = utcnow() + timedelta(minutes=60)
 
         reset_entry = PasswordReset(
             user_id=emp.id,
@@ -1213,7 +1214,7 @@ def admin_audit_logs():
         )
 
     # Metrics
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
     total_logs_count = query.count()
     today_count = AuditLog.query.filter((AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None)), AuditLog.created_at >= today_start).count()
