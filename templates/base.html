@@ -447,6 +447,7 @@
 </script>
 {% endif %}
 {% endwith %}
+{% else %}
 <div class="no-print fixed right-4 top-4 z-50"><div class="language-toggle shadow-sm" role="group" aria-label="Language"><button type="button" data-lang-option="en">EN</button><button type="button" data-lang-option="id">ID</button><button type="button" data-lang-option="idc">CAS</button></div></div>
 <main>{% block guest_content %}{% endblock %}</main>
 {% endif %}
