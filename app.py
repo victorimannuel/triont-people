@@ -189,6 +189,25 @@ def create_app(config_class=Config):
                 safe_add_column('leave_types', "attachment_label VARCHAR(100) DEFAULT 'Surat Dokter / Bukti Pendukung'")
                 safe_add_column('leave_requests', "attachment_path VARCHAR(255)")
                 safe_add_column('leave_requests', "attachment_original_name VARCHAR(255)")
+
+                def safe_create_index(index_name, tbl, cols):
+                    try:
+                        conn.execute(db.text(f"CREATE INDEX IF NOT EXISTS {index_name} ON {tbl} ({cols});"))
+                        conn.commit()
+                        return
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(db.text(f"CREATE INDEX {index_name} ON {tbl} ({cols});"))
+                        conn.commit()
+                    except Exception:
+                        pass
+
+                safe_create_index('idx_audit_logs_company_id', 'audit_logs', 'company_id')
+                safe_create_index('idx_audit_logs_actor_id', 'audit_logs', 'actor_id')
+                safe_create_index('idx_audit_logs_action', 'audit_logs', 'action')
+                safe_create_index('idx_audit_logs_created_at', 'audit_logs', 'created_at')
+                safe_create_index('idx_audit_logs_company_created', 'audit_logs', 'company_id, created_at')
         except Exception:
             pass
 

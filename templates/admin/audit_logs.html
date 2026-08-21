@@ -43,12 +43,12 @@
         </div>
     </div>
 
-    <!-- Filter & Search Toolbar -->
-    <div class="app-card p-4 bg-white">
-        <form method="GET" action="{{ url_for('main.admin_audit_logs') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-5 items-end text-xs">
-            <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Action Category') }}</label>
-                <select name="category" class="input py-1.5 text-xs">
+    <!-- Filter & Search Toolbar (Single Row Auto-Filter) -->
+    <div class="app-card p-3.5 bg-white">
+        <form method="GET" action="{{ url_for('main.admin_audit_logs') }}" id="auditFilterForm" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end text-xs">
+            <div class="min-w-0">
+                <label class="mb-1 block font-semibold text-gray-700 truncate">{{ t('Action Category') }}</label>
+                <select name="category" class="input py-1.5 text-xs w-full" onchange="document.getElementById('auditFilterForm').submit()">
                     <option value="all" {% if category == 'all' or not category %}selected{% endif %}>{{ t('All Categories') }}</option>
                     <option value="auth" {% if category == 'auth' %}selected{% endif %}>{{ t('Authentication & Logins') }}</option>
                     <option value="employee" {% if category == 'employee' %}selected{% endif %}>{{ t('Employees & Profile') }}</option>
@@ -58,33 +58,43 @@
                     <option value="system" {% if category == 'system' %}selected{% endif %}>{{ t('System, Backup & Import') }}</option>
                 </select>
             </div>
-            <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('User / Actor') }}</label>
-                <select name="actor_id" class="input py-1.5 text-xs">
+            <div class="min-w-0">
+                <label class="mb-1 block font-semibold text-gray-700 truncate">{{ t('User / Actor') }}</label>
+                <select name="actor_id" class="input py-1.5 text-xs w-full" onchange="document.getElementById('auditFilterForm').submit()">
                     <option value="">{{ t('All Users') }}</option>
                     {% for actor in actors %}
                     <option value="{{ actor.id }}" {% if actor_id == actor.id %}selected{% endif %}>{{ actor.name }} ({{ actor.role|format_role }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Date Range') }}</label>
+            <div class="min-w-0">
+                <label class="mb-1 block font-semibold text-gray-700 truncate">{{ t('Date Range') }}</label>
                 <div class="grid grid-cols-2 gap-1.5">
-                    <input type="date" name="start_date" value="{{ start_date }}" class="input py-1 text-xs" placeholder="{{ t('From') }}">
-                    <input type="date" name="end_date" value="{{ end_date }}" class="input py-1 text-xs" placeholder="{{ t('To') }}">
+                    <input type="date" name="start_date" value="{{ start_date }}" class="input py-1.5 text-xs px-2 w-full min-w-0" placeholder="{{ t('From') }}" onchange="document.getElementById('auditFilterForm').submit()">
+                    <input type="date" name="end_date" value="{{ end_date }}" class="input py-1.5 text-xs px-2 w-full min-w-0" placeholder="{{ t('To') }}" onchange="document.getElementById('auditFilterForm').submit()">
                 </div>
             </div>
-            <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Search Keywords') }}</label>
-                <input type="text" name="q" value="{{ q }}" placeholder="{{ t('IP, target, details...') }}" class="input py-1.5 text-xs">
-            </div>
-            <div class="flex gap-2">
-                <button type="submit" class="btn-primary flex-1 py-2 text-xs font-semibold">
-                    <i class="fa-solid fa-filter mr-1"></i> {{ t('Filter') }}
-                </button>
-                <a href="{{ url_for('main.admin_audit_logs') }}" class="btn-secondary px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100" title="{{ t('Reset Filter') }}">
-                    <i class="fa-solid fa-arrow-rotate-left"></i>
-                </a>
+            <div class="min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block font-semibold text-gray-700 truncate">{{ t('Search Keywords') }}</label>
+                    {% if (category and category != 'all') or actor_id or start_date or end_date or q %}
+                    <a href="{{ url_for('main.admin_audit_logs') }}" class="text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline shrink-0 ml-1">
+                        <i class="fa-solid fa-arrow-rotate-left mr-0.5"></i>{{ t('Reset') }}
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="relative">
+                    <input type="text" name="q" id="auditSearchInput" value="{{ q }}" placeholder="{{ t('IP, target, details...') }}" class="input py-1.5 pr-8 text-xs w-full">
+                    {% if q %}
+                    <a href="{{ url_for('main.admin_audit_logs', category=category, actor_id=actor_id, start_date=start_date, end_date=end_date) }}" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600" title="{{ t('Clear search') }}">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </a>
+                    {% else %}
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    {% endif %}
+                </div>
             </div>
         </form>
     </div>
@@ -261,5 +271,18 @@ function closeAuditInspect() {
     const modal = document.getElementById('auditInspectModal');
     modal.classList.add('hidden');
 }
+
+(function() {
+    let searchDebounceTimer;
+    const auditSearchInput = document.getElementById('auditSearchInput');
+    if (auditSearchInput) {
+        auditSearchInput.addEventListener('input', function() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(function() {
+                document.getElementById('auditFilterForm').submit();
+            }, 450);
+        });
+    }
+})();
 </script>
 {% endblock %}
