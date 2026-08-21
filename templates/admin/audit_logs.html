@@ -10,15 +10,15 @@
                 <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700 shadow-2xs">
                     <i class="fa-solid fa-shield-halved text-base"></i>
                 </span>
-                <h1 class="text-xl font-bold text-gray-900">{{ t('Audit Log & Jejak Aktivitas') }}</h1>
+                <h1 class="text-xl font-bold text-gray-900">{{ t('Audit Logs & Activity Trail') }}</h1>
             </div>
-            <p class="mt-1 text-xs text-gray-500">{{ t('Rekaman seluruh aktivitas operasional dan perubahan data sistem khusus Administrator.') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('Record of all operational activities and system data changes for Administrators.') }}</p>
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ url_for('main.admin_export_audit_logs', category=category, actor_id=actor_id, start_date=start_date, end_date=end_date, q=q) }}"
                class="btn-secondary inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border-gray-200 hover:bg-gray-50 text-gray-700 shadow-2xs">
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                <span>{{ t('Ekspor Excel (.xlsx)') }}</span>
+                <span>{{ t('Export Excel (.xlsx)') }}</span>
             </a>
         </div>
     </div>
@@ -26,19 +26,19 @@
     <!-- Stat Cards -->
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="app-card p-4 border-l-4 border-l-teal-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Total Log Terfilter') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t('Total Filtered Logs') }}</span>
             <p class="mt-1 text-xl font-bold text-gray-900">{{ total_logs_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-blue-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Aktivitas Hari Ini') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t("Today's Activity") }}</span>
             <p class="mt-1 text-xl font-bold text-blue-600">{{ today_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-indigo-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Autentikasi & Login') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t('Authentication & Logins') }}</span>
             <p class="mt-1 text-xl font-bold text-indigo-600">{{ auth_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-amber-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Operasi & Perubahan Data') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t('Data Operations & Changes') }}</span>
             <p class="mt-1 text-xl font-bold text-amber-600">{{ data_ops_count }}</p>
         </div>
     </div>
@@ -47,36 +47,36 @@
     <div class="app-card p-4 bg-white">
         <form method="GET" action="{{ url_for('main.admin_audit_logs') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-5 items-end text-xs">
             <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Kategori Aksi') }}</label>
+                <label class="mb-1 block font-semibold text-gray-700">{{ t('Action Category') }}</label>
                 <select name="category" class="input py-1.5 text-xs">
-                    <option value="all" {% if category == 'all' or not category %}selected{% endif %}>{{ t('Semua Kategori') }}</option>
-                    <option value="auth" {% if category == 'auth' %}selected{% endif %}>{{ t('Autentikasi & Login') }}</option>
-                    <option value="employee" {% if category == 'employee' %}selected{% endif %}>{{ t('Karyawan & Profil') }}</option>
-                    <option value="leave" {% if category == 'leave' %}selected{% endif %}>{{ t('Cuti & Approval') }}</option>
+                    <option value="all" {% if category == 'all' or not category %}selected{% endif %}>{{ t('All Categories') }}</option>
+                    <option value="auth" {% if category == 'auth' %}selected{% endif %}>{{ t('Authentication & Logins') }}</option>
+                    <option value="employee" {% if category == 'employee' %}selected{% endif %}>{{ t('Employees & Profile') }}</option>
+                    <option value="leave" {% if category == 'leave' %}selected{% endif %}>{{ t('Leave & Approvals') }}</option>
                     <option value="department" {% if category == 'department' %}selected{% endif %}>{{ t('Departments') }}</option>
-                    <option value="company" {% if category == 'company' %}selected{% endif %}>{{ t('Perusahaan & SMTP') }}</option>
-                    <option value="system" {% if category == 'system' %}selected{% endif %}>{{ t('Sistem, Backup & Import') }}</option>
+                    <option value="company" {% if category == 'company' %}selected{% endif %}>{{ t('Company & SMTP') }}</option>
+                    <option value="system" {% if category == 'system' %}selected{% endif %}>{{ t('System, Backup & Import') }}</option>
                 </select>
             </div>
             <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('User / Aktor') }}</label>
+                <label class="mb-1 block font-semibold text-gray-700">{{ t('User / Actor') }}</label>
                 <select name="actor_id" class="input py-1.5 text-xs">
-                    <option value="">{{ t('Semua User') }}</option>
+                    <option value="">{{ t('All Users') }}</option>
                     {% for actor in actors %}
                     <option value="{{ actor.id }}" {% if actor_id == actor.id %}selected{% endif %}>{{ actor.name }} ({{ actor.role|format_role }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Rentang Tanggal') }}</label>
+                <label class="mb-1 block font-semibold text-gray-700">{{ t('Date Range') }}</label>
                 <div class="grid grid-cols-2 gap-1.5">
-                    <input type="date" name="start_date" value="{{ start_date }}" class="input py-1 text-xs" placeholder="{{ t('Dari') }}">
-                    <input type="date" name="end_date" value="{{ end_date }}" class="input py-1 text-xs" placeholder="{{ t('Sampai') }}">
+                    <input type="date" name="start_date" value="{{ start_date }}" class="input py-1 text-xs" placeholder="{{ t('From') }}">
+                    <input type="date" name="end_date" value="{{ end_date }}" class="input py-1 text-xs" placeholder="{{ t('To') }}">
                 </div>
             </div>
             <div>
-                <label class="mb-1 block font-semibold text-gray-700">{{ t('Cari Kata Kunci') }}</label>
-                <input type="text" name="q" value="{{ q }}" placeholder="{{ t('IP, target, detail...') }}" class="input py-1.5 text-xs">
+                <label class="mb-1 block font-semibold text-gray-700">{{ t('Search Keywords') }}</label>
+                <input type="text" name="q" value="{{ q }}" placeholder="{{ t('IP, target, details...') }}" class="input py-1.5 text-xs">
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn-primary flex-1 py-2 text-xs font-semibold">
@@ -95,12 +95,12 @@
             <table class="w-full text-left text-xs">
                 <thead class="border-b border-gray-200 bg-gray-50/80 uppercase tracking-wider text-gray-500 font-semibold">
                     <tr>
-                        <th class="px-4 py-3.5">{{ t('Waktu (WIB)') }}</th>
-                        <th class="px-4 py-3.5">{{ t('User / Aktor') }}</th>
-                        <th class="px-4 py-3.5">{{ t('Aksi / Operasi') }}</th>
+                        <th class="px-4 py-3.5">{{ t('Time (WIB)') }}</th>
+                        <th class="px-4 py-3.5">{{ t('User / Actor') }}</th>
+                        <th class="px-4 py-3.5">{{ t('Action / Operation') }}</th>
                         <th class="px-4 py-3.5">{{ t('Target') }}</th>
-                        <th class="px-4 py-3.5">{{ t('Rincian Operasi') }}</th>
-                        <th class="px-4 py-3.5">{{ t('IP & Perangkat') }}</th>
+                        <th class="px-4 py-3.5">{{ t('Operation Details') }}</th>
+                        <th class="px-4 py-3.5">{{ t('IP & Device') }}</th>
                         <th class="px-4 py-3.5 text-right">{{ t('Actions') }}</th>
                     </tr>
                 </thead>
@@ -126,14 +126,14 @@
                             </div>
                             {% else %}
                             <span class="inline-flex items-center gap-1 text-gray-400 font-medium italic">
-                                <i class="fa-solid fa-robot text-[10px]"></i> {{ t('Sistem / Anonim') }}
+                                <i class="fa-solid fa-robot text-[10px]"></i> {{ t('System / Anonymous') }}
                             </span>
                             {% endif %}
                         </td>
                         <td class="px-4 py-3">
                             <span class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold {{ log.action_badge_class }}">
                                 <i class="fa-solid {{ log.action_icon }} text-[10px]"></i>
-                                {{ log.action_label }}
+                                {{ t(log.action_label) }}
                             </span>
                             <span class="block text-[10px] text-gray-400 font-mono mt-0.5">{{ log.action }}</span>
                         </td>
@@ -162,8 +162,8 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <button type="button" onclick='inspectAuditLog({{ log.id }}, {{ log.action|tojson }}, {{ log.action_label|tojson }}, {{ (log.actor.name if log.actor else "Sistem")|tojson }}, {{ (log.actor.email if log.actor else "-")|tojson }}, {{ log.created_at|user_tz("%d/%m/%Y %H:%M:%S")|tojson }}, {{ (log.target_type or "-")|tojson }}, {{ (log.target_id|string if log.target_id else "-")|tojson }}, {{ (log.ip_address or "-")|tojson }}, {{ (log.user_agent or "-")|tojson }}, {{ log.details_dict|tojson }})'
-                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('Lihat Rincian') }}">
+                            <button type="button" onclick='inspectAuditLog({{ log.id }}, {{ log.action|tojson }}, {{ t(log.action_label)|tojson }}, {{ (log.actor.name if log.actor else t('System'))|tojson }}, {{ (log.actor.email if log.actor else '-')|tojson }}, {{ log.created_at|user_tz("%d/%m/%Y %H:%M:%S")|tojson }}, {{ (log.target_type or '-')|tojson }}, {{ (log.target_id|string if log.target_id else '-')|tojson }}, {{ (log.ip_address or '-')|tojson }}, {{ (log.user_agent or '-')|tojson }}, {{ log.details_dict|tojson }})'
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs" title="{{ t('View Details') }}">
                                 <i class="fa-solid fa-magnifying-glass text-xs"></i>
                             </button>
                         </td>
@@ -172,8 +172,8 @@
                     <tr>
                         <td colspan="7" class="empty-state py-12 text-center">
                             <i class="fa-solid fa-clipboard-list text-3xl text-gray-300 mb-2"></i>
-                            <p class="font-semibold text-gray-700">{{ t('Belum ada log audit yang sesuai') }}</p>
-                            <span class="text-xs text-gray-400">{{ t('Coba sesuaikan filter atau rentang tanggal pencarian.') }}</span>
+                            <p class="font-semibold text-gray-700">{{ t('No audit logs found') }}</p>
+                            <span class="text-xs text-gray-400">{{ t('Try adjusting your filters or date range search.') }}</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -192,7 +192,7 @@
             <div class="flex items-center gap-2.5">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><i class="fa-solid fa-shield-halved text-sm"></i></span>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900" id="inspectActionLabel">{{ t('Rincian Log Audit') }}</h3>
+                    <h3 class="text-base font-bold text-gray-900" id="inspectActionLabel">{{ t('Audit Log Details') }}</h3>
                     <p class="text-[11px] font-mono text-gray-400" id="inspectActionCode"></p>
                 </div>
             </div>
@@ -204,15 +204,15 @@
         <div class="space-y-4 text-xs">
             <div class="grid grid-cols-2 gap-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('Waktu Operasi') }}</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('Operation Time') }}</span>
                     <p class="font-semibold text-gray-800 mt-0.5" id="inspectTime">-</p>
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('User / Aktor') }}</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('User / Actor') }}</span>
                     <p class="font-semibold text-gray-800 mt-0.5" id="inspectActor">-</p>
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('Target Entitas') }}</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('Target Entity') }}</span>
                     <p class="font-semibold text-gray-800 mt-0.5" id="inspectTarget">-</p>
                 </div>
                 <div>
@@ -227,14 +227,14 @@
             </div>
 
             <div>
-                <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider mb-1">{{ t('Payload & Rincian Data (JSON)') }}</span>
+                <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider mb-1">{{ t('Payload & Data Details (JSON)') }}</span>
                 <pre class="font-mono text-[11px] leading-relaxed text-teal-950 bg-teal-50/70 p-3.5 rounded-xl border border-teal-200/80 overflow-x-auto max-h-60" id="inspectJsonDetails">{}</pre>
             </div>
         </div>
 
         <div class="mt-6 flex justify-end">
             <button type="button" onclick="closeAuditInspect()" class="btn-secondary px-5 py-2 text-xs font-semibold rounded-xl border-gray-200">
-                {{ t('Tutup') }}
+                {{ t('Close') }}
             </button>
         </div>
     </div>
