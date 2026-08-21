@@ -1,6 +1,6 @@
 import os
 from datetime import date, datetime
-from flask import Flask, session
+from flask import Flask, session, request, jsonify, render_template
 from flask_login import current_user
 from config import Config
 from extensions import db, login_manager, migrate
@@ -151,6 +151,41 @@ def create_app(config_class=Config):
     def service_worker_file():
         from flask import send_from_directory
         return send_from_directory(os.path.join(app.root_path, 'static'), 'sw.js', mimetype='application/javascript')
+
+    # Error Handlers
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+            return jsonify({
+                'error': 'Forbidden',
+                'message': translate('You do not have permission to access this resource.'),
+                'status_code': 403
+            }), 403
+        return render_template('errors/403.html'), 403
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+            return jsonify({
+                'error': 'Not Found',
+                'message': translate('The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.'),
+                'status_code': 404
+            }), 404
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+            return jsonify({
+                'error': 'Internal Server Error',
+                'message': translate('Something went wrong on our end. Please try again later or contact support if the problem persists.'),
+                'status_code': 500
+            }), 500
+        return render_template('errors/500.html'), 500
 
     # Auto-create tables & seed initial data on startup if configured
     with app.app_context():

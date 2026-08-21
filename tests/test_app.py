@@ -181,6 +181,43 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertGreater(len(holidays), 10)
         self.assertGreater(len(suggestions), 0)
 
+    def test_long_weekend_year_navigation(self):
+        self._login(self.admin_user)
+        # Test default year
+        res_default = self.client.get('/long-weekend')
+        self.assertEqual(res_default.status_code, 200)
+
+        # Test specific years (previous and next)
+        res_prev = self.client.get('/long-weekend?year=2025')
+        self.assertEqual(res_prev.status_code, 200)
+        self.assertIn(b'2025', res_prev.data)
+
+        res_next = self.client.get('/long-weekend?year=2027')
+        self.assertEqual(res_next.status_code, 200)
+        self.assertIn(b'2027', res_next.data)
+
+    def test_holiday_auto_sync_api_and_dynamic_year(self):
+        self._login(self.admin_user)
+        # Test syncing holidays for year 2028 via endpoint
+        res_sync = self.client.post('/admin/holidays/sync', data={
+            'year': '2028',
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res_sync.status_code, 200)
+
+        # Verify that 2028 holidays exist for company A
+        h2028 = PublicHoliday.query.filter(
+            PublicHoliday.company_id == self.company_a.id,
+            PublicHoliday.holiday_date >= date(2028, 1, 1),
+            PublicHoliday.holiday_date <= date(2028, 12, 31)
+        ).all()
+        self.assertGreater(len(h2028), 0)
+
+        # Verify page renders 2028 with auto-synced data
+        res_2028 = self.client.get('/long-weekend?year=2028')
+        self.assertEqual(res_2028.status_code, 200)
+        self.assertIn(b'2028', res_2028.data)
+
     def test_custom_holiday_crud(self):
         self._login(self.admin_user)
         res = self.client.post('/admin/holidays/add', data={
@@ -201,12 +238,30 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertIsNone(h_after)
 
     def test_multi_tenant_isolation(self):
-        # User in company A cannot see company B employees
+        # 1. User in company A cannot see company B employees
         self._login(self.admin_user)
         res = self.client.get('/admin/employees')
         self.assertEqual(res.status_code, 200)
         self.assertIn(b'Alice Employee', res.data)
         self.assertNotIn(b'Charlie B', res.data)
+
+        # 2. Holiday added in Company A does not appear in Company B
+        res_add = self.client.post('/admin/holidays/add', data={
+            'holiday_date': '2026-11-25',
+            'name': 'HUT Khusus Triont Company A',
+            'kind': 'company',
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res_add.status_code, 302)
+
+        # Company A sees the custom holiday
+        res_a_holidays = self.client.get('/long-weekend?year=2026')
+        self.assertIn(b'HUT Khusus Triont Company A', res_a_holidays.data)
+
+        # Company B does NOT see Company A's custom holiday
+        self._login(self.emp_b)
+        res_b_holidays = self.client.get('/long-weekend?year=2026')
+        self.assertNotIn(b'HUT Khusus Triont Company A', res_b_holidays.data)
 
     def test_half_day_leave_workflow_and_overlap_validation(self):
         self._login(self.employee_user)
@@ -532,6 +587,201 @@ class PeopleAppTestCase(unittest.TestCase):
         res_filter = self.client.get(f'/approval-history?year={date.today().year}&status=approved')
         self.assertEqual(res_filter.status_code, 200)
 
+    def test_filter_persistence_and_reset_buttons(self):
+        self._login(self.admin_user)
+
+        # 1. Employees list filter persistence & reset button
+        res_emp_clean = self.client.get('/admin/employees')
+        self.assertEqual(res_emp_clean.status_code, 200)
+
+        res_emp_filtered = self.client.get('/admin/employees?q=Alice&role=employee')
+        self.assertEqual(res_emp_filtered.status_code, 200)
+        self.assertIn(b'Reset filter', res_emp_filtered.data)
+        self.assertIn(b'Alice Employee', res_emp_filtered.data)
+
+        # 2. Leave balances filter persistence & reset button
+        res_bal_filtered = self.client.get(f'/admin/leave-balances?q=Alice&year={date.today().year - 1}')
+        self.assertEqual(res_bal_filtered.status_code, 200)
+        self.assertIn(b'Reset filter', res_bal_filtered.data)
+
+        # 3. Leave types filter persistence & reset button
+        res_lt_filtered = self.client.get('/admin/leave-types?q=Tahunan')
+        self.assertEqual(res_lt_filtered.status_code, 200)
+        self.assertIn(b'Reset filter', res_lt_filtered.data)
+
+        # 4. Departments filter persistence & reset button
+        res_dept_filtered = self.client.get('/admin/departments?q=Engineering')
+        self.assertEqual(res_dept_filtered.status_code, 200)
+        self.assertIn(b'Reset filter', res_dept_filtered.data)
+
+        # 5. History filter persistence & reset button
+        self._login(self.employee_user)
+        res_hist_filtered = self.client.get('/history?status=pending')
+        self.assertEqual(res_hist_filtered.status_code, 200)
+        self.assertIn(b'Reset filter', res_hist_filtered.data)
+
+    def test_global_confirm_modal_rendered_and_actions(self):
+        self._login(self.admin_user)
+
+        # 1. Verify global modal component is present in base layout
+        res_page = self.client.get('/admin/leave-types')
+        self.assertEqual(res_page.status_code, 200)
+        self.assertIn(b'id="globalConfirmModal"', res_page.data)
+        self.assertIn(b'window.showConfirmModal', res_page.data)
+        self.assertIn(b'confirmArchiveLeaveType', res_page.data)
+        self.assertIn(b'confirmDeleteLeaveType', res_page.data)
+
+        # 2. Verify departments page has confirm hooks
+        res_dept = self.client.get('/admin/departments')
+        self.assertEqual(res_dept.status_code, 200)
+        self.assertIn(b'confirmDeleteDepartment', res_dept.data)
+
+        # 3. Verify companies page has confirm hooks
+        res_comp = self.client.get('/admin/companies')
+        self.assertEqual(res_comp.status_code, 200)
+        self.assertIn(b'confirmDeleteCompany', res_comp.data)
+
+        # 4. Verify approval history page has confirm hooks
+        res_app_hist = self.client.get('/approval-history')
+        self.assertEqual(res_app_hist.status_code, 200)
+        self.assertIn(b'confirmDeleteApprovalHistory', res_app_hist.data)
+
+        # 5. Verify employee history page has cancel confirm hook
+        self._login(self.employee_user)
+        res_hist = self.client.get('/history')
+        self.assertEqual(res_hist.status_code, 200)
+        self.assertIn(b'confirmCancelLeaveRequest', res_hist.data)
+
+    def test_custom_error_pages_403_404_500(self):
+        # 1. Test 404 Not Found (HTML)
+        res_404 = self.client.get('/non-existent-random-route-999')
+        self.assertEqual(res_404.status_code, 404)
+        self.assertIn(b'404', res_404.data)
+        self.assertTrue(b'Halaman Tidak Ditemukan' in res_404.data or b'Page Not Found' in res_404.data)
+        self.assertTrue(b'Kembali' in res_404.data or b'Back' in res_404.data)
+
+        # 2. Test 404 JSON response
+        res_404_json = self.client.get('/api/unknown-endpoint', headers={'Accept': 'application/json'})
+        self.assertEqual(res_404_json.status_code, 404)
+        self.assertTrue(res_404_json.is_json)
+        self.assertEqual(res_404_json.get_json().get('status_code'), 404)
+
+        # 3. Test 403 Forbidden template rendering & JSON response
+        with self.app.test_request_context():
+            from flask import render_template
+            res_403_html = render_template('errors/403.html')
+            self.assertIn('403', res_403_html)
+            self.assertTrue('Akses Ditolak' in res_403_html or 'Access Denied' in res_403_html)
+
+        # 4. Test 500 Internal Server Error template rendering & JSON response
+        with self.app.test_request_context():
+            from flask import render_template
+            res_500_html = render_template('errors/500.html')
+            self.assertIn('500', res_500_html)
+            self.assertTrue('Terjadi Kesalahan Server' in res_500_html or 'Internal Server Error' in res_500_html)
+
+    def test_bulk_actions_employees_leave_types_departments(self):
+        self._login(self.admin_user)
+
+        # 1. Verify Bulk UI elements exist on employees page
+        res_emp_ui = self.client.get('/admin/employees')
+        self.assertEqual(res_emp_ui.status_code, 200)
+        self.assertIn(b'bulkActionBar', res_emp_ui.data)
+        self.assertIn(b'selectAllCheckbox', res_emp_ui.data)
+        self.assertIn(b'executeBulkAction', res_emp_ui.data)
+
+        # 2. Bulk Archive Employees
+        res_bulk_archive = self.client.post('/admin/employees/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'archive',
+            'ids': [str(self.employee_user.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_bulk_archive.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertFalse(self.employee_user.is_active)
+        self.assertFalse(self.employee_user.is_deleted)
+
+        # 3. Bulk Unarchive Employees
+        res_bulk_unarchive = self.client.post('/admin/employees/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'unarchive',
+            'ids': [str(self.employee_user.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_bulk_unarchive.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertTrue(self.employee_user.is_active)
+
+        # 4. Bulk Delete Employees (Soft delete)
+        res_bulk_del = self.client.post('/admin/employees/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'delete',
+            'ids': [str(self.employee_user.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_bulk_del.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertTrue(self.employee_user.is_deleted)
+
+        # 5. Bulk Restore Employees
+        res_bulk_restore = self.client.post('/admin/employees/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'restore',
+            'ids': [str(self.employee_user.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_bulk_restore.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertFalse(self.employee_user.is_deleted)
+        self.assertTrue(self.employee_user.is_active)
+
+        # 6. Bulk Action on Leave Types
+        res_lt_ui = self.client.get('/admin/leave-types')
+        self.assertEqual(res_lt_ui.status_code, 200)
+        self.assertIn(b'bulkActionBar', res_lt_ui.data)
+
+        res_lt_archive = self.client.post('/admin/leave-types/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'archive',
+            'ids': [str(self.lt_annual_a.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_lt_archive.status_code, 200)
+        db.session.refresh(self.lt_annual_a)
+        self.assertFalse(self.lt_annual_a.is_active)
+
+        res_lt_restore = self.client.post('/admin/leave-types/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'unarchive',
+            'ids': [str(self.lt_annual_a.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_lt_restore.status_code, 200)
+        db.session.refresh(self.lt_annual_a)
+        self.assertTrue(self.lt_annual_a.is_active)
+
+        # 7. Bulk Action on Departments
+        dept = Department(name='Engineering', company_id=self.company_a.id)
+        db.session.add(dept)
+        db.session.commit()
+
+        res_dept_ui = self.client.get('/admin/departments')
+        self.assertEqual(res_dept_ui.status_code, 200)
+        self.assertIn(b'bulkActionBar', res_dept_ui.data)
+
+        res_dept_del = self.client.post('/admin/departments/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'delete',
+            'ids': [str(dept.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_dept_del.status_code, 200)
+        db.session.refresh(dept)
+        self.assertTrue(dept.is_deleted)
+
+        res_dept_restore = self.client.post('/admin/departments/bulk-action', data={
+            '_csrf_token': 'test-token',
+            'action': 'restore',
+            'ids': [str(dept.id)]
+        }, follow_redirects=True)
+        self.assertEqual(res_dept_restore.status_code, 200)
+        db.session.refresh(dept)
+        self.assertFalse(dept.is_deleted)
+
     def test_admin_employees_toggle_archive(self):
         self._login(self.admin_user)
         # 1. Active tab
@@ -650,7 +900,7 @@ class PeopleAppTestCase(unittest.TestCase):
         # 8. Deleted list shows it with restore button
         res_deleted = self.client.get('/admin/leave-types?status=deleted')
         self.assertEqual(res_deleted.status_code, 200)
-        self.assertIn(f'/admin/leave-types/restore/{self.lt_annual_a.id}'.encode('utf-8'), res_deleted.data)
+        self.assertIn(f'confirmRestoreLeaveType({self.lt_annual_a.id}'.encode('utf-8'), res_deleted.data)
 
         # 9. Restore leave type
         res_restore = self.client.post(f'/admin/leave-types/restore/{self.lt_annual_a.id}', follow_redirects=True)
@@ -893,12 +1143,12 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(format_user_datetime(utc_dt, '%H:%M', tz_name='Asia/Jakarta'), '17:00')
         self.assertEqual(format_user_datetime(utc_dt, '%H:%M', tz_name='Asia/Jayapura'), '19:00')
 
-        # 4. Check leave types page contains archiveLeaveTypeModal without alert confirm
+        # 4. Check leave types page contains confirmation modal hooks without alert confirm
         res_lt = self.client.get('/admin/leave-types')
         self.assertEqual(res_lt.status_code, 200)
         html_lt = res_lt.data.decode('utf-8')
-        self.assertIn('archiveLeaveTypeModal', html_lt)
-        self.assertIn('openArchiveLeaveType', html_lt)
+        self.assertIn('confirmArchiveLeaveType', html_lt)
+        self.assertIn('globalConfirmModal', html_lt)
         self.assertNotIn("onsubmit=\"return confirm('Arsipkan", html_lt)
 
     def test_list_view_pagination_and_show_all(self):

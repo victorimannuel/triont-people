@@ -74,25 +74,130 @@ INDONESIAN_HOLIDAYS_DATA = [
     ('2027-08-15', 'Maulid Nabi Muhammad SAW', 'national'),
     ('2027-08-17', 'Hari Kemerdekaan RI ke-82', 'national'),
     ('2027-12-25', 'Hari Raya Natal', 'national'),
+
+    # 2028 (Preliminary projections)
+    ('2028-01-01', 'Tahun Baru 2028 Masehi', 'national'),
+    ('2028-01-26', 'Tahun Baru Imlek 2579 Kongzili', 'national'),
+    ('2028-02-27', 'Hari Raya Idul Fitri 1449 H', 'national'),
+    ('2028-02-28', 'Hari Raya Idul Fitri 1449 H', 'national'),
+    ('2028-03-26', 'Hari Suci Nyepi (Saka 1950)', 'national'),
+    ('2028-04-14', 'Wafat Yesus Kristus', 'national'),
+    ('2028-05-01', 'Hari Buruh Internasional', 'national'),
+    ('2028-05-09', 'Hari Raya Waisak 2572 BE', 'national'),
+    ('2028-05-25', 'Kenaikan Yesus Kristus', 'national'),
+    ('2028-06-01', 'Hari Lahir Pancasila', 'national'),
+    ('2028-08-17', 'Hari Kemerdekaan RI ke-83', 'national'),
+    ('2028-12-25', 'Hari Raya Natal', 'national'),
 ]
 
-def ensure_company_holidays(company_id):
+def get_fixed_holidays_for_year(year):
+    """Returns statutory fixed Indonesian annual national holidays."""
+    ri_age = max(1, year - 1945)
+    return [
+        (f"{year}-01-01", f"Tahun Baru {year} Masehi", "national"),
+        (f"{year}-05-01", "Hari Buruh Internasional", "national"),
+        (f"{year}-06-01", "Hari Lahir Pancasila", "national"),
+        (f"{year}-08-17", f"Hari Kemerdekaan RI ke-{ri_age}", "national"),
+        (f"{year}-12-25", "Hari Raya Natal", "national"),
+    ]
+
+def fetch_holidays_from_api(year):
+    """
+    Fetches national holidays from public API (Nager.Date / DayoffAPI) for a given year.
+    Returns a list of tuples: (date_str, name, kind)
+    """
+    import urllib.request
+    import json
+
+    results = []
+    # Primary public API: Nager.Date v3 PublicHolidays for Indonesia
+    nager_url = f"https://date.nager.at/api/v3/PublicHolidays/{year}/ID"
+    try:
+        req = urllib.request.Request(nager_url, headers={'User-Agent': 'TritonPeople/1.0'})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data:
+                d_str = item.get('date')
+                name = item.get('localName') or item.get('name')
+                kind = 'collective' if 'cuti bersama' in name.lower() else 'national'
+                results.append((d_str, name, kind))
+            if results:
+                return results
+    except Exception:
+        pass
+
+    return results
+
+def ensure_company_holidays(company_id, year=None):
+    """Ensures holidays exist for company. If year is provided, ensures holidays for that year."""
     if not company_id:
         return
     try:
-        existing_count = PublicHoliday.query.filter_by(company_id=company_id).count()
-        if existing_count == 0:
-            sync_company_holidays(company_id)
+        if year:
+            start_d = date(year, 1, 1)
+            end_d = date(year, 12, 31)
+            count = PublicHoliday.query.filter(
+                PublicHoliday.company_id == company_id,
+                PublicHoliday.holiday_date >= start_d,
+                PublicHoliday.holiday_date <= end_d
+            ).count()
+            if count == 0:
+                sync_company_holidays(company_id, year=year)
+        else:
+            existing_count = PublicHoliday.query.filter_by(company_id=company_id).count()
+            if existing_count == 0:
+                sync_company_holidays(company_id)
     except Exception:
         db.session.rollback()
         db.create_all()
-        sync_company_holidays(company_id)
+        sync_company_holidays(company_id, year=year)
 
-def sync_company_holidays(company_id):
+def sync_company_holidays(company_id, year=None):
+    """
+    Synchronizes company holidays using live API, curated dataset, and annual fixed holidays.
+    Returns: (added_count, source_description)
+    """
     if not company_id:
-        return
-    for d_str, name, kind in INDONESIAN_HOLIDAYS_DATA:
-        h_date = datetime.strptime(d_str, '%Y-%m-%d').date()
+        return 0, "None"
+
+    holidays_to_sync = {}  # {date_str: (name, kind)}
+    source = "Dataset & API"
+
+    if year:
+        # 1. Fetch from live API for requested year
+        api_data = fetch_holidays_from_api(year)
+        if api_data:
+            source = f"Live API ({len(api_data)} libur)"
+            for d_str, name, kind in api_data:
+                holidays_to_sync[d_str] = (name, kind)
+
+        # 2. Merge matching dates from curated dataset
+        for d_str, name, kind in INDONESIAN_HOLIDAYS_DATA:
+            if d_str.startswith(f"{year}-") and d_str not in holidays_to_sync:
+                holidays_to_sync[d_str] = (name, kind)
+
+        # 3. Always ensure statutory fixed holidays for this year
+        for d_str, name, kind in get_fixed_holidays_for_year(year):
+            if d_str not in holidays_to_sync:
+                holidays_to_sync[d_str] = (name, kind)
+    else:
+        # Full sync: entire dataset + current year API
+        this_year = date.today().year
+        for d_str, name, kind in INDONESIAN_HOLIDAYS_DATA:
+            holidays_to_sync[d_str] = (name, kind)
+
+        for y in (this_year - 1, this_year, this_year + 1):
+            for d_str, name, kind in get_fixed_holidays_for_year(y):
+                if d_str not in holidays_to_sync:
+                    holidays_to_sync[d_str] = (name, kind)
+
+    added_count = 0
+    for d_str, (name, kind) in holidays_to_sync.items():
+        try:
+            h_date = datetime.strptime(d_str, '%Y-%m-%d').date()
+        except ValueError:
+            continue
+
         h = PublicHoliday.query.filter_by(company_id=company_id, holiday_date=h_date).first()
         if not h:
             db.session.add(PublicHoliday(
@@ -102,10 +207,13 @@ def sync_company_holidays(company_id):
                 kind=kind,
                 is_active=True
             ))
+            added_count += 1
+
     db.session.commit()
+    return added_count, source
 
 def calculate_long_weekends(company_id, year):
-    ensure_company_holidays(company_id)
+    ensure_company_holidays(company_id, year=year)
     holidays = PublicHoliday.query.filter_by(company_id=company_id, is_active=True).order_by(PublicHoliday.holiday_date).all()
     holidays_in_year = [h for h in holidays if h.holiday_date.year == year]
     holiday_map = {h.holiday_date: h for h in holidays_in_year}

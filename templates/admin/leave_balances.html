@@ -92,29 +92,33 @@
 <!-- Compact Sticky Filter -->
 <section class="app-card sticky top-16 z-30 mb-6 p-3.5 sm:p-4 bg-white border border-gray-200 shadow-sm">
     <form method="GET" id="filterForm" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {% if request.args.get('per_page') %}
+        <input type="hidden" name="per_page" value="{{ request.args.get('per_page') }}">
+        {% endif %}
         <div class="w-full sm:w-36">
-            <select name="year" aria-label="Tahun">
+            <select name="year" aria-label="{{ t('Year') }}">
                 {% for y in years %}
                 <option value="{{ y }}" {% if y == year_filter %}selected{% endif %}>{{ y }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="relative min-w-0 flex-1">
-            <label for="search-emp" class="sr-only">Cari karyawan</label>
+            <label for="search-emp" class="sr-only">{{ t('Search') }}</label>
             <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
-            <input id="search-emp" type="text" name="q" value="{{ q }}" class="field pl-9" placeholder="Cari nama atau email...">
+            <input id="search-emp" type="text" name="q" value="{{ q }}" class="field pl-9" placeholder="{{ t('Search name or email...') }}">
         </div>
         <div class="w-full sm:w-56">
-            <select name="department_id" aria-label="Departemen">
-                <option value="">Semua departemen</option>
+            <select name="department_id" aria-label="{{ t('Departments') }}">
+                <option value="">{{ t('All Departments') }}</option>
                 {% for d in departments %}
                 <option value="{{ d.id }}" {% if department_filter == d.id %}selected{% endif %}>{{ d.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        {% if q or department_filter or year_filter != date.today().year %}
-        <a href="{{ url_for('main.admin_leave_balances') }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter">
-            <i class="fa-solid fa-xmark"></i>
+        {% if q or department_filter or (year_filter and year_filter != date.today().year) %}
+        <a href="{{ url_for('main.admin_leave_balances') }}" class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/60 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 hover:text-red-700 transition shrink-0" title="{{ t('Reset filter') }}">
+            <i class="fa-solid fa-rotate-left text-[11px]"></i>
+            <span>{{ t('Reset filter') }}</span>
         </a>
         {% endif %}
     </form>

@@ -2954,6 +2954,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.key !== 'Escape') return;
 
         // 1. Call specific modal close functions if available
+        if (typeof closeConfirmModal === 'function' && document.getElementById('globalConfirmModal') && !document.getElementById('globalConfirmModal').classList.contains('hidden')) {
+            closeConfirmModal();
+            return;
+        }
         if (typeof closeImportEmployeeModal === 'function' && document.getElementById('importEmployeeModal') && !document.getElementById('importEmployeeModal').classList.contains('hidden')) {
             closeImportEmployeeModal();
             return;
@@ -3135,7 +3139,128 @@ function closePwaIosModal() {
     modal.setAttribute('aria-hidden', 'true');
     setTimeout(function () { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 160);
 }
+
+// Global Confirmation Modal Engine
+window.showConfirmModal = function (options) {
+    const modal = document.getElementById('globalConfirmModal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('globalConfirmTitle');
+    const subtitleEl = document.getElementById('globalConfirmSubtitle');
+    const itemBoxEl = document.getElementById('globalConfirmItemBox');
+    const itemLabelEl = document.getElementById('globalConfirmItemLabel');
+    const itemNameEl = document.getElementById('globalConfirmItemName');
+    const itemDetailEl = document.getElementById('globalConfirmItemDetail');
+    const messageEl = document.getElementById('globalConfirmMessage');
+    const messageWrapper = document.getElementById('globalConfirmMessageWrapper');
+    const messageIcon = document.getElementById('globalConfirmMessageIcon');
+    const formEl = document.getElementById('globalConfirmForm');
+    const hiddenInputsContainer = document.getElementById('globalConfirmHiddenInputs');
+    const submitBtn = document.getElementById('globalConfirmSubmitBtn');
+    const submitText = document.getElementById('globalConfirmSubmitText');
+    const submitIcon = document.getElementById('globalConfirmSubmitIcon');
+    const iconWrapper = document.getElementById('globalConfirmIconWrapper');
+    const headerIcon = document.getElementById('globalConfirmIcon');
+
+    const type = options.confirmType || 'danger';
+
+    if (titleEl) titleEl.textContent = options.title || (window.translateUi ? window.translateUi('Konfirmasi Tindakan') : 'Konfirmasi Tindakan');
+    if (subtitleEl) subtitleEl.textContent = options.subtitle || (window.translateUi ? window.translateUi('Pastikan tindakan Anda sudah sesuai') : 'Pastikan tindakan Anda sudah sesuai');
+    if (messageEl) messageEl.textContent = options.message || (window.translateUi ? window.translateUi('Apakah Anda yakin ingin melanjutkan tindakan ini?') : 'Apakah Anda yakin ingin melanjutkan tindakan ini?');
+
+    if (options.itemName) {
+        if (itemBoxEl) itemBoxEl.classList.remove('hidden');
+        if (itemLabelEl) itemLabelEl.textContent = options.itemLabel || (window.translateUi ? window.translateUi('Item yang Dipilih') : 'Item yang Dipilih');
+        if (itemNameEl) itemNameEl.textContent = options.itemName;
+        if (itemDetailEl) {
+            if (options.itemDetail) {
+                itemDetailEl.textContent = options.itemDetail;
+                itemDetailEl.classList.remove('hidden');
+            } else {
+                itemDetailEl.classList.add('hidden');
+            }
+        }
+    } else {
+        if (itemBoxEl) itemBoxEl.classList.add('hidden');
+    }
+
+    if (type === 'danger') {
+        if (iconWrapper) iconWrapper.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 shadow-2xs';
+        if (headerIcon) headerIcon.className = 'fa-solid fa-triangle-exclamation text-lg';
+        if (messageWrapper) messageWrapper.className = 'rounded-xl border border-red-100 bg-red-50/60 p-3 text-xs text-red-950 leading-relaxed flex items-start gap-2.5';
+        if (messageIcon) messageIcon.className = 'fa-solid fa-circle-info text-red-600 mt-0.5 text-sm shrink-0';
+        if (submitBtn) submitBtn.className = 'btn-primary bg-red-600 hover:bg-red-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition';
+        if (submitIcon) submitIcon.className = (options.confirmIcon ? 'fa-solid ' + options.confirmIcon : 'fa-solid fa-trash-can') + ' mr-1.5';
+    } else if (type === 'warning') {
+        if (iconWrapper) iconWrapper.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shadow-2xs';
+        if (headerIcon) headerIcon.className = 'fa-solid fa-triangle-exclamation text-lg';
+        if (messageWrapper) messageWrapper.className = 'rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-xs text-amber-950 leading-relaxed flex items-start gap-2.5';
+        if (messageIcon) messageIcon.className = 'fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 text-sm shrink-0';
+        if (submitBtn) submitBtn.className = 'btn-primary bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition';
+        if (submitIcon) submitIcon.className = (options.confirmIcon ? 'fa-solid ' + options.confirmIcon : 'fa-solid fa-box-archive') + ' mr-1.5';
+    } else if (type === 'success' || type === 'restore') {
+        if (iconWrapper) iconWrapper.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-2xs';
+        if (headerIcon) headerIcon.className = 'fa-solid fa-rotate-left text-lg';
+        if (messageWrapper) messageWrapper.className = 'rounded-xl border border-teal-100 bg-teal-50/60 p-3 text-xs text-teal-950 leading-relaxed flex items-start gap-2.5';
+        if (messageIcon) messageIcon.className = 'fa-solid fa-circle-check text-teal-600 mt-0.5 text-sm shrink-0';
+        if (submitBtn) submitBtn.className = 'btn-primary bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition';
+        if (submitIcon) submitIcon.className = (options.confirmIcon ? 'fa-solid ' + options.confirmIcon : 'fa-solid fa-arrow-rotate-left') + ' mr-1.5';
+    } else {
+        if (iconWrapper) iconWrapper.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-2xs';
+        if (headerIcon) headerIcon.className = 'fa-solid fa-circle-info text-lg';
+        if (messageWrapper) messageWrapper.className = 'rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-950 leading-relaxed flex items-start gap-2.5';
+        if (messageIcon) messageIcon.className = 'fa-solid fa-circle-info text-blue-600 mt-0.5 text-sm shrink-0';
+        if (submitBtn) submitBtn.className = 'btn-primary bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition';
+        if (submitIcon) submitIcon.className = (options.confirmIcon ? 'fa-solid ' + options.confirmIcon : 'fa-solid fa-check') + ' mr-1.5';
+    }
+
+    if (submitText) submitText.textContent = options.confirmText || (window.translateUi ? window.translateUi('Ya, Lanjutkan') : 'Ya, Lanjutkan');
+
+    if (formEl) {
+        formEl.action = options.actionUrl || '';
+        formEl.method = options.method || 'POST';
+
+        if (hiddenInputsContainer) {
+            hiddenInputsContainer.innerHTML = '';
+            if (options.hiddenInputs && typeof options.hiddenInputs === 'object') {
+                Object.keys(options.hiddenInputs).forEach(function (k) {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = k;
+                    inp.value = options.hiddenInputs[k];
+                    hiddenInputsContainer.appendChild(inp);
+                });
+            }
+        }
+
+        formEl.onsubmit = function (e) {
+            if (typeof options.onConfirm === 'function') {
+                e.preventDefault();
+                options.onConfirm();
+                closeConfirmModal();
+            }
+        };
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function () { modal.classList.remove('opacity-0'); });
+};
+
+window.closeConfirmModal = function () {
+    const modal = document.getElementById('globalConfirmModal');
+    if (!modal) return;
+    modal.classList.add('opacity-0');
+    modal.setAttribute('aria-hidden', 'true');
+    setTimeout(function () { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 150);
+};
+
+document.getElementById('globalConfirmModal')?.addEventListener('click', function (e) {
+    if (e.target === this) closeConfirmModal();
+});
 </script>
+{% include "components/confirm_modal.html" %}
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>

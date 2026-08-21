@@ -18,27 +18,64 @@
         <button type="button" onclick="openImportEmployeeModal()" class="btn-secondary px-3.5 py-2 text-xs font-semibold"><i class="fa-solid fa-file-import mr-1.5"></i>Import data</button>
         <button type="button" onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-3.5 py-2 text-xs font-semibold"><i class="fa-solid fa-plus mr-1.5"></i>Tambah karyawan</button>
         <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-1 shadow-2xs">
-            <a href="{{ url_for('main.admin_employees', status='active') }}" class="status-tab {% if current_tab == 'active' %}active{% endif %}">
+            <a href="{{ update_query_params(status='active', page=1) }}" class="status-tab {% if current_tab == 'active' %}active{% endif %}">
                 <i class="fa-solid fa-users mr-1.5"></i>{{ t('Active') }}
             </a>
-            <a href="{{ url_for('main.admin_employees', status='archived') }}" class="status-tab {% if current_tab == 'archived' %}active{% endif %}">
+            <a href="{{ update_query_params(status='archived', page=1) }}" class="status-tab {% if current_tab == 'archived' %}active{% endif %}">
                 <i class="fa-solid fa-box-archive mr-1.5"></i>{{ t('Archived') }}
             </a>
             {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('main.admin_employees', status='deleted') }}" class="status-tab {% if current_tab == 'deleted' %}active{% endif %}">
+            <a href="{{ update_query_params(status='deleted', page=1) }}" class="status-tab {% if current_tab == 'deleted' %}active{% endif %}">
                 <i class="fa-solid fa-trash-can mr-1.5"></i>{{ t('Deleted') }}
             </a>
             {% endif %}
         </div>
     </div>
 </div>
-<section class="app-card sticky top-16 z-10 mb-6 p-5 bg-white border border-gray-200 shadow-sm">
-    <div class="mb-4 flex items-center justify-between"><div><h2 class="text-sm font-semibold text-gray-900">{{ t('Filter directory') }}</h2><p class="mt-1 text-xs text-gray-500">{{ t('Filter list by role or department.') }}</p></div>{% if request.args.get('q') or request.args.get('role') or request.args.get('department_id') %}<a href="{{ url_for('main.admin_employees', status=current_tab) }}" class="text-xs font-semibold text-triton-600"><i class="fa-solid fa-xmark mr-1"></i>{{ t('Clear filters') }}</a>{% endif %}</div>
-    <form method="GET" class="grid grid-cols-1 gap-4 sm:grid-cols-3" id="filterForm">
+<section class="app-card sticky top-16 z-10 mb-6 p-4 sm:p-5 bg-white border border-gray-200 shadow-sm">
+    <div class="mb-3 flex items-center justify-between">
+        <div>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-700">{{ t('Filter directory') }}</h2>
+            <p class="text-xs text-gray-500">{{ t('Filter list by role or department.') }}</p>
+        </div>
+        {% if request.args.get('q') or request.args.get('role') or request.args.get('department_id') %}
+        <a href="{{ url_for('main.admin_employees', status=current_tab) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/60 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 hover:text-red-700 transition" title="{{ t('Reset filter') }}">
+            <i class="fa-solid fa-rotate-left text-[10px]"></i>
+            <span>{{ t('Reset filter') }}</span>
+        </a>
+        {% endif %}
+    </div>
+    <form method="GET" class="grid grid-cols-1 gap-3 sm:grid-cols-3" id="filterForm">
         <input type="hidden" name="status" value="{{ current_tab }}">
-        <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Search') }}</label><div class="relative"><i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i><input type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="{{ t('Name or email') }}"></div></div>
-        <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Role') }}</label><select name="role"><option value="">{{ t('All Roles') }}</option><option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option><option value="hr" {% if request.args.get('role') == 'hr' %}selected{% endif %}>HR</option><option value="manager" {% if request.args.get('role') == 'manager' %}selected{% endif %}>Manager</option><option value="employee" {% if request.args.get('role') == 'employee' %}selected{% endif %}>Employee</option></select></div>
-        <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Departments') }}</label><select name="department_id"><option value="">{{ t('All Departments') }}</option>{% for d in departments %}<option value="{{ d.id }}" {% if request.args.get('department_id') == d.id|string %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+        {% if request.args.get('per_page') %}
+        <input type="hidden" name="per_page" value="{{ request.args.get('per_page') }}">
+        {% endif %}
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Search') }}</label>
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i>
+                <input type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="{{ t('Name or email') }}">
+            </div>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Role') }}</label>
+            <select name="role">
+                <option value="">{{ t('All Roles') }}</option>
+                <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="hr" {% if request.args.get('role') == 'hr' %}selected{% endif %}>HR</option>
+                <option value="manager" {% if request.args.get('role') == 'manager' %}selected{% endif %}>Manager</option>
+                <option value="employee" {% if request.args.get('role') == 'employee' %}selected{% endif %}>Employee</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Departments') }}</label>
+            <select name="department_id">
+                <option value="">{{ t('All Departments') }}</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if request.args.get('department_id') == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </form>
 </section>
 
@@ -47,10 +84,46 @@
     <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-6 py-2.5 text-xs text-gray-500 font-medium">
         <span>Menampilkan <strong class="font-bold text-gray-900">{{ employees|length }}</strong> karyawan</span>
     </div>
+
+    <!-- Bulk Action Bar -->
+    <div id="bulkActionBar" class="hidden mb-4 rounded-2xl border border-teal-200 bg-teal-50/90 backdrop-blur-md p-3.5 shadow-lg flex flex-wrap items-center justify-between gap-3 animate-slideIn">
+        <div class="flex items-center gap-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-600 text-white text-xs font-bold shadow-xs" id="bulkSelectedCountBadge">0</span>
+            <span class="text-xs font-bold text-teal-900" id="bulkSelectedText">0 item terpilih</span>
+            <button type="button" onclick="clearBulkSelection()" class="text-xs font-medium text-teal-700 hover:text-teal-900 hover:underline cursor-pointer">
+                {{ t('Deselect all') }}
+            </button>
+        </div>
+        <div class="flex items-center gap-2">
+            {% if current_tab == 'deleted' %}
+            <button type="button" onclick="executeBulkAction('restore')" class="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                <i class="fa-solid fa-arrow-rotate-left"></i> {{ t('Pulihkan Terpilih') }}
+            </button>
+            {% elif current_tab == 'archived' %}
+            <button type="button" onclick="executeBulkAction('unarchive')" class="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                <i class="fa-solid fa-arrow-rotate-left"></i> {{ t('Buka Arsip Terpilih') }}
+            </button>
+            <button type="button" onclick="executeBulkAction('delete')" class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition cursor-pointer">
+                <i class="fa-solid fa-trash-can"></i> {{ t('Hapus Terpilih') }}
+            </button>
+            {% else %}
+            <button type="button" onclick="executeBulkAction('archive')" class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-600 transition cursor-pointer">
+                <i class="fa-solid fa-box-archive"></i> {{ t('Arsipkan Terpilih') }}
+            </button>
+            <button type="button" onclick="executeBulkAction('delete')" class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition cursor-pointer">
+                <i class="fa-solid fa-trash-can"></i> {{ t('Hapus Terpilih') }}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
                 <tr>
+                    <th class="text-center px-4 py-3 font-medium w-10">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer" title="{{ t('Select All') }}">
+                    </th>
                     <th class="text-left px-6 py-3 font-medium">Nama</th>
                     <th class="text-left px-6 py-3 font-medium">Email</th>
                     <th class="text-left px-6 py-3 font-medium">Role</th>
@@ -63,6 +136,11 @@
             <tbody class="divide-y divide-gray-50">
                 {% for emp in employees %}
                 <tr class="hover:bg-gray-50/50">
+                    <td class="text-center px-4 py-4">
+                        {% if emp.role != 'admin' %}
+                        <input type="checkbox" name="bulk_selected_ids" value="{{ emp.id }}" data-item-name="{{ emp.name }}" onchange="updateBulkBar()" class="row-checkbox w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer">
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: {{ emp.avatar_color }}">
@@ -132,14 +210,16 @@
                                 <span class="sr-only">Edit</span>
                             </button>
                             {% if emp.role != 'admin' %}
-                            {% if not emp.is_active %}
-                            <form method="POST" action="{{ url_for('main.admin_unarchive_employee', user_id=emp.id) }}" class="inline">
-                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="Aktifkan kembali / Buka arsip">
-                                    <i class="fa-solid fa-arrow-rotate-left"></i>
-                                    <span class="sr-only">Aktifkan</span>
-                                </button>
-                            </form>
+                            {% if current_tab == 'deleted' or emp.is_deleted %}
+                            <button type="button" onclick='confirmRestoreEmployee({{ emp.id }}, {{ emp.name|tojson }}, true)' class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Restore') }}">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                                <span class="sr-only">{{ t('Restore') }}</span>
+                            </button>
+                            {% elif not emp.is_active %}
+                            <button type="button" onclick='confirmRestoreEmployee({{ emp.id }}, {{ emp.name|tojson }}, false)' class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Aktifkan kembali / Buka arsip') }}">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                                <span class="sr-only">{{ t('Aktifkan') }}</span>
+                            </button>
                             {% endif %}
                             <button type="button" onclick='openDeleteEmployee({{ emp.id }}, {{ emp.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="Hapus / Arsipkan karyawan">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -152,7 +232,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="empty-state">
+                    <td colspan="8" class="empty-state">
                         <i class="fa-solid {% if current_tab == 'deleted' %}fa-trash-can{% elif current_tab == 'archived' %}fa-box-archive{% else %}fa-users{% endif %}"></i>
                         <p>{% if current_tab == 'deleted' %}Tidak ada karyawan di kotak sampah{% elif current_tab == 'archived' %}Tidak ada karyawan diarsipkan{% else %}Belum ada karyawan aktif{% endif %}</p>
                         <span class="text-sm">{% if current_tab == 'deleted' %}Karyawan yang dihapus akan muncul di sini{% elif current_tab == 'archived' %}Karyawan yang dinonaktifkan akan muncul di sini{% else %}Klik "Tambah Karyawan" atau "Import data" untuk mulai{% endif %}</span>
@@ -619,6 +699,141 @@ function executePermanentDelete() {
 document.getElementById('deleteEmployeeModal')?.addEventListener('click', function(event) {
     if (event.target === this) closeDeleteEmployee();
 });
+
+function confirmRestoreEmployee(id, name, isDeleted) {
+    const url = isDeleted ? ('/admin/employees/restore/' + id) : ('/admin/employees/unarchive/' + id);
+    window.showConfirmModal({
+        title: window.translateUi ? window.translateUi('Pulihkan Karyawan') : 'Pulihkan Karyawan',
+        subtitle: window.translateUi ? window.translateUi('Aktifkan kembali akun karyawan ini') : 'Aktifkan kembali akun karyawan ini',
+        itemName: name,
+        itemLabel: window.translateUi ? window.translateUi('Karyawan') : 'Karyawan',
+        message: window.translateUi ? window.translateUi('Akun karyawan ini akan diaktifkan kembali dan dapat login serta mengakses sistem.') : 'Akun karyawan ini akan diaktifkan kembali dan dapat login serta mengakses sistem.',
+        confirmType: 'success',
+        confirmText: window.translateUi ? window.translateUi('Ya, Pulihkan') : 'Ya, Pulihkan',
+        confirmIcon: 'fa-arrow-rotate-left',
+        actionUrl: url
+    });
+}
+
+function updateBulkBar() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAll = document.getElementById('selectAllCheckbox');
+    const bar = document.getElementById('bulkActionBar');
+    const badge = document.getElementById('bulkSelectedCountBadge');
+    const text = document.getElementById('bulkSelectedText');
+
+    const count = checkboxes.length;
+    if (badge) badge.textContent = count;
+    if (text) text.textContent = count + ' ' + (window.translateUi ? window.translateUi('item terpilih') : 'item terpilih');
+
+    if (selectAll) {
+        selectAll.checked = (allCheckboxes.length > 0 && count === allCheckboxes.length);
+        selectAll.indeterminate = (count > 0 && count < allCheckboxes.length);
+    }
+
+    if (bar) {
+        if (count > 0) {
+            bar.classList.remove('hidden');
+        } else {
+            bar.classList.add('hidden');
+        }
+    }
+}
+
+function toggleSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => { cb.checked = master.checked; });
+    updateBulkBar();
+}
+
+function clearBulkSelection() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => { cb.checked = false; });
+    const selectAll = document.getElementById('selectAllCheckbox');
+    if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    }
+    updateBulkBar();
+}
+
+function executeBulkAction(action) {
+    const checked = Array.from(document.querySelectorAll('.row-checkbox:checked'));
+    if (checked.length === 0) {
+        alert(window.translateUi ? window.translateUi('Pilih setidaknya satu item terlebih dahulu.') : 'Pilih setidaknya satu item terlebih dahulu.');
+        return;
+    }
+
+    const ids = checked.map(cb => cb.value);
+    const names = checked.map(cb => cb.dataset.itemName || cb.value).slice(0, 5);
+    const summaryNames = names.join(', ') + (checked.length > 5 ? ' ... (' + checked.length + ' item)' : '');
+
+    let title = 'Aksi Massal Karyawan';
+    let subtitle = 'Proses ' + checked.length + ' karyawan terpilih';
+    let confirmText = 'Ya, Lanjutkan';
+    let confirmType = 'danger';
+    let icon = 'fa-users';
+
+    if (action === 'archive') {
+        title = 'Arsipkan ' + checked.length + ' Karyawan';
+        subtitle = 'Nonaktifkan akun karyawan terpilih';
+        confirmText = 'Ya, Arsipkan (' + checked.length + ')';
+        confirmType = 'warning';
+        icon = 'fa-box-archive';
+    } else if (action === 'delete') {
+        title = 'Hapus ' + checked.length + ' Karyawan';
+        subtitle = 'Pindahkan karyawan terpilih ke kotak sampah';
+        confirmText = 'Ya, Hapus (' + checked.length + ')';
+        confirmType = 'danger';
+        icon = 'fa-trash-can';
+    } else if (action === 'unarchive' || action === 'restore') {
+        title = 'Pulihkan ' + checked.length + ' Karyawan';
+        subtitle = 'Aktifkan kembali akun karyawan terpilih';
+        confirmText = 'Ya, Pulihkan (' + checked.length + ')';
+        confirmType = 'success';
+        icon = 'fa-arrow-rotate-left';
+    }
+
+    window.showConfirmModal({
+        title: window.translateUi ? window.translateUi(title) : title,
+        subtitle: window.translateUi ? window.translateUi(subtitle) : subtitle,
+        itemName: summaryNames,
+        itemLabel: window.translateUi ? window.translateUi('Karyawan Terpilih') : 'Karyawan Terpilih',
+        message: 'Apakah Anda yakin ingin memproses ' + checked.length + ' karyawan yang dipilih sekaligus?',
+        confirmType: confirmType,
+        confirmText: confirmText,
+        confirmIcon: icon,
+        onConfirm: function() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/employees/bulk-action';
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_csrf_token';
+            csrfInput.value = window.PEOPLE_CSRF_TOKEN || '';
+            form.appendChild(csrfInput);
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = action;
+            form.appendChild(actionInput);
+
+            ids.forEach(id => {
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'ids';
+                idInput.value = id;
+                form.appendChild(idInput);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
 
 // Impersonate Quick Access Modal
 function openImpersonateModal(id, name, email, role) {

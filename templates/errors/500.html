@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Internal Server Error') }} (500){% endblock %}
+
+{% block content %}
+<div class="flex min-h-[calc(100vh-12rem)] flex-col items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-xl shadow-gray-100/80 animate-fade-in-up">
+        <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 shadow-inner">
+            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+        </div>
+
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">
+            HTTP 500 &bull; {{ t('Internal Server Error') }}
+        </span>
+
+        <h1 class="mt-4 text-2xl font-extrabold text-gray-900 tracking-tight sm:text-3xl">
+            {{ t('Internal Server Error') }}
+        </h1>
+
+        <p class="mt-3 text-sm text-gray-500 leading-relaxed max-w-md mx-auto">
+            {{ t('Something went wrong on our end. Please try again later or contact support if the problem persists.') }}
+        </p>
+
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button type="button" onclick="window.location.reload()" class="btn btn-primary w-full sm:w-auto px-6 py-2.5 shadow-sm hover:shadow transition">
+                <i class="fa-solid fa-arrows-rotate text-xs mr-1"></i> {{ t('Reload Page') }}
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary w-full sm:w-auto px-5 py-2.5">
+                <i class="fa-solid fa-house text-xs mr-1"></i> {{ t('Back to Dashboard') }}
+            </a>
+        </div>
+
+        <div class="mt-8 border-t border-gray-100 pt-6 text-xs text-gray-400">
+            <p>{{ t('People by Triont') }} &bull; {{ t('System Reliability') }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block guest_content %}
+<div class="flex min-h-screen flex-col items-center justify-center bg-[#f7f8f6] p-6">
+    <div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-xl">
+        <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 text-amber-600">
+            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+        </div>
+
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">
+            HTTP 500 &bull; {{ t('Internal Server Error') }}
+        </span>
+
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">
+            {{ t('Internal Server Error') }}
+        </h1>
+
+        <p class="mt-3 text-sm text-gray-500 leading-relaxed">
+            {{ t('Something went wrong on our end. Please try again later or contact support if the problem persists.') }}
+        </p>
+
+        <div class="mt-8 flex flex-col gap-3">
+            <button type="button" onclick="window.location.reload()" class="btn btn-primary w-full py-2.5">
+                <i class="fa-solid fa-arrows-rotate text-xs mr-1"></i> {{ t('Reload Page') }}
+            </button>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-secondary w-full py-2.5">
+                <i class="fa-solid fa-arrow-right-to-bracket text-xs mr-1"></i> {{ t('Back to Sign In') }}
+            </a>
+        </div>
+
+        <p class="mt-8 text-xs text-gray-400">People by Triont</p>
+    </div>
+</div>
+{% endblock %}

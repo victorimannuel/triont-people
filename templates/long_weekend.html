@@ -14,18 +14,27 @@
             <i class="fa-solid fa-plus"></i> {{ t('Add Holiday') }}
         </button>
         <form method="POST" action="{{ url_for('main.sync_holidays') }}">
-            <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-semibold text-teal-700 transition hover:bg-teal-100">
-                <i class="fa-solid fa-arrows-rotate"></i> {{ t('Sync National Holidays') }}
+            <input type="hidden" name="year" value="{{ year }}">
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-semibold text-teal-700 transition hover:bg-teal-100 shadow-2xs" title="{{ t('Auto Sync API') }}">
+                <i class="fa-solid fa-cloud-arrow-down"></i> {{ t('Auto Sync API') }} ({{ year }})
             </button>
         </form>
         {% endif %}
-        <form method="GET" class="w-32">
-            <select id="weekend-year" name="year" onchange="this.form.submit()">
-                {% for y in years %}
-                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ t('Year') }} {{ y }}</option>
-                {% endfor %}
-            </select>
-        </form>
+        <div class="inline-flex items-center rounded-xl border border-gray-200 bg-white p-0.5 shadow-sm">
+            <a href="{{ url_for('main.long_weekend', year=prev_year) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition" title="{{ t('Previous Year') }} ({{ prev_year }})">
+                <i class="fa-solid fa-chevron-left text-xs"></i>
+            </a>
+            <form method="GET" class="inline-block px-1">
+                <select id="weekend-year" name="year" onchange="this.form.submit()" class="border-0 bg-transparent py-0.5 text-xs font-bold text-gray-800 focus:ring-0 cursor-pointer">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ t('Year') }} {{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a href="{{ url_for('main.long_weekend', year=next_year) }}" class="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition" title="{{ t('Next Year') }} ({{ next_year }})">
+                <i class="fa-solid fa-chevron-right text-xs"></i>
+            </a>
+        </div>
     </div>
 </div>
 
@@ -213,12 +222,10 @@
                     {% if current_user.role in ('manager', 'hr', 'admin') %}
                     <td class="px-5 py-3.5">
                         <div class="flex justify-end gap-1">
-                            <form method="POST" action="{{ url_for('main.delete_holiday', holiday_id=h.id) }}" onsubmit='return confirm("{{ t("Are you sure you want to delete holiday") }} {{ h.name }}?")'>
-                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="{{ t('Delete holiday') }}">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                    <span class="sr-only">{{ t('Delete') }} {{ h.name }}</span>
-                                </button>
-                            </form>
+                            <button type="button" onclick="confirmDeleteHoliday({{ h.id }}, {{ (h.name ~ ' (' ~ h.holiday_date.strftime('%d/%m/%Y') ~ ')')|tojson }})" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="{{ t('Delete holiday') }}">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span class="sr-only">{{ t('Delete') }} {{ h.name }}</span>
+                            </button>
                         </div>
                     </td>
                     {% endif %}
@@ -309,6 +316,20 @@ function closeAddHolidayModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
+}
+
+function confirmDeleteHoliday(id, name) {
+    window.showConfirmModal({
+        title: window.translateUi ? window.translateUi('Hapus Hari Libur') : 'Hapus Hari Libur',
+        subtitle: window.translateUi ? window.translateUi('Hapus tanggal libur dari kalender perusahaan') : 'Hapus tanggal libur dari kalender perusahaan',
+        itemName: name,
+        itemLabel: window.translateUi ? window.translateUi('Hari Libur') : 'Hari Libur',
+        message: window.translateUi ? window.translateUi('Apakah Anda yakin ingin menghapus hari libur ini?') : 'Apakah Anda yakin ingin menghapus hari libur ini?',
+        confirmType: 'danger',
+        confirmText: window.translateUi ? window.translateUi('Ya, Hapus') : 'Ya, Hapus',
+        confirmIcon: 'fa-trash-can',
+        actionUrl: '/admin/holidays/' + id + '/delete'
+    });
 }
 </script>
 {% endblock %}

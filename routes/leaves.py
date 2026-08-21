@@ -256,12 +256,31 @@ def history():
 @login_required
 def long_weekend():
     company_id = get_active_company_id()
-    years = [2025, 2026, 2027]
-    requested_year = request.args.get('year', type=int, default=date.today().year)
-    year = requested_year if requested_year in years else date.today().year
+    current_year = date.today().year
+
+    # Extract distinct years from public holidays and merge with default dynamic range
+    holiday_years = {h.holiday_date.year for h in PublicHoliday.query.filter_by(company_id=company_id).all()} if company_id else set()
+    base_years = {current_year - 2, current_year - 1, current_year, current_year + 1, current_year + 2, 2025, 2026, 2027}
+    all_years = sorted(list(holiday_years | base_years))
+
+    requested_year = request.args.get('year', type=int, default=current_year)
+    if requested_year and (1900 <= requested_year <= 2100):
+        year = requested_year
+        if year not in all_years:
+            all_years = sorted(all_years + [year])
+    else:
+        year = current_year
 
     suggestions, holidays = calculate_long_weekends(company_id, year)
-    return render_template('long_weekend.html', year=year, years=years, suggestions=suggestions, holidays=holidays)
+    return render_template(
+        'long_weekend.html',
+        year=year,
+        years=all_years,
+        prev_year=year - 1,
+        next_year=year + 1,
+        suggestions=suggestions,
+        holidays=holidays
+    )
 
 @main_bp.route('/leaves/<int:request_id>/slip')
 @login_required

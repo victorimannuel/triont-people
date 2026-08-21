@@ -952,6 +952,80 @@ def admin_unarchive_employee(user_id):
     flash(translate(f'Karyawan {user.name} berhasil diaktifkan kembali.'), 'success')
     return redirect(url_for('main.admin_employees', status='archived'))
 
+@main_bp.route('/admin/employees/bulk-action', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_employees_bulk_action():
+    my_company = get_active_company_id()
+    action = request.form.get('action', '').strip().lower()
+    raw_ids = request.form.getlist('ids') or request.form.get('ids', '').split(',')
+    target_ids = []
+    for x in raw_ids:
+        if str(x).strip().isdigit():
+            target_ids.append(int(str(x).strip()))
+
+    if not target_ids:
+        flash(translate('Pilih setidaknya satu item terlebih dahulu.'), 'warning')
+        return redirect(url_for('main.admin_employees'))
+
+    users = User.query.filter(User.id.in_(target_ids), User.company_id == my_company).all()
+    count = 0
+
+    if action == 'archive':
+        for u in users:
+            if u.role == 'admin':
+                continue
+            u.is_active = False
+            u.is_deleted = False
+            Department.query.filter_by(head_id=u.id).update({'head_id': None})
+            User.query.filter_by(manager_id=u.id).update({'manager_id': None})
+            audit_log('admin.employee_bulk_archived', 'user', u.id, details={'email': u.email}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} karyawan berhasil diarsipkan.'), 'success')
+        return redirect(url_for('main.admin_employees', status='archived'))
+
+    elif action == 'unarchive':
+        for u in users:
+            u.is_active = True
+            u.is_deleted = False
+            audit_log('admin.employee_bulk_unarchived', 'user', u.id, details={'email': u.email}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} karyawan berhasil diaktifkan kembali.'), 'success')
+        return redirect(url_for('main.admin_employees', status='active'))
+
+    elif action == 'delete':
+        for u in users:
+            if u.role == 'admin':
+                continue
+            u.is_active = False
+            u.is_deleted = True
+            u.deleted_at = utcnow()
+            Department.query.filter_by(head_id=u.id).update({'head_id': None})
+            User.query.filter_by(manager_id=u.id).update({'manager_id': None})
+            audit_log('admin.employee_bulk_deleted', 'user', u.id, details={'email': u.email, 'mode': 'soft_delete'}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} karyawan berhasil dipindahkan ke kotak sampah.'), 'success')
+        return redirect(url_for('main.admin_employees', status='deleted' if current_user.role == 'admin' else 'active'))
+
+    elif action == 'restore':
+        if current_user.role != 'admin':
+            abort(403)
+        for u in users:
+            u.is_deleted = False
+            u.deleted_at = None
+            u.is_active = True
+            audit_log('admin.employee_bulk_restored', 'user', u.id, details={'email': u.email}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} karyawan berhasil dipulihkan.'), 'success')
+        return redirect(url_for('main.admin_employees', status='deleted'))
+
+    flash(translate('Aksi tidak valid.'), 'warning')
+    return redirect(url_for('main.admin_employees'))
+
 # ── ADMIN: LEAVE TYPES ──
 
 @main_bp.route('/admin/leave-types')
@@ -1125,6 +1199,70 @@ def admin_restore_leave_type(type_id):
     flash(translate(f'Jenis cuti {leave_type.name} berhasil dipulihkan.'), 'success')
     return redirect(url_for('main.admin_leave_types', status='deleted'))
 
+@main_bp.route('/admin/leave-types/bulk-action', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_leave_types_bulk_action():
+    my_company = get_active_company_id()
+    action = request.form.get('action', '').strip().lower()
+    raw_ids = request.form.getlist('ids') or request.form.get('ids', '').split(',')
+    target_ids = []
+    for x in raw_ids:
+        if str(x).strip().isdigit():
+            target_ids.append(int(str(x).strip()))
+
+    if not target_ids:
+        flash(translate('Pilih setidaknya satu item terlebih dahulu.'), 'warning')
+        return redirect(url_for('main.admin_leave_types'))
+
+    leave_types = LeaveType.query.filter(LeaveType.id.in_(target_ids), LeaveType.company_id == my_company).all()
+    count = 0
+
+    if action == 'archive':
+        for lt in leave_types:
+            lt.is_active = False
+            lt.is_deleted = False
+            audit_log('admin.leave_type_bulk_archived', 'leave_type', lt.id, details={'name': lt.name}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} jenis cuti berhasil diarsipkan.'), 'success')
+        return redirect(url_for('main.admin_leave_types', status='archived'))
+
+    elif action == 'unarchive':
+        for lt in leave_types:
+            lt.is_active = True
+            lt.is_deleted = False
+            audit_log('admin.leave_type_bulk_unarchived', 'leave_type', lt.id, details={'name': lt.name}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} jenis cuti berhasil dipulihkan dari arsip.'), 'success')
+        return redirect(url_for('main.admin_leave_types', status='active'))
+
+    elif action == 'delete':
+        for lt in leave_types:
+            lt.is_active = False
+            lt.is_deleted = True
+            lt.deleted_at = utcnow()
+            audit_log('admin.leave_type_bulk_deleted', 'leave_type', lt.id, details={'name': lt.name, 'mode': 'soft_delete'}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} jenis cuti berhasil dipindahkan ke kotak sampah.'), 'success')
+        return redirect(url_for('main.admin_leave_types', status='deleted'))
+
+    elif action == 'restore':
+        for lt in leave_types:
+            lt.is_deleted = False
+            lt.deleted_at = None
+            lt.is_active = True
+            audit_log('admin.leave_type_bulk_restored', 'leave_type', lt.id, details={'name': lt.name}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} jenis cuti berhasil dipulihkan.'), 'success')
+        return redirect(url_for('main.admin_leave_types', status='deleted'))
+
+    flash(translate('Aksi tidak valid.'), 'warning')
+    return redirect(url_for('main.admin_leave_types'))
+
 # ── ADMIN: DEPARTMENTS ──
 
 @main_bp.route('/admin/departments')
@@ -1230,6 +1368,51 @@ def admin_restore_department(dept_id):
     flash(translate(f'Departemen {dept.name} berhasil dipulihkan!'), 'success')
     return redirect(url_for('main.admin_departments', status='deleted'))
 
+@main_bp.route('/admin/departments/bulk-action', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_departments_bulk_action():
+    my_company = get_active_company_id()
+    action = request.form.get('action', '').strip().lower()
+    raw_ids = request.form.getlist('ids') or request.form.get('ids', '').split(',')
+    target_ids = []
+    for x in raw_ids:
+        if str(x).strip().isdigit():
+            target_ids.append(int(str(x).strip()))
+
+    if not target_ids:
+        flash(translate('Pilih setidaknya satu item terlebih dahulu.'), 'warning')
+        return redirect(url_for('main.admin_departments'))
+
+    departments = Department.query.filter(Department.id.in_(target_ids), Department.company_id == my_company).all()
+    count = 0
+
+    if action == 'delete':
+        for d in departments:
+            d.is_deleted = True
+            d.deleted_at = utcnow()
+            User.query.filter_by(department_id=d.id).update({'department_id': None})
+            audit_log('admin.department_bulk_deleted', 'department', d.id, details={'name': d.name}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} departemen berhasil dipindahkan ke kotak sampah.'), 'success')
+        return redirect(url_for('main.admin_departments', status='deleted' if current_user.role == 'admin' else 'active'))
+
+    elif action == 'restore':
+        if current_user.role != 'admin':
+            abort(403)
+        for d in departments:
+            d.is_deleted = False
+            d.deleted_at = None
+            audit_log('admin.department_bulk_restored', 'department', d.id, details={'name': d.name}, company_id=my_company)
+            count += 1
+        db.session.commit()
+        flash(translate(f'{count} departemen berhasil dipulihkan.'), 'success')
+        return redirect(url_for('main.admin_departments', status='deleted'))
+
+    flash(translate('Aksi tidak valid.'), 'warning')
+    return redirect(url_for('main.admin_departments'))
+
 # ── ADMIN: APPROVAL CONFIGS ──
 
 @main_bp.route('/admin/approval-configs/<int:type_id>')
@@ -1287,9 +1470,13 @@ def admin_delete_approval_config(config_id):
 @role_required('manager', 'hr', 'admin')
 def sync_holidays():
     company_id = get_active_company_id()
-    sync_company_holidays(company_id)
-    flash(translate('National holidays and collective leave list synchronized! ✅'), 'success')
-    return redirect(url_for('main.long_weekend'))
+    year = request.form.get('year', type=int) or request.args.get('year', type=int) or date.today().year
+    added_count, source = sync_company_holidays(company_id, year=year)
+    if added_count > 0:
+        flash(f"{translate('National holidays and collective leave list synchronized! ✅')} ({added_count} {translate('dates added via')} {source})", 'success')
+    else:
+        flash(translate('National holidays are already up to date! ✅'), 'info')
+    return redirect(url_for('main.long_weekend', year=year))
 
 @main_bp.route('/admin/holidays/add', methods=['POST'])
 @login_required

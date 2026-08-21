@@ -21,20 +21,32 @@
   - [ ] Evaluasi lazy loading vs eager loading pada relasi yang sering diakses.
   - [ ] Cek penggunaan `paginate()` vs `.all()` — pastikan tidak ada query tanpa limit di halaman yang bisa banyak data.
 
-- [ ] **Confirm Modal untuk Destructive Action**:
-  - [ ] Tambah confirmation dialog sebelum soft delete / permanent delete / restore.
-  - [ ] Modal menampilkan nama item yang akan dihapus supaya tidak accidental.
-  - [ ] Reuse satu modal global (bukan per-row) dengan JS untuk inject konten dinamis.
+- [x] **Confirm Modal untuk Destructive Action**:
+  - [x] Tambah confirmation dialog sebelum soft delete / permanent delete / restore.
+  - [x] Modal menampilkan nama item yang akan dihapus supaya tidak accidental.
+  - [x] Reuse satu modal global (bukan per-row) dengan JS untuk inject konten dinamis.
 
-- [ ] **Consistent Error Pages**:
-  - [ ] Custom page untuk 403 (Forbidden), 404 (Not Found), dan 500 (Internal Server Error).
-  - [ ] Desain sesuai branding Triont People dengan tombol "Kembali ke Dashboard".
+- [x] **Consistent Error Pages**:
+  - [x] Custom page untuk 403 (Forbidden), 404 (Not Found), dan 500 (Internal Server Error).
+  - [x] Desain sesuai branding Triont People dengan tombol "Kembali ke Dashboard".
 
-- [ ] **Filter Persistence**:
-  - [ ] Filter aktif (search, role, department, dll) tersimpan di URL query string sehingga tidak hilang saat navigate back.
-  - [ ] Tombol "Reset filter" yang jelas untuk clear semua filter sekaligus.
+- [x] **Filter Persistence**:
+  - [x] Filter aktif (search, role, department, dll) tersimpan di URL query string sehingga tidak hilang saat navigate back.
+  - [x] Tombol "Reset filter" yang jelas untuk clear semua filter sekaligus.
 
-- [ ] **Bulk Actions**:
-  - [ ] Checkbox per-row dan "Select All" di list view.
-  - [ ] Action bar muncul di atas tabel ketika ada item dipilih: Archive, Delete, Restore.
-  - [ ] Cover semua list: Employees, Leave Types, Departments.
+- [x] **Bulk Actions**:
+  - [x] Checkbox per-row dan "Select All" di list view.
+  - [x] Action bar muncul di atas tabel ketika ada item dipilih: Archive, Delete, Restore.
+  - [x] Cover semua list: Employees, Leave Types, Departments.
+
+- [ ] **Konfigurasi & Manajemen Hari Libur Nasional**:
+  - [ ] UI Config / Pengaturan Hari Libur Nasional & Cuti Bersama yang komprehensif per perusahaan.
+  - [ ] Fleksibilitas konfigurasi cuti bersama (opsi apakah cuti bersama otomatis memotong saldo cuti tahunan atau menjadi hari libur perusahaan).
+  - [x] Auto-sync kalender libur SKB 3 Menteri / integrasi dataset/API hari libur nasional Indonesia (Live API Nager.Date ID + Fixed statutory generator + multi-year fallback).
+  - [ ] Dukungan import/export daftar hari libur per tahun (CSV/Excel).
+
+- [x] **Navigasi Multi-Tahun di Menu Holidays (Tahun Sebelum & Sesudah)**:
+  - [x] Navigasi tahun dinamis dengan tombol *Previous Year* (`<`) dan *Next Year* (`>`) di menu Holidays (`/long-weekend`).
+  - [x] Dropdown pemilihan tahun yang fleksibel (rentang tahun otomatis & dinamis) untuk melihat arsip libur tahun lalu dan proyeksi libur tahun mendatang.
+  - [x] Kalkulasi rekomendasi Long Weekend dan Harpitnas secara akurat untuk tahun berapapun yang dipilih.
+

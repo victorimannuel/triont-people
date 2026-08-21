@@ -1,0 +1,56 @@
+<!-- Global Confirmation Modal for Destructive & State-Changing Actions -->
+<div id="globalConfirmModal" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 transition-all opacity-0" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="globalConfirmTitle">
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all animate-slideIn border border-gray-100">
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <span id="globalConfirmIconWrapper" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 shadow-2xs">
+                    <i id="globalConfirmIcon" class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </span>
+                <div>
+                    <h3 id="globalConfirmTitle" class="text-base font-bold text-gray-900">
+                        {{ t('Konfirmasi Tindakan') }}
+                    </h3>
+                    <p id="globalConfirmSubtitle" class="text-xs text-gray-500 mt-0.5">
+                        {{ t('Pastikan tindakan Anda sudah sesuai') }}
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="closeConfirmModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="{{ t('Tutup') }}">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="mt-4 space-y-3.5">
+            <!-- Item Name Highlight Box -->
+            <div id="globalConfirmItemBox" class="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5">
+                <p id="globalConfirmItemLabel" class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('Item yang Dipilih') }}</p>
+                <p id="globalConfirmItemName" class="text-sm font-bold text-gray-900 mt-0.5 break-words">-</p>
+                <p id="globalConfirmItemDetail" class="text-xs text-gray-500 mt-0.5 hidden break-words"></p>
+            </div>
+
+            <!-- Message / Explanation -->
+            <div id="globalConfirmMessageWrapper" class="rounded-xl border border-red-100 bg-red-50/60 p-3 text-xs text-red-950 leading-relaxed flex items-start gap-2.5">
+                <i id="globalConfirmMessageIcon" class="fa-solid fa-circle-info text-red-600 mt-0.5 text-sm shrink-0"></i>
+                <p id="globalConfirmMessage" class="flex-1">
+                    {{ t('Apakah Anda yakin ingin melanjutkan tindakan ini?') }}
+                </p>
+            </div>
+
+            <!-- Action Form -->
+            <form id="globalConfirmForm" method="POST" action="" class="flex items-center justify-end gap-2.5 border-t border-gray-100 pt-4">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <div id="globalConfirmHiddenInputs"></div>
+
+                <button type="button" onclick="closeConfirmModal()" class="btn-secondary px-4 py-2 text-xs font-semibold">
+                    {{ t('Cancel') }}
+                </button>
+                <button type="submit" id="globalConfirmSubmitBtn" class="btn-primary bg-red-600 hover:bg-red-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition">
+                    <i id="globalConfirmSubmitIcon" class="fa-solid fa-trash-can mr-1.5"></i>
+                    <span id="globalConfirmSubmitText">{{ t('Ya, Lanjutkan') }}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

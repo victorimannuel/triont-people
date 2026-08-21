@@ -38,11 +38,9 @@
                     </p>
                 </div>
             </div>
-            <form method="POST" action="{{ url_for('main.admin_delete_approval_config', config_id=c.id) }}" onsubmit="return confirm(window.translateUi ? window.translateUi('Hapus level ini?') : 'Hapus level ini?')">
-                <button type="submit" class="text-red-400 hover:text-red-600">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </form>
+            <button type="button" onclick="confirmDeleteApprovalConfig({{ c.id }}, {{ ('Level ' ~ c.level ~ ' (' ~ (c.approver_role|format_role) ~ ')')|tojson }})" class="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition" title="{{ t('Hapus level ini') }}">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
         </div>
         {% endfor %}
     </div>
@@ -114,4 +112,22 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function confirmDeleteApprovalConfig(id, name) {
+    window.showConfirmModal({
+        title: window.translateUi ? window.translateUi('Hapus Level Approval') : 'Hapus Level Approval',
+        subtitle: window.translateUi ? window.translateUi('Hapus tahapan persetujuan ini') : 'Hapus tahapan persetujuan ini',
+        itemName: name,
+        itemLabel: window.translateUi ? window.translateUi('Level Approval') : 'Level Approval',
+        message: window.translateUi ? window.translateUi('Level approval ini akan dihapus dari alur pengajuan cuti.') : 'Level approval ini akan dihapus dari alur pengajuan cuti.',
+        confirmType: 'danger',
+        confirmText: window.translateUi ? window.translateUi('Ya, Hapus') : 'Ya, Hapus',
+        confirmIcon: 'fa-trash-can',
+        actionUrl: '/admin/approval-configs/' + id + '/delete'
+    });
+}
+</script>
 {% endblock %}

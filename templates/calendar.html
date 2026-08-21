@@ -264,12 +264,9 @@
             </div>
 
             <div class="flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-                <form method="POST" action="{{ url_for('main.regenerate_calendar_token_action') }}" onsubmit="return confirm('{{ t('Reset calendar feed link? Old links connected to Google/Apple Calendar will stop working.') }}')">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline">
-                        <i class="fa-solid fa-arrows-rotate mr-1"></i>{{ t('Reset new link') }}
-                    </button>
-                </form>
+                <button type="button" onclick="confirmResetCalendarToken()" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline cursor-pointer">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i>{{ t('Reset new link') }}
+                </button>
                 <a href="{{ url_for('main.calendar_feed', token=calendar_token) }}" download="people-calendar.ics" class="font-medium text-triton-600 hover:underline">
                     <i class="fa-solid fa-download mr-1"></i>{{ t('Download .ics file') }}
                 </a>
@@ -591,6 +588,20 @@ function copyCalendarFeedUrl() {
             textSpan.textContent = window.translateUi ? window.translateUi('Tersalin!') : 'Tersalin!';
             setTimeout(function () { textSpan.textContent = original; }, 2000);
         }
+    });
+}
+
+function confirmResetCalendarToken() {
+    window.showConfirmModal({
+        title: window.translateUi ? window.translateUi('Reset Link Kalender') : 'Reset Link Kalender',
+        subtitle: window.translateUi ? window.translateUi('Buat token baru untuk langganan kalender') : 'Buat token baru untuk langganan kalender',
+        itemName: window.translateUi ? window.translateUi('Link iCal Calendar Feed') : 'Link iCal Calendar Feed',
+        itemLabel: window.translateUi ? window.translateUi('Target') : 'Target',
+        message: window.translateUi ? window.translateUi('Reset link calendar feed? Link lama yang tersambung ke Google/Apple Calendar akan berhenti sinkronisasi sampai Anda memasukkan link baru.') : 'Reset link calendar feed? Link lama yang tersambung ke Google/Apple Calendar akan berhenti sinkronisasi sampai Anda memasukkan link baru.',
+        confirmType: 'warning',
+        confirmText: window.translateUi ? window.translateUi('Ya, Reset Link') : 'Ya, Reset Link',
+        confirmIcon: 'fa-arrows-rotate',
+        actionUrl: '{{ url_for("main.regenerate_calendar_token_action") }}'
     });
 }
 </script>
