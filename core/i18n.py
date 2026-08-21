@@ -525,6 +525,26 @@ for _en_key, _trans in TRANSLATIONS.items():
 def normalize_language(language):
     return language if language in SUPPORTED_LANGUAGES else 'en'
 
+def get_client_translations():
+    client_dict = {'en': {}, 'id': {}, 'idc': {}}
+    for en_key, trans in TRANSLATIONS.items():
+        id_val = trans.get('id', en_key)
+        idc_val = trans.get('idc', id_val)
+        
+        client_dict['en'][en_key] = en_key
+        client_dict['id'][en_key] = id_val
+        client_dict['idc'][en_key] = idc_val
+
+        if id_val and id_val != en_key:
+            client_dict['en'][id_val] = en_key
+            client_dict['id'][id_val] = id_val
+            client_dict['idc'][id_val] = idc_val
+        if idc_val and idc_val != en_key and idc_val != id_val:
+            client_dict['en'][idc_val] = en_key
+            client_dict['id'][idc_val] = id_val
+            client_dict['idc'][idc_val] = idc_val
+    return client_dict
+
 def translate(message, language=None):
     if not message:
         return message

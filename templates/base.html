@@ -549,6 +549,7 @@
 window.PEOPLE_LANGUAGE = {{ (current_language or 'en')|tojson }};
 window.PEOPLE_LANGUAGE_URL = {{ url_for('main.select_language')|tojson }};
 window.PEOPLE_CSRF_TOKEN = {{ csrf_token()|tojson }};
+window.PEOPLE_TRANSLATIONS = {{ (client_translations or {})|tojson }};
 (function () {
     const translations = {
         en: {
@@ -2530,6 +2531,12 @@ window.PEOPLE_CSRF_TOKEN = {{ csrf_token()|tojson }};
             '❌ Ditolak': '❌ Ditolak'
         }
     };
+
+    if (window.PEOPLE_TRANSLATIONS) {
+        if (window.PEOPLE_TRANSLATIONS.en) Object.assign(translations.en, window.PEOPLE_TRANSLATIONS.en);
+        if (window.PEOPLE_TRANSLATIONS.id) Object.assign(translations.id, window.PEOPLE_TRANSLATIONS.id);
+        if (window.PEOPLE_TRANSLATIONS.idc) Object.assign(translations.idc, window.PEOPLE_TRANSLATIONS.idc);
+    }
 
     const textNodes = [];
     const wordMaps = {

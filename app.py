@@ -5,7 +5,7 @@ from flask_login import current_user
 from config import Config
 from extensions import db, login_manager, migrate
 from core.csrf import csrf_token, enforce_csrf, inject_csrf_fields
-from core.i18n import translate, LANGUAGE_LABELS, normalize_language, SUPPORTED_LANGUAGES
+from core.i18n import translate, LANGUAGE_LABELS, normalize_language, SUPPORTED_LANGUAGES, get_client_translations
 from core.auth import get_active_company_id, load_user
 from models import Company, init_audit_events
 from services.seed_service import seed_initial_data
@@ -41,6 +41,7 @@ def create_app(config_class=Config):
         return {
             'csrf_token': csrf_token,
             't': translate,
+            'client_translations': get_client_translations(),
             'language_labels': LANGUAGE_LABELS,
             'timezone_choices': TIMEZONE_CHOICES,
             'current_user_tz': get_current_user_timezone(),
