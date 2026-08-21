@@ -9,11 +9,11 @@
             <a href="{{ url_for('main.admin_leave_types', status='active') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'active' %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                 <i class="fa-solid fa-list-check mr-1.5"></i>{{ t('Active') }}
             </a>
-            <a href="{{ url_for('main.admin_leave_types', status='archived') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'archived' %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
+            <a href="{{ url_for('main.admin_leave_types', status='archived') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'archived' %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                 <i class="fa-solid fa-box-archive mr-1.5"></i>{{ t('Archived') }}
             </a>
             {% if current_user.role in ('admin', 'hr') %}
-            <a href="{{ url_for('main.admin_leave_types', status='deleted') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'deleted' %}bg-rose-600 text-white shadow-sm{% else %}text-gray-600 hover:text-rose-700 hover:bg-rose-50{% endif %}">
+            <a href="{{ url_for('main.admin_leave_types', status='deleted') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'deleted' %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                 <i class="fa-solid fa-trash-can mr-1.5"></i>{{ t('Deleted') }}
             </a>
             {% endif %}
