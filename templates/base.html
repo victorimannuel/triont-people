@@ -402,12 +402,51 @@
             </div>
         </header>
         <main class="min-h-[calc(100dvh-4rem)] overflow-x-clip p-4 pb-24 md:p-8">
-            {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="mb-5 flex items-center gap-3 rounded-md border px-4 py-3 text-sm {% if category == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% elif category == 'danger' %}border-red-200 bg-red-50 text-red-800{% else %}border-amber-200 bg-amber-50 text-amber-800{% endif %}">{{ message }}</div>{% endfor %}{% endwith %}
             {% block content %}{% endblock %}
         </main>
     </div>
 </div>
-{% else %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div id="toast-container" class="no-print fixed bottom-6 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none" style="max-width:380px">
+    {% for category, message in messages %}
+    <div class="toast-item pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3.5 shadow-xl backdrop-blur-sm text-sm font-medium
+        {% if category == 'success' %}border-emerald-200 bg-emerald-50/95 text-emerald-900
+        {% elif category == 'danger' %}border-red-200 bg-red-50/95 text-red-900
+        {% else %}border-amber-200 bg-amber-50/95 text-amber-900{% endif %}"
+        style="transform:translateX(120%);opacity:0;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s ease">
+        <span class="mt-0.5 shrink-0 text-base
+            {% if category == 'success' %}text-emerald-500
+            {% elif category == 'danger' %}text-red-500
+            {% else %}text-amber-500{% endif %}">
+            <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %}"></i>
+        </span>
+        <span class="flex-1 leading-snug">{{ message }}</span>
+        <button type="button" onclick="dismissToast(this.closest('.toast-item'))" class="shrink-0 opacity-50 hover:opacity-100 transition mt-0.5 -mr-1">
+            <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+<script>
+(function(){
+    var toasts = document.querySelectorAll('.toast-item');
+    toasts.forEach(function(t, i) {
+        setTimeout(function(){ t.style.transform='translateX(0)'; t.style.opacity='1'; }, 80 + i * 100);
+        setTimeout(function(){ dismissToast(t); }, 5000 + i * 100);
+    });
+    window.dismissToast = function(t) {
+        if (!t || t._dismissing) return;
+        t._dismissing = true;
+        t.style.transform = 'translateX(120%)';
+        t.style.opacity = '0';
+        setTimeout(function(){ t.remove(); }, 350);
+    };
+})();
+</script>
+{% endif %}
+{% endwith %}
 <div class="no-print fixed right-4 top-4 z-50"><div class="language-toggle shadow-sm" role="group" aria-label="Language"><button type="button" data-lang-option="en">EN</button><button type="button" data-lang-option="id">ID</button><button type="button" data-lang-option="idc">CAS</button></div></div>
 <main>{% block guest_content %}{% endblock %}</main>
 {% endif %}

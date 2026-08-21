@@ -60,6 +60,10 @@ def approval_history():
         else:
             status_tab = 'active'
 
+    # Non-admin cannot access deleted tab
+    if status_tab == 'deleted' and current_user.role != 'admin':
+        status_tab = 'active'
+
     my_company = get_active_company_id()
 
     if status_tab == 'deleted':

@@ -968,6 +968,10 @@ def admin_leave_types():
         else:
             status_tab = 'active'
 
+    # Non-admin cannot access deleted tab
+    if status_tab == 'deleted' and current_user.role != 'admin':
+        status_tab = 'active'
+
     if status_tab == 'deleted':
         query = LeaveType.query.filter_by(company_id=my_company, is_deleted=True)
     elif status_tab == 'archived':
@@ -1129,6 +1133,11 @@ def admin_restore_leave_type(type_id):
 def admin_departments():
     my_company = get_active_company_id()
     status_tab = request.args.get('status', '').strip().lower()
+
+    # Non-admin cannot access deleted tab
+    if status_tab == 'deleted' and current_user.role != 'admin':
+        status_tab = 'active'
+
     if status_tab == 'deleted':
         query = Department.query.filter_by(company_id=my_company, is_deleted=True)
     else:
