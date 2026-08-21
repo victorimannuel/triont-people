@@ -323,20 +323,35 @@ class PeopleAppTestCase(unittest.TestCase):
         db.session.add(grant)
         db.session.commit()
 
-        # Admin deletes the employee
+        # Admin soft deletes the employee
         self._login(self.admin_user)
-        res = self.client.post(f'/admin/employees/delete/{emp_to_delete.id}', follow_redirects=True)
+        res = self.client.post(f'/admin/employees/delete/{emp_to_delete.id}', data={'action': 'delete'}, follow_redirects=True)
         self.assertEqual(res.status_code, 200)
 
-        # Verify user is deleted and constraints are cleanly unlinked
+        # Verify user is soft-deleted, historical grants remain intact in DB, and constraints are unlinked
         deleted_user = db.session.get(User, emp_to_delete.id)
-        self.assertIsNone(deleted_user)
+        self.assertIsNotNone(deleted_user)
+        self.assertTrue(deleted_user.is_deleted)
+        self.assertFalse(deleted_user.is_active)
+        self.assertIsNotNone(deleted_user.deleted_at)
+
+        # Historical leave grant is preserved
+        grant_in_db = db.session.get(LeaveGrant, grant.id)
+        self.assertIsNotNone(grant_in_db)
 
         db.session.refresh(dept)
         self.assertIsNone(dept.head_id)
 
         db.session.refresh(self.employee_user)
         self.assertIsNone(self.employee_user.manager_id)
+
+        # Restore the employee
+        res_restore = self.client.post(f'/admin/employees/restore/{emp_to_delete.id}', follow_redirects=True)
+        self.assertEqual(res_restore.status_code, 200)
+        db.session.refresh(deleted_user)
+        self.assertFalse(deleted_user.is_deleted)
+        self.assertTrue(deleted_user.is_active)
+        self.assertIsNone(deleted_user.deleted_at)
 
     def test_audit_trail_automatic_tracking(self):
         # 1. Admin creates a new department via web request
@@ -519,28 +534,60 @@ class PeopleAppTestCase(unittest.TestCase):
 
     def test_admin_employees_toggle_archive(self):
         self._login(self.admin_user)
-        # Active tab
-        res_active = self.client.get('/admin/employees')
+        # 1. Active tab
+        res_active = self.client.get('/admin/employees?status=active')
         self.assertEqual(res_active.status_code, 200)
         self.assertIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), res_active.data)
 
-        # Archive Alice
+        # 2. Archive Alice
         self.client.post(f'/admin/employees/delete/{self.employee_user.id}', data={
             'action': 'archive',
             '_csrf_token': 'test-token'
         })
         db.session.refresh(self.employee_user)
         self.assertFalse(self.employee_user.is_active)
+        self.assertFalse(self.employee_user.is_deleted)
 
         # Active tab should not have Alice in table actions
-        res_active_after = self.client.get('/admin/employees')
+        res_active_after = self.client.get('/admin/employees?status=active')
         self.assertEqual(res_active_after.status_code, 200)
         self.assertNotIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), res_active_after.data)
 
         # Archived tab should have Alice in table actions
-        res_archived = self.client.get('/admin/employees?archived=1')
+        res_archived = self.client.get('/admin/employees?status=archived')
         self.assertEqual(res_archived.status_code, 200)
         self.assertIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), res_archived.data)
+
+        # Also support legacy query ?archived=1
+        res_archived_legacy = self.client.get('/admin/employees?archived=1')
+        self.assertEqual(res_archived_legacy.status_code, 200)
+        self.assertIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), res_archived_legacy.data)
+
+        # 3. Soft delete Alice
+        self.client.post(f'/admin/employees/delete/{self.employee_user.id}', data={
+            'action': 'delete',
+            '_csrf_token': 'test-token'
+        })
+        db.session.refresh(self.employee_user)
+        self.assertTrue(self.employee_user.is_deleted)
+
+        # Deleted tab should show Alice with restore button
+        res_deleted = self.client.get('/admin/employees?status=deleted')
+        self.assertEqual(res_deleted.status_code, 200)
+        self.assertIn(f'/admin/employees/restore/{self.employee_user.id}'.encode('utf-8'), res_deleted.data)
+
+        # Active and archived tabs should not have Alice
+        self.assertNotIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), self.client.get('/admin/employees?status=active').data)
+        self.assertNotIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), self.client.get('/admin/employees?status=archived').data)
+
+        # 4. Restore Alice
+        self.client.post(f'/admin/employees/restore/{self.employee_user.id}', follow_redirects=True)
+        db.session.refresh(self.employee_user)
+        self.assertFalse(self.employee_user.is_deleted)
+        self.assertTrue(self.employee_user.is_active)
+
+        # Alice is back in active tab
+        self.assertIn(f'openEditEmployee({self.employee_user.id}'.encode('utf-8'), self.client.get('/admin/employees?status=active').data)
 
     def test_admin_leave_balances_overview(self):
         self._login(self.admin_user)

@@ -9,7 +9,10 @@ from core.i18n import translate
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    user = db.session.get(User, int(user_id))
+    if user and getattr(user, 'is_deleted', False):
+        return None
+    return user
 
 def get_active_company_id():
     if not current_user.is_authenticated:

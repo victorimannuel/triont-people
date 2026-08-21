@@ -180,9 +180,29 @@ def admin_custom_domain_guide():
 @login_required
 @role_required('manager', 'hr', 'admin')
 def admin_employees():
-    show_archived = request.args.get('archived') == '1'
+    status_tab = request.args.get('status', '').strip().lower()
+    if not status_tab:
+        if request.args.get('archived') == '1':
+            status_tab = 'archived'
+        elif request.args.get('deleted') == '1':
+            status_tab = 'deleted'
+        else:
+            status_tab = 'active'
+
+    # Non-admin cannot access deleted tab
+    if status_tab == 'deleted' and current_user.role != 'admin':
+        status_tab = 'active'
+
+    show_archived = (status_tab == 'archived')
     my_company = get_active_company_id()
-    query = User.query.filter_by(company_id=my_company, is_active=(not show_archived))
+
+    if status_tab == 'deleted':
+        query = User.query.filter_by(company_id=my_company, is_deleted=True)
+    elif status_tab == 'archived':
+        query = User.query.filter_by(company_id=my_company, is_deleted=False, is_active=False)
+    else:
+        status_tab = 'active'
+        query = User.query.filter_by(company_id=my_company, is_deleted=False, is_active=True)
 
     q = request.args.get('q', '').strip()
     if q:
@@ -199,7 +219,7 @@ def admin_employees():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(User.role.desc(), User.name).paginate(page=page, per_page=per_page, error_out=False)
     employees = pagination.items
-    managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
+    managers = User.query.filter(User.company_id == my_company, User.is_deleted == False, User.is_active == True, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
     departments = Department.query.filter_by(company_id=my_company).all()
     return render_template(
         'admin/employees.html',
@@ -211,7 +231,8 @@ def admin_employees():
         leave_types=LeaveType.query.filter_by(company_id=my_company, is_active=True).order_by(LeaveType.name).all(),
         grant_token=secrets.token_urlsafe(24),
         companies=Company.query.filter_by(is_active=True).order_by(Company.name).all(),
-        show_archived=show_archived
+        show_archived=show_archived,
+        current_tab=status_tab
     )
 
 @main_bp.route('/admin/impersonate/<int:user_id>', methods=['GET', 'POST'])
@@ -369,7 +390,7 @@ def admin_leave_balances():
     departments = Department.query.filter_by(company_id=my_company).order_by(Department.name.asc()).all()
 
     # Query employees
-    emp_query = User.query.filter_by(company_id=my_company, is_active=True)
+    emp_query = User.query.filter_by(company_id=my_company, is_active=True, is_deleted=False)
     if current_user.role == 'manager':
         subordinate_ids = db.session.query(User.id).filter(User.manager_id == current_user.id)
         dept_ids = db.session.query(Department.id).filter(Department.head_id == current_user.id)
@@ -474,7 +495,7 @@ def admin_leave_balance_rollover():
         return jsonify(ok=False, message=translate('Tidak ada jenis cuti yang sesuai.')), 400
 
     # Active employees for this company
-    employees = User.query.filter_by(company_id=company_id, is_active=True).all()
+    employees = User.query.filter_by(company_id=company_id, is_active=True, is_deleted=False).all()
     if not employees:
         return jsonify(ok=False, message=translate('Tidak ada karyawan aktif.')), 400
 
@@ -848,35 +869,39 @@ def admin_delete_employee(user_id):
 
     if action == 'archive':
         user.is_active = False
+        user.is_deleted = False
         Department.query.filter_by(head_id=user.id).update({'head_id': None})
         User.query.filter_by(manager_id=user.id).update({'manager_id': None})
         audit_log('admin.employee_archived', 'user', user.id, details={'email': user.email}, company_id=my_company)
         db.session.commit()
         flash(translate(f'Karyawan {name} berhasil diarsipkan / dinonaktifkan.'), 'success')
-        return redirect(url_for('main.admin_employees'))
+        return redirect(url_for('main.admin_employees', status='archived'))
 
-    # Hard delete: unlink dependencies first
-    # 1. Unlink department head
+    # Soft delete: mark is_deleted = True, keep all history/balances/requests intact
+    user.is_active = False
+    user.is_deleted = True
+    user.deleted_at = utcnow()
     Department.query.filter_by(head_id=user.id).update({'head_id': None})
-    # 2. Unlink manager references
     User.query.filter_by(manager_id=user.id).update({'manager_id': None})
-    # 3. Unlink approvals & delegates on leave requests
-    LeaveRequest.query.filter_by(approved_by=user.id).update({'approved_by': None})
-    LeaveRequest.query.filter_by(delegate_id=user.id).update({'delegate_id': None})
-    # 4. Remove leave grants and unlink actor references
-    LeaveGrant.query.filter_by(employee_id=user.id, company_id=my_company).delete()
-    LeaveGrant.query.filter_by(actor_id=user.id).update({'actor_id': None})
-    # 5. Remove leave requests and balances
-    LeaveRequest.query.filter_by(employee_id=user.id, company_id=my_company).delete()
-    LeaveBalance.query.filter_by(employee_id=user.id, company_id=my_company).delete()
-    # 6. Unlink audit logs
-    AuditLog.query.filter_by(actor_id=user.id).update({'actor_id': None})
 
-    audit_log('admin.employee_deleted', 'user', user.id, details={'email': user.email}, company_id=my_company)
-    db.session.delete(user)
+    audit_log('admin.employee_deleted', 'user', user.id, details={'email': user.email, 'mode': 'soft_delete'}, company_id=my_company)
     db.session.commit()
-    flash(translate(f'Karyawan {name} berhasil dihapus permanen.'), 'success')
-    return redirect(url_for('main.admin_employees'))
+    flash(translate(f'Karyawan {name} berhasil dipindahkan ke kotak sampah.'), 'success')
+    return redirect(url_for('main.admin_employees', status='deleted' if current_user.role == 'admin' else 'active'))
+
+@main_bp.route('/admin/employees/restore/<int:user_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_restore_employee(user_id):
+    my_company = get_active_company_id()
+    user = User.query.filter_by(id=user_id, company_id=my_company).first_or_404()
+    user.is_deleted = False
+    user.deleted_at = None
+    user.is_active = True
+    audit_log('admin.employee_restored', 'user', user.id, details={'email': user.email}, company_id=my_company)
+    db.session.commit()
+    flash(translate(f'Karyawan {user.name} berhasil dipulihkan.'), 'success')
+    return redirect(url_for('main.admin_employees', status='deleted'))
 
 @main_bp.route('/admin/employees/unarchive/<int:user_id>', methods=['POST'])
 @login_required
@@ -885,10 +910,11 @@ def admin_unarchive_employee(user_id):
     my_company = get_active_company_id()
     user = User.query.filter_by(id=user_id, company_id=my_company).first_or_404()
     user.is_active = True
+    user.is_deleted = False
     audit_log('admin.employee_unarchived', 'user', user.id, details={'email': user.email}, company_id=my_company)
     db.session.commit()
     flash(translate(f'Karyawan {user.name} berhasil diaktifkan kembali.'), 'success')
-    return redirect(url_for('main.admin_employees'))
+    return redirect(url_for('main.admin_employees', status='archived'))
 
 # ── ADMIN: LEAVE TYPES ──
 
@@ -1065,7 +1091,7 @@ def admin_departments():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(Department.name).paginate(page=page, per_page=per_page, error_out=False)
     departments = pagination.items
-    managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
+    managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.is_deleted == False, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
     return render_template('admin/departments.html', departments=departments, pagination=pagination, per_page_str=per_page_str, managers=managers, companies=Company.query.filter_by(is_active=True).order_by(Company.name).all())
 
 @main_bp.route('/admin/departments/add', methods=['POST'])

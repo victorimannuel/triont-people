@@ -181,6 +181,8 @@ def create_app(config_class=Config):
                     safe_add_column(table, 'updated_by_id INTEGER')
                     safe_add_column(table, 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
                     safe_add_column(table, 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+                    safe_add_column(table, 'is_deleted BOOLEAN DEFAULT FALSE')
+                    safe_add_column(table, 'deleted_at TIMESTAMP')
                 safe_add_column('leave_requests', "day_part VARCHAR(20) DEFAULT 'full'")
                 safe_add_column('users', "calendar_token VARCHAR(64)")
                 safe_add_column('users', "avatar_path VARCHAR(255)")
@@ -200,6 +202,7 @@ def create_app(config_class=Config):
                     try:
                         conn.execute(db.text(f"CREATE INDEX {index_name} ON {tbl} ({cols});"))
                         conn.commit()
+                        return
                     except Exception:
                         pass
 
@@ -208,6 +211,8 @@ def create_app(config_class=Config):
                 safe_create_index('idx_audit_logs_action', 'audit_logs', 'action')
                 safe_create_index('idx_audit_logs_created_at', 'audit_logs', 'created_at')
                 safe_create_index('idx_audit_logs_company_created', 'audit_logs', 'company_id, created_at')
+                for table in audit_tables:
+                    safe_create_index(f'idx_{table}_is_deleted', table, 'is_deleted')
         except Exception:
             pass
 

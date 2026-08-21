@@ -23,7 +23,7 @@ def login():
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
         user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password) and user.is_active:
+        if user and user.check_password(password) and user.is_active and not user.is_deleted:
             login_user(user)
             session['language'] = normalize_language(user.language_preference or 'en')
             audit_log('auth.login_success', 'user', user.id, company_id=user.company_id, actor_id=user.id)
@@ -60,7 +60,7 @@ def forgot_password():
         user = User.query.filter_by(email=email).first()
         session['reset_email'] = email
 
-        if not user or not user.is_active:
+        if not user or not user.is_active or user.is_deleted:
             # Anti-enumeration response
             flash(translate('Jika email terdaftar, kode verifikasi OTP telah dikirimkan ke email Anda.'), 'info')
             return redirect(url_for('auth.verify_otp'))
@@ -109,7 +109,7 @@ def verify_otp():
     if not email:
         return redirect(url_for('auth.forgot_password'))
 
-    user = User.query.filter_by(email=email, is_active=True).first()
+    user = User.query.filter_by(email=email, is_active=True, is_deleted=False).first()
 
     # Calculate cooldown for resend button
     cooldown_remaining = 0
@@ -172,7 +172,7 @@ def resend_otp():
         flash(translate('Sesi verifikasi berakhir. Silakan masukkan email Anda kembali.'), 'warning')
         return redirect(url_for('auth.forgot_password'))
 
-    user = User.query.filter_by(email=email, is_active=True).first()
+    user = User.query.filter_by(email=email, is_active=True, is_deleted=False).first()
     if not user:
         flash(translate('Kode verifikasi OTP baru telah dikirimkan jika email terdaftar.'), 'info')
         return redirect(url_for('auth.verify_otp'))

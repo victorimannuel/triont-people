@@ -61,7 +61,7 @@ def generate_leave_report_excel(company_id, year=None, department_id=None):
     leave_types = LeaveType.query.filter_by(company_id=company_id, is_active=True).order_by(LeaveType.id.asc()).all()
 
     # Query employees
-    emp_query = User.query.filter_by(company_id=company_id, is_active=True)
+    emp_query = User.query.filter_by(company_id=company_id, is_active=True, is_deleted=False)
     if department_id:
         emp_query = emp_query.filter_by(department_id=department_id)
     employees = emp_query.order_by(User.name.asc()).all()

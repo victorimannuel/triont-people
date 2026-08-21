@@ -17,20 +17,25 @@
         <a href="{{ url_for('main.admin_leave_balances') }}" class="btn-secondary px-3.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50/70 border-teal-200 hover:bg-teal-100/80"><i class="fa-solid fa-scale-balanced mr-1.5"></i>Saldo cuti</a>
         <button type="button" onclick="openImportEmployeeModal()" class="btn-secondary px-3.5 py-2 text-xs font-semibold"><i class="fa-solid fa-file-import mr-1.5"></i>Import data</button>
         <button type="button" onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-3.5 py-2 text-xs font-semibold"><i class="fa-solid fa-plus mr-1.5"></i>Tambah karyawan</button>
-        <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1">
-            <a href="{{ url_for('main.admin_employees') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if not show_archived %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+        <div class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-1">
+            <a href="{{ url_for('main.admin_employees', status='active') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'active' %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
                 <i class="fa-solid fa-users mr-1.5"></i>Aktif
             </a>
-            <a href="{{ url_for('main.admin_employees', archived=1) }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if show_archived %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+            <a href="{{ url_for('main.admin_employees', status='archived') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'archived' %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
                 <i class="fa-solid fa-box-archive mr-1.5"></i>Diarsipkan
             </a>
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('main.admin_employees', status='deleted') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'deleted' %}bg-rose-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-solid fa-trash-can mr-1.5"></i>Dihapus
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
 <section class="app-card sticky top-16 z-10 mb-6 p-5 bg-white border border-gray-200 shadow-sm">
-    <div class="mb-4 flex items-center justify-between"><div><h2 class="text-sm font-semibold text-gray-900">{{ t('Filter directory') }}</h2><p class="mt-1 text-xs text-gray-500">{{ t('Filter list by role or department.') }}</p></div>{% if request.args.get('q') or request.args.get('role') or request.args.get('department_id') %}<a href="{{ url_for('main.admin_employees', archived=1 if show_archived else none) }}" class="text-xs font-semibold text-triton-600"><i class="fa-solid fa-xmark mr-1"></i>{{ t('Clear filters') }}</a>{% endif %}</div>
+    <div class="mb-4 flex items-center justify-between"><div><h2 class="text-sm font-semibold text-gray-900">{{ t('Filter directory') }}</h2><p class="mt-1 text-xs text-gray-500">{{ t('Filter list by role or department.') }}</p></div>{% if request.args.get('q') or request.args.get('role') or request.args.get('department_id') %}<a href="{{ url_for('main.admin_employees', status=current_tab) }}" class="text-xs font-semibold text-triton-600"><i class="fa-solid fa-xmark mr-1"></i>{{ t('Clear filters') }}</a>{% endif %}</div>
     <form method="GET" class="grid grid-cols-1 gap-4 sm:grid-cols-3" id="filterForm">
-        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+        <input type="hidden" name="status" value="{{ current_tab }}">
         <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Search') }}</label><div class="relative"><i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i><input type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="{{ t('Name or email') }}"></div></div>
         <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Role') }}</label><select name="role"><option value="">{{ t('All Roles') }}</option><option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option><option value="hr" {% if request.args.get('role') == 'hr' %}selected{% endif %}>HR</option><option value="manager" {% if request.args.get('role') == 'manager' %}selected{% endif %}>Manager</option><option value="employee" {% if request.args.get('role') == 'employee' %}selected{% endif %}>Employee</option></select></div>
         <div><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('Departments') }}</label><select name="department_id"><option value="">{{ t('All Departments') }}</option>{% for d in departments %}<option value="{{ d.id }}" {% if request.args.get('department_id') == d.id|string %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
@@ -79,12 +84,27 @@
                     <td class="px-6 py-4 text-gray-600">{{ emp.department.name if emp.department else '-' }}</td>
                     <td class="px-6 py-4 text-gray-600">{{ emp.manager.name if emp.manager else '-' }}</td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if emp.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-red-100 text-red-700{% endif %}">
-                            {{ 'Aktif' if emp.is_active else 'Nonaktif' }}
+                        {% if current_tab == 'deleted' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-700">
+                            Dihapus
                         </span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if emp.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                            {{ 'Aktif' if emp.is_active else 'Diarsipkan' }}
+                        </span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex justify-end gap-1">
+                            {% if current_tab == 'deleted' %}
+                            <form method="POST" action="{{ url_for('main.admin_restore_employee', user_id=emp.id) }}" class="inline">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition" title="Pulihkan karyawan">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                                    <span>Pulihkan</span>
+                                </button>
+                            </form>
+                            {% else %}
                             {% if current_user.role == 'admin' and emp.id != current_user.id and emp.is_active %}
                             <button type="button" onclick='openImpersonateModal({{ emp.id }}, {{ emp.name|tojson }}, {{ emp.email|tojson }}, {{ emp.role|format_role|tojson }})'
                                     class="flex h-9 w-9 items-center justify-center rounded-md text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 transition"
@@ -99,7 +119,7 @@
                                 <span class="sr-only">{{ t('Send Password Reset') }}</span>
                             </button>
                             {% endif %}
-                            {% if emp.role != 'admin' %}
+                            {% if emp.role != 'admin' and emp.is_active %}
                             <button type="button" onclick='openGrantLeave({{ emp.id }}, {{ emp.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 transition" title="Grant cuti">
                                 <i class="fa-solid fa-calendar-plus"></i>
                                 <span class="sr-only">Grant cuti</span>
@@ -126,15 +146,16 @@
                                 <span class="sr-only">Hapus</span>
                             </button>
                             {% endif %}
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
                     <td colspan="7" class="empty-state">
-                        <i class="fa-solid {% if show_archived %}fa-box-archive{% else %}fa-users{% endif %}"></i>
-                        <p>{% if show_archived %}Tidak ada karyawan diarsipkan{% else %}Belum ada karyawan aktif{% endif %}</p>
-                        <span class="text-sm">{% if show_archived %}Karyawan yang dinonaktifkan akan muncul di sini{% else %}Klik "Tambah Karyawan" atau "Import data" untuk mulai{% endif %}</span>
+                        <i class="fa-solid {% if current_tab == 'deleted' %}fa-trash-can{% elif current_tab == 'archived' %}fa-box-archive{% else %}fa-users{% endif %}"></i>
+                        <p>{% if current_tab == 'deleted' %}Tidak ada karyawan di kotak sampah{% elif current_tab == 'archived' %}Tidak ada karyawan diarsipkan{% else %}Belum ada karyawan aktif{% endif %}</p>
+                        <span class="text-sm">{% if current_tab == 'deleted' %}Karyawan yang dihapus akan muncul di sini{% elif current_tab == 'archived' %}Karyawan yang dinonaktifkan akan muncul di sini{% else %}Klik "Tambah Karyawan" atau "Import data" untuk mulai{% endif %}</span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -336,16 +357,16 @@
                     <p class="font-bold flex items-center gap-1.5 mb-1"><i class="fa-solid fa-box-archive text-amber-600"></i> Arsipkan / Nonaktifkan (Direkomendasikan)</p>
                     <p class="text-amber-800">Akun login dinonaktifkan, namun seluruh riwayat cuti dan saldo cuti tetap tersimpan aman untuk laporan & audit.</p>
                 </div>
-                <div class="p-3.5 bg-red-50/80 border border-red-200/80 rounded-xl text-xs text-red-900">
-                    <p class="font-bold flex items-center gap-1.5 mb-1"><i class="fa-solid fa-trash-can text-red-600"></i> Hapus Permanen</p>
-                    <p class="text-red-800">Menghapus profil karyawan dan seluruh data pengajuan cuti secara permanen dari database.</p>
+                <div class="p-3.5 bg-rose-50/80 border border-rose-200/80 rounded-xl text-xs text-rose-900">
+                    <p class="font-bold flex items-center gap-1.5 mb-1"><i class="fa-solid fa-trash-can text-rose-600"></i> Hapus ke Kotak Sampah</p>
+                    <p class="text-rose-800">Disembunyikan dari daftar aktif dan arsip. Seluruh data riwayat cuti tetap tersimpan di database.</p>
                 </div>
             </div>
 
             <div class="mt-6 flex flex-col gap-2">
                 <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="showDeleteConfirmStep()" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-red-700 transition shadow-sm">
-                        <i class="fa-solid fa-trash-can"></i> Hapus Permanen
+                    <button type="button" onclick="showDeleteConfirmStep()" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-rose-700 transition shadow-sm">
+                        <i class="fa-solid fa-trash-can"></i> Hapus ke Sampah
                     </button>
                     <button type="button" onclick="submitEmployeeStatus('archive')" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-amber-700 transition shadow-sm">
                         <i class="fa-solid fa-box-archive"></i> Arsipkan
@@ -355,28 +376,28 @@
             </div>
         </div>
 
-        <!-- Step 2: Extra Warning & Confirmation for Permanent Delete -->
+        <!-- Step 2: Extra Warning & Confirmation for Soft Delete -->
         <div id="deleteStep2" class="hidden">
-            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
                 <i class="fa-solid fa-triangle-exclamation text-lg"></i>
             </div>
-            <h3 class="text-lg font-bold text-red-600">Konfirmasi Hapus Permanen</h3>
+            <h3 class="text-lg font-bold text-rose-600">Konfirmasi Hapus Karyawan</h3>
             <p class="mt-2 text-sm text-gray-600">
-                Apakah Anda benar-benar yakin ingin menghapus <strong id="deleteEmployeeNameConfirm" class="text-gray-900 font-bold"></strong>?
+                Apakah Anda yakin ingin memindahkan <strong id="deleteEmployeeNameConfirm" class="text-gray-900 font-bold"></strong> ke kotak sampah?
             </p>
             
-            <div class="mt-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-left text-xs text-red-800 space-y-1.5">
-                <p class="font-bold flex items-center gap-1 text-red-900"><i class="fa-solid fa-circle-exclamation"></i> Perhatian Penting:</p>
-                <ul class="list-disc list-inside space-y-1 pl-1 text-[11px] text-red-800">
-                    <li>Akun dan data profil karyawan akan dihapus selamanya.</li>
-                    <li>Seluruh riwayat pengajuan & saldo cuti akan hilang dari sistem.</li>
-                    <li>Tindakan ini <strong class="font-bold">tidak dapat dibatalkan atau dipulihkan</strong>.</li>
+            <div class="mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs text-rose-800 space-y-1.5">
+                <p class="font-bold flex items-center gap-1 text-rose-900"><i class="fa-solid fa-circle-exclamation"></i> Perhatian:</p>
+                <ul class="list-disc list-inside space-y-1 pl-1 text-[11px] text-rose-800">
+                    <li>Karyawan akan disembunyikan dari daftar aktif dan arsip.</li>
+                    <li>Riwayat pengajuan & saldo cuti tetap aman tersimpan di database.</li>
+                    <li>Admin dapat memulihkan akun ini kapan saja melalui tab <strong>"Dihapus"</strong>.</li>
                 </ul>
             </div>
 
             <div class="mt-6 flex flex-col gap-2">
-                <button type="button" onclick="executePermanentDelete()" class="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition shadow-sm">
-                    <i class="fa-solid fa-trash-can"></i> Ya, Hapus Permanen Sekarang
+                <button type="button" onclick="executePermanentDelete()" class="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-700 transition shadow-sm">
+                    <i class="fa-solid fa-trash-can"></i> Ya, Pindahkan ke Kotak Sampah
                 </button>
                 <button type="button" onclick="backToDeleteStep1()" class="w-full rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition">
                     <i class="fa-solid fa-arrow-left mr-1"></i> Kembali ke Pilihan

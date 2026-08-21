@@ -84,7 +84,7 @@ def calendar():
     if can_apply_leave:
         leave_types = LeaveType.query.filter_by(is_active=True, company_id=my_company).all()
         balances = {b.leave_type_id: b for b in LeaveBalance.query.filter_by(employee_id=current_user.id, company_id=my_company, year=this_year).all()}
-        employees = User.query.filter(User.id != current_user.id, User.is_active == True, User.company_id == my_company).order_by(User.name).all() if delegate_enabled else []
+        employees = User.query.filter(User.id != current_user.id, User.is_active == True, User.is_deleted == False, User.company_id == my_company).order_by(User.name).all() if delegate_enabled else []
 
     calendar_token = current_user.get_calendar_token()
 
@@ -120,7 +120,7 @@ def calendar_feed(token):
     if not token or len(token) < 16:
         abort(404)
 
-    user = User.query.filter_by(calendar_token=token, is_active=True).first()
+    user = User.query.filter_by(calendar_token=token, is_active=True, is_deleted=False).first()
     if not user:
         abort(404)
 

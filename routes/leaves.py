@@ -40,7 +40,7 @@ def apply_leave():
     max_date = date(2030, 12, 31)
     active_company = db.session.get(Company, my_company)
     delegate_enabled = bool(active_company and active_company.delegate_enabled)
-    employees = User.query.filter(User.id != current_user.id, User.is_active == True, User.company_id == my_company).order_by(User.name).all() if delegate_enabled else []
+    employees = User.query.filter(User.id != current_user.id, User.is_active == True, User.is_deleted == False, User.company_id == my_company).order_by(User.name).all() if delegate_enabled else []
 
     def _lt_json():
         return {lt.id: {'requires_attachment': bool(lt.requires_attachment), 'attachment_label': lt.attachment_label or ''} for lt in leave_types}
@@ -111,7 +111,7 @@ def apply_leave():
         if not lt:
             flash(translate('Leave type is not available.'), 'danger')
             return _render_apply()
-        if delegate_id and not User.query.filter(User.id == delegate_id, User.id != current_user.id, User.company_id == my_company, User.is_active == True).first():
+        if delegate_id and not User.query.filter(User.id == delegate_id, User.id != current_user.id, User.company_id == my_company, User.is_active == True, User.is_deleted == False).first():
             flash(translate('Delegate is not available.'), 'danger')
             return _render_apply()
 

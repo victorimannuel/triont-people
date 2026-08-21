@@ -108,7 +108,7 @@ def approval_history():
             distinct_years.append(d.year)
     years = sorted(list(set(distinct_years)), reverse=True)
 
-    employees = User.query.filter_by(company_id=my_company, is_active=True).order_by(User.name).all()
+    employees = User.query.filter_by(company_id=my_company, is_active=True, is_deleted=False).order_by(User.name).all()
     leave_types = LeaveType.query.filter_by(company_id=my_company, is_active=True).order_by(LeaveType.name).all()
 
     return render_template(
