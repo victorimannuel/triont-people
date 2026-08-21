@@ -448,8 +448,8 @@ class PeopleAppTestCase(unittest.TestCase):
 
         csv_text = (
             "Full_Name,Work_Email,Position,Division,Supervisor,Initial_Pass\n"
-            "Budi Santoso,budi@test.com,employee,Operations,admin@test.com,TritonSecure123!\n"
-            "Siti Rahma,siti@test.com,manager,Finance,admin@test.com,TritonSecure123!\n"
+            "Budi Santoso,budi@test.com,employee,Operations,admin@test.com,TriontSecure123!\n"
+            "Siti Rahma,siti@test.com,manager,Finance,admin@test.com,TriontSecure123!\n"
         )
 
         # 1. Preview
@@ -652,7 +652,7 @@ class PeopleAppTestCase(unittest.TestCase):
         # 1. Manifest endpoint
         res_manifest = self.client.get('/static/manifest.json')
         self.assertEqual(res_manifest.status_code, 200)
-        self.assertIn(b'People by Triton', res_manifest.data)
+        self.assertIn(b'People by Triont', res_manifest.data)
         self.assertIn(b'standalone', res_manifest.data)
 
         # 2. Service worker endpoint

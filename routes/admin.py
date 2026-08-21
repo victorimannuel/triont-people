@@ -141,7 +141,7 @@ def admin_smtp_test():
         msg['To'] = test_recipient
         msg.set_content(f"""Halo {current_user.name},
 
-Ini adalah email uji coba dari People by Triton untuk perusahaan {company.name}.
+Ini adalah email uji coba dari People by Triont untuk perusahaan {company.name}.
 Konfigurasi SMTP server Anda telah berhasil terhubung dan berfungsi dengan baik!
 
 Waktu pengujian: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
@@ -149,7 +149,7 @@ SMTP Host: {company.smtp_host}:{company.smtp_port}
 Email Pengirim: {company.smtp_user}
 
 Salam,
-People by Triton""")
+People by Triont""")
 
         if company.smtp_port == 465:
             server = smtplib.SMTP_SSL(company.smtp_host, company.smtp_port, timeout=15)

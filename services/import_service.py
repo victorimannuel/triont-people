@@ -583,7 +583,7 @@ def execute_employee_import(file_stream, filename, mapping, company_id, current_
                 role=role,
                 department_id=dept_id
             )
-            initial_password = pass_raw if pass_raw and len(pass_raw) >= 8 else 'Triton123!'
+            initial_password = pass_raw if pass_raw and len(pass_raw) >= 8 else 'Triont123!'
             new_user.set_password(initial_password)
             db.session.add(new_user)
             db.session.flush()

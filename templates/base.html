@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}People{% endblock %} | People by Triton</title>
+    <title>{% block title %}People{% endblock %} | People by Triont</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css') }}">
@@ -123,7 +123,7 @@
         <div class="sidebar-brand flex items-center gap-3 border-b border-gray-200 px-5 py-5">
             <a href="{{ url_for('main.dashboard') }}" class="flex min-w-0 flex-1 items-center gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white" style="background-color: var(--primary);"><i class="fa-solid fa-people-group"></i></span>
-                <span class="sidebar-brand-text min-w-0"><strong class="block text-sm text-gray-900">People</strong><span class="block text-xs text-gray-500">by Triton</span></span>
+                <span class="sidebar-brand-text min-w-0"><strong class="block text-sm text-gray-900">People</strong><span class="block text-xs text-gray-500">by Triont</span></span>
             </a>
             <button type="button" id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar"><i class="fa-solid fa-chevron-left text-xs"></i></button>
         </div>
@@ -175,7 +175,7 @@
         <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
             <a href="{{ url_for('main.dashboard') }}" class="flex items-center gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white" style="background-color: var(--primary);"><i class="fa-solid fa-people-group"></i></span>
-                <span class="sidebar-brand-text min-w-0"><strong class="block text-sm text-gray-900">People</strong><span class="block text-xs text-gray-500">by Triton</span></span>
+                <span class="sidebar-brand-text min-w-0"><strong class="block text-sm text-gray-900">People</strong><span class="block text-xs text-gray-500">by Triont</span></span>
             </a>
             <button type="button" id="mobile-drawer-close" class="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"><i class="fa-solid fa-xmark text-sm"></i></button>
         </div>
@@ -241,7 +241,7 @@
         <div class="flex items-center gap-3 min-w-0">
             <img src="{{ url_for('static', filename='icon.svg') }}" alt="People Icon" class="h-10 w-10 shrink-0 rounded-xl shadow-xs">
             <div class="min-w-0">
-                <p class="truncate text-xs font-bold text-gray-900">Install People by Triton</p>
+                <p class="truncate text-xs font-bold text-gray-900">Install People by Triont</p>
                 <p class="text-[11px] text-gray-500">Akses cepat & pengalaman seperti aplikasi bawaan.</p>
             </div>
         </div>
@@ -2706,10 +2706,10 @@ window.PEOPLE_TRANSLATIONS = {{ (client_translations or {})|tojson }};
             translated = translated.replace(/\bDelegate\b/g, 'Backup');
             translated = translated.replace(/\bApproval\b/g, 'Approval');
         }
-        if (translated.endsWith(' | People by Triton')) {
-            const prefix = translated.slice(0, -' | People by Triton'.length);
+        if (translated.endsWith(' | People by Triont')) {
+            const prefix = translated.slice(0, -' | People by Triont'.length);
             const translatedPrefix = translateValue(prefix, lang);
-            return translatedPrefix + ' | People by Triton';
+            return translatedPrefix + ' | People by Triont';
         }
         return translated;
     }

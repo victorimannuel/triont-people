@@ -72,7 +72,7 @@ Detail Pengajuan:
 - Status     : Menunggu Persetujuan (Pending){reason_line}
 
 Salam,
-{company.name} (People by Triton)
+{company.name} (People by Triont)
 """
         _dispatch_email(company, emp.email, emp_subject, emp_body)
 
@@ -89,11 +89,11 @@ Detail Pengajuan:
 - Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
 - Durasi     : {duration_str}{reason_line}
 
-Silakan tinjau dan berikan keputusan melalui Inbox Approval di People by Triton:
+Silakan tinjau dan berikan keputusan melalui Inbox Approval di People by Triont:
 https://people.thehyouman.com/approvals
 
 Salam,
-{company.name} (People by Triton)
+{company.name} (People by Triont)
 """
             _dispatch_email(company, emp.manager.email, mgr_subject, mgr_body)
 
@@ -111,13 +111,13 @@ Detail Pengajuan:
 - Status     : {leave_request.status.title()}{reason_line}{notes_line}
 
 Salam,
-{company.name} (People by Triton)
+{company.name} (People by Triont)
 """
         _dispatch_email(company, emp.email, subject, body)
 
 def send_password_reset_otp_email(company, user, otp_code: str):
     """Sends OTP verification email for password reset."""
-    company_name = company.name if company else "People by Triton"
+    company_name = company.name if company else "People by Triont"
     subject = f'[{company_name}] Kode Verifikasi Reset Password: {otp_code}'
 
     body = f"""Halo {user.name},
@@ -135,7 +135,7 @@ PERINGATAN KEAMANAN:
 Jangan berikan kode ini kepada siapapun. Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini dan akun Anda tetap aman.
 
 Salam,
-Tim {company_name} (People by Triton)
+Tim {company_name} (People by Triont)
 """
 
     if company and company.smtp_host and company.smtp_user:
@@ -168,7 +168,7 @@ Tim {company_name} (People by Triton)
 
 def send_password_reset_link_email(company, user, reset_link: str):
     """Sends direct password reset link email."""
-    company_name = company.name if company else "People by Triton"
+    company_name = company.name if company else "People by Triont"
     subject = f'[{company_name}] Atur Ulang Kata Sandi Akun Anda'
 
     body = f"""Halo {user.name},
@@ -184,7 +184,7 @@ PERINGATAN KEAMANAN:
 Jangan berikan tautan ini kepada siapapun. Jika Anda tidak meminta perubahan ini atau memiliki pertanyaan, silakan hubungi tim administrator Anda.
 
 Salam,
-Tim {company_name} (People by Triton)
+Tim {company_name} (People by Triont)
 """
 
     if company and company.smtp_host and company.smtp_user:

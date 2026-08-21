@@ -3,11 +3,11 @@
 {% block guest_content %}
 <div class="grid min-h-screen lg:grid-cols-2">
     <section class="hidden bg-triton-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <a href="#" class="flex items-center gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-triton-600"><i class="fa-solid fa-people-group"></i></span><span><strong class="block text-base">People</strong><small class="text-emerald-100">by Triton</small></span></a>
+        <a href="#" class="flex items-center gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-triton-600"><i class="fa-solid fa-people-group"></i></span><span><strong class="block text-base">People</strong><small class="text-emerald-100">by Triont</small></span></a>
         <div class="max-w-lg"><span class="mb-6 block h-1 w-10 bg-amber-300"></span><p class="mb-4 text-xs font-bold uppercase tracking-[.16em] text-amber-200">People operations</p><h1 class="text-5xl font-bold leading-tight">People, made simple.</h1><p class="mt-6 text-lg leading-relaxed text-emerald-100">Satu ruang kerja untuk mengelola data, proses, dan pengalaman karyawan.</p></div>
-        <p class="text-sm text-emerald-100">People by Triton</p>
+        <p class="text-sm text-emerald-100">People by Triont</p>
     </section>
-    <section class="flex items-center justify-center bg-[#f7f8f6] p-6 sm:p-10"><div class="w-full max-w-sm"><div class="mb-8 lg:hidden"><span class="flex h-10 w-10 items-center justify-center rounded-lg bg-triton-600 text-white"><i class="fa-solid fa-people-group"></i></span><p class="page-kicker mt-5">People by Triton</p></div><p class="page-kicker">Workspace</p><h2 class="mt-2 text-2xl font-bold text-gray-900">Masuk ke workspace Anda</h2><p class="mt-2 text-sm text-gray-500">Gunakan akun perusahaan untuk melanjutkan.</p>
+    <section class="flex items-center justify-center bg-[#f7f8f6] p-6 sm:p-10"><div class="w-full max-w-sm"><div class="mb-8 lg:hidden"><span class="flex h-10 w-10 items-center justify-center rounded-lg bg-triton-600 text-white"><i class="fa-solid fa-people-group"></i></span><p class="page-kicker mt-5">People by Triont</p></div><p class="page-kicker">Workspace</p><h2 class="mt-2 text-2xl font-bold text-gray-900">Masuk ke workspace Anda</h2><p class="mt-2 text-sm text-gray-500">Gunakan akun perusahaan untuk melanjutkan.</p>
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="mt-6 space-y-3" aria-live="polite">
@@ -39,7 +39,7 @@
                 {{ t('Sign in') }}<i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
         </form>
-        <p class="mt-6 text-center text-xs text-gray-400">People by Triton</p></div></section>
+        <p class="mt-6 text-center text-xs text-gray-400">People by Triont</p></div></section>
 </div>
 {% endblock %}
 {% block extra_scripts %}<script>function togglePassword(){const input=document.querySelector('input[name="password"]'),icon=document.getElementById('password-toggle-icon');input.type=input.type==='password'?'text':'password';icon.classList.toggle('fa-eye');icon.classList.toggle('fa-eye-slash')}</script>{% endblock %}

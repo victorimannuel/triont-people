@@ -165,11 +165,11 @@ def calendar_feed(token):
 
     lines = [
         "BEGIN:VCALENDAR",
-        "PRODID:-//Triton People//Calendar Feed//EN",
+        "PRODID:-//Triont People//Calendar Feed//EN",
         "VERSION:2.0",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        f"X-WR-CALNAME:People - {company.name if company else 'Triton People'}",
+        f"X-WR-CALNAME:People - {company.name if company else 'Triont People'}",
         "X-WR-TIMEZONE:Asia/Jakarta",
         "REFRESH-INTERVAL;VALUE=DURATION:PT3H",
         "X-PUBLISHED-TTL:PT3H"

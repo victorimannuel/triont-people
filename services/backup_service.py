@@ -222,7 +222,7 @@ def generate_system_backup_sql_text(company_id=None):
     data = generate_system_backup_dict(company_id)
     lines = [
         "-- --------------------------------------------------------",
-        "-- People by Triton Database Backup",
+        "-- People by Triont Database Backup",
         f"-- Generated At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"-- Scope: {'Company ID ' + str(company_id) if company_id else 'Full System'}",
         "-- --------------------------------------------------------",
@@ -309,7 +309,7 @@ def generate_full_backup_zip(company_id=None):
 
         # 4. Manifest metadata
         manifest = {
-            "application": "People by Triton",
+            "application": "People by Triont",
             "backup_date": datetime.now().isoformat(),
             "scope": f"Company ID: {company_id}" if company_id else "All Companies",
             "database_records": {
