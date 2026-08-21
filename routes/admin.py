@@ -38,7 +38,13 @@ def get_manageable_company_id(company_id=None):
 @login_required
 @role_required('admin')
 def admin_companies():
-    query = Company.query.order_by(Company.name)
+    status_tab = request.args.get('status', '').strip().lower()
+    if status_tab == 'deleted':
+        query = Company.query.filter_by(is_deleted=True).order_by(Company.name)
+    else:
+        status_tab = 'active'
+        query = Company.query.filter_by(is_deleted=False).order_by(Company.name)
+
     q = request.args.get('q', '').strip()
     if q:
         query = query.filter(Company.name.ilike(f'%{q}%'))
@@ -50,7 +56,7 @@ def admin_companies():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     companies = pagination.items
-    return render_template('admin/companies.html', companies=companies, pagination=pagination, per_page_str=per_page_str)
+    return render_template('admin/companies.html', companies=companies, pagination=pagination, per_page_str=per_page_str, current_tab=status_tab)
 
 @main_bp.route('/admin/companies/add', methods=['POST'])
 @login_required
@@ -61,7 +67,7 @@ def admin_add_company():
     if not name:
         flash(translate('Company name is required.'), 'danger')
         return redirect(url_for('main.admin_companies'))
-    if Company.query.filter_by(name=name).first():
+    if Company.query.filter_by(name=name, is_deleted=False).first():
         flash(translate('Company already exists.'), 'danger')
         return redirect(url_for('main.admin_companies'))
     company = Company(name=name, primary_color=primary_color, delegate_enabled=bool(request.form.get('delegate_enabled')))
@@ -92,6 +98,36 @@ def admin_edit_company(company_id):
     audit_log('admin.company_updated', 'company', company.id, details={'name': company.name}, company_id=company.id)
     flash(translate(f'Perusahaan {company.name} berhasil diperbarui!'), 'success')
     return redirect(url_for('main.admin_companies'))
+
+@main_bp.route('/admin/companies/delete/<int:company_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_delete_company(company_id):
+    company = Company.query.get_or_404(company_id)
+    if Company.query.filter_by(is_deleted=False).count() <= 1:
+        flash(translate('Cannot delete the only active company.'), 'danger')
+        return redirect(url_for('main.admin_companies'))
+    company_name = company.name
+    company.is_deleted = True
+    company.is_active = False
+    company.deleted_at = utcnow()
+    audit_log('admin.company_deleted', 'company', company.id, details={'name': company_name, 'mode': 'soft_delete'}, company_id=company.id)
+    db.session.commit()
+    flash(translate(f'Perusahaan {company_name} berhasil dipindahkan ke kotak sampah.'), 'success')
+    return redirect(url_for('main.admin_companies', status='deleted'))
+
+@main_bp.route('/admin/companies/restore/<int:company_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_restore_company(company_id):
+    company = Company.query.get_or_404(company_id)
+    company.is_deleted = False
+    company.deleted_at = None
+    company.is_active = True
+    audit_log('admin.company_restored', 'company', company.id, details={'name': company.name}, company_id=company.id)
+    db.session.commit()
+    flash(translate(f'Perusahaan {company.name} berhasil dipulihkan.'), 'success')
+    return redirect(url_for('main.admin_companies', status='deleted'))
 
 @main_bp.route('/admin/smtp', methods=['GET', 'POST'])
 @login_required
@@ -923,16 +959,24 @@ def admin_unarchive_employee(user_id):
 @role_required('manager', 'hr', 'admin')
 def admin_leave_types():
     my_company = get_active_company_id()
-    show_archived = request.args.get('archived') == '1'
-    status = request.args.get('status', '')
-    query = LeaveType.query.filter_by(company_id=my_company)
+    status_tab = request.args.get('status', '').strip().lower()
+    if not status_tab:
+        if request.args.get('archived') == '1':
+            status_tab = 'archived'
+        elif request.args.get('deleted') == '1':
+            status_tab = 'deleted'
+        else:
+            status_tab = 'active'
 
-    if status == 'active':
-        query = query.filter_by(is_active=True)
-    elif status == 'inactive':
-        query = query.filter_by(is_active=False)
+    if status_tab == 'deleted':
+        query = LeaveType.query.filter_by(company_id=my_company, is_deleted=True)
+    elif status_tab == 'archived':
+        query = LeaveType.query.filter_by(company_id=my_company, is_deleted=False, is_active=False)
     else:
-        query = query.filter_by(is_active=(not show_archived))
+        status_tab = 'active'
+        query = LeaveType.query.filter_by(company_id=my_company, is_deleted=False, is_active=True)
+
+    show_archived = (status_tab == 'archived')
 
     q = request.args.get('q', '').strip()
     if q:
@@ -958,7 +1002,8 @@ def admin_leave_types():
         companies=Company.query.filter_by(is_active=True).order_by(Company.name).all(),
         type_configs_map=type_configs_map,
         default_configs=default_configs,
-        show_archived=show_archived
+        show_archived=show_archived,
+        current_tab=status_tab
     )
 
 @main_bp.route('/admin/leave-types/add', methods=['GET', 'POST'])
@@ -981,13 +1026,13 @@ def admin_add_leave_type():
         return redirect(url_for('main.admin_leave_types'))
 
     lt = LeaveType(name=name, description=description, days_per_year=days_per_year, color=color,
-                   is_active=True, company_id=my_company,
+                   is_active=True, is_deleted=False, company_id=my_company,
                    requires_attachment=requires_attachment, attachment_label=attachment_label)
     db.session.add(lt)
     db.session.flush()
 
     this_year = date.today().year
-    for emp in User.query.filter(User.role == 'employee', User.company_id == my_company).all():
+    for emp in User.query.filter(User.role == 'employee', User.company_id == my_company, User.is_deleted == False).all():
         bal = LeaveBalance(
             company_id=my_company,
             employee_id=emp.id,
@@ -1028,10 +1073,11 @@ def admin_archive_leave_type(type_id):
     company_id = get_active_company_id()
     leave_type = LeaveType.query.filter_by(id=type_id, company_id=company_id).first_or_404()
     leave_type.is_active = False
+    leave_type.is_deleted = False
     audit_log('admin.leave_type_archived', 'leave_type', leave_type.id, details={'name': leave_type.name}, company_id=company_id)
     db.session.commit()
     flash(translate(f'Jenis cuti {leave_type.name} berhasil diarsipkan.'), 'success')
-    return redirect(url_for('main.admin_leave_types'))
+    return redirect(url_for('main.admin_leave_types', status='archived'))
 
 @main_bp.route('/admin/leave-types/unarchive/<int:type_id>', methods=['POST'])
 @login_required
@@ -1040,10 +1086,11 @@ def admin_unarchive_leave_type(type_id):
     company_id = get_active_company_id()
     leave_type = LeaveType.query.filter_by(id=type_id, company_id=company_id).first_or_404()
     leave_type.is_active = True
+    leave_type.is_deleted = False
     audit_log('admin.leave_type_unarchived', 'leave_type', leave_type.id, details={'name': leave_type.name}, company_id=company_id)
     db.session.commit()
     flash(translate(f'Jenis cuti {leave_type.name} berhasil dipulihkan dari arsip.'), 'success')
-    return redirect(url_for('main.admin_leave_types', archived=1))
+    return redirect(url_for('main.admin_leave_types', status='archived'))
 
 @main_bp.route('/admin/leave-types/delete/<int:type_id>', methods=['POST'])
 @login_required
@@ -1051,25 +1098,28 @@ def admin_unarchive_leave_type(type_id):
 def admin_delete_leave_type(type_id):
     company_id = get_active_company_id()
     leave_type = LeaveType.query.filter_by(id=type_id, company_id=company_id).first_or_404()
-    has_requests = LeaveRequest.query.filter_by(company_id=company_id, leave_type_id=leave_type.id).first() is not None
-    has_grants = LeaveGrant.query.filter_by(company_id=company_id, leave_type_id=leave_type.id).first() is not None
-
-    if has_requests or has_grants:
-        if leave_type.is_active:
-            leave_type.is_active = False
-            audit_log('admin.leave_type_archived', 'leave_type', leave_type.id, details={'name': leave_type.name}, company_id=company_id)
-            db.session.commit()
-        flash(translate('This leave type is already in use and has been archived.'), 'warning')
-        return redirect(url_for('main.admin_leave_types'))
-
-    ApprovalConfig.query.filter_by(company_id=company_id, leave_type_id=leave_type.id).delete(synchronize_session=False)
-    LeaveBalance.query.filter_by(company_id=company_id, leave_type_id=leave_type.id).delete(synchronize_session=False)
     name = leave_type.name
-    audit_log('admin.leave_type_deleted', 'leave_type', leave_type.id, details={'name': name}, company_id=company_id)
-    db.session.delete(leave_type)
+    leave_type.is_active = False
+    leave_type.is_deleted = True
+    leave_type.deleted_at = utcnow()
+    audit_log('admin.leave_type_deleted', 'leave_type', leave_type.id, details={'name': name, 'mode': 'soft_delete'}, company_id=company_id)
     db.session.commit()
-    flash(translate(f'Jenis cuti {name} berhasil dihapus.'), 'success')
-    return redirect(url_for('main.admin_leave_types'))
+    flash(translate(f'Jenis cuti {name} berhasil dipindahkan ke kotak sampah.'), 'success')
+    return redirect(url_for('main.admin_leave_types', status='deleted'))
+
+@main_bp.route('/admin/leave-types/restore/<int:type_id>', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_restore_leave_type(type_id):
+    company_id = get_active_company_id()
+    leave_type = LeaveType.query.filter_by(id=type_id, company_id=company_id).first_or_404()
+    leave_type.is_deleted = False
+    leave_type.deleted_at = None
+    leave_type.is_active = True
+    audit_log('admin.leave_type_restored', 'leave_type', leave_type.id, details={'name': leave_type.name}, company_id=company_id)
+    db.session.commit()
+    flash(translate(f'Jenis cuti {leave_type.name} berhasil dipulihkan.'), 'success')
+    return redirect(url_for('main.admin_leave_types', status='deleted'))
 
 # ── ADMIN: DEPARTMENTS ──
 
@@ -1078,7 +1128,13 @@ def admin_delete_leave_type(type_id):
 @role_required('manager', 'hr', 'admin')
 def admin_departments():
     my_company = get_active_company_id()
-    query = Department.query.filter_by(company_id=my_company)
+    status_tab = request.args.get('status', '').strip().lower()
+    if status_tab == 'deleted':
+        query = Department.query.filter_by(company_id=my_company, is_deleted=True)
+    else:
+        status_tab = 'active'
+        query = Department.query.filter_by(company_id=my_company, is_deleted=False)
+
     q = request.args.get('q', '').strip()
     if q:
         query = query.filter(Department.name.ilike(f'%{q}%'))
@@ -1092,7 +1148,15 @@ def admin_departments():
     pagination = query.order_by(Department.name).paginate(page=page, per_page=per_page, error_out=False)
     departments = pagination.items
     managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.is_deleted == False, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
-    return render_template('admin/departments.html', departments=departments, pagination=pagination, per_page_str=per_page_str, managers=managers, companies=Company.query.filter_by(is_active=True).order_by(Company.name).all())
+    return render_template(
+        'admin/departments.html',
+        departments=departments,
+        pagination=pagination,
+        per_page_str=per_page_str,
+        managers=managers,
+        companies=Company.query.filter_by(is_active=True).order_by(Company.name).all(),
+        current_tab=status_tab
+    )
 
 @main_bp.route('/admin/departments/add', methods=['POST'])
 @login_required
@@ -1106,7 +1170,7 @@ def admin_add_department():
         flash(translate('Department name is required.'), 'danger')
         return redirect(url_for('main.admin_departments'))
 
-    dept = Department(name=name, company_id=my_company, head_id=head_id)
+    dept = Department(name=name, company_id=my_company, head_id=head_id, is_deleted=False)
     db.session.add(dept)
     db.session.commit()
     audit_log('admin.department_created', 'department', dept.id, details={'name': dept.name}, company_id=my_company)
@@ -1137,11 +1201,25 @@ def admin_delete_department(dept_id):
     dept_id_val = dept.id
     dept_comp = dept.company_id
     User.query.filter_by(department_id=dept.id).update({'department_id': None})
-    db.session.delete(dept)
+    dept.is_deleted = True
+    dept.deleted_at = utcnow()
+    dept.head_id = None
+    audit_log('admin.department_deleted', 'department', dept_id_val, details={'name': dept_name, 'mode': 'soft_delete'}, company_id=dept_comp)
     db.session.commit()
-    audit_log('admin.department_deleted', 'department', dept_id_val, details={'name': dept_name}, company_id=dept_comp)
-    flash(translate(f'Departemen {dept_name} berhasil dihapus!'), 'success')
-    return redirect(url_for('main.admin_departments'))
+    flash(translate(f'Departemen {dept_name} berhasil dipindahkan ke kotak sampah!'), 'success')
+    return redirect(url_for('main.admin_departments', status='deleted'))
+
+@main_bp.route('/admin/departments/restore/<int:dept_id>', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_restore_department(dept_id):
+    dept = Department.query.filter_by(id=dept_id, company_id=get_active_company_id()).first_or_404()
+    dept.is_deleted = False
+    dept.deleted_at = None
+    audit_log('admin.department_restored', 'department', dept.id, details={'name': dept.name}, company_id=dept.company_id)
+    db.session.commit()
+    flash(translate(f'Departemen {dept.name} berhasil dipulihkan!'), 'success')
+    return redirect(url_for('main.admin_departments', status='deleted'))
 
 # ── ADMIN: APPROVAL CONFIGS ──
 

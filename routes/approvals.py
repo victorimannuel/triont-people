@@ -51,13 +51,37 @@ def approvals():
 @login_required
 @role_required('manager', 'hr', 'admin')
 def approval_history():
-    show_archived = request.args.get('archived') == '1'
+    status_tab = request.args.get('status_tab', '').strip().lower()
+    if not status_tab:
+        if request.args.get('archived') == '1':
+            status_tab = 'archived'
+        elif request.args.get('deleted') == '1':
+            status_tab = 'deleted'
+        else:
+            status_tab = 'active'
+
     my_company = get_active_company_id()
-    
-    query = LeaveRequest.query.filter(
-        LeaveRequest.company_id == my_company,
-        LeaveRequest.is_archived == show_archived
-    )
+
+    if status_tab == 'deleted':
+        query = LeaveRequest.query.filter(
+            LeaveRequest.company_id == my_company,
+            LeaveRequest.is_deleted == True
+        )
+    elif status_tab == 'archived':
+        query = LeaveRequest.query.filter(
+            LeaveRequest.company_id == my_company,
+            LeaveRequest.is_deleted == False,
+            LeaveRequest.is_archived == True
+        )
+    else:
+        status_tab = 'active'
+        query = LeaveRequest.query.filter(
+            LeaveRequest.company_id == my_company,
+            LeaveRequest.is_deleted == False,
+            LeaveRequest.is_archived == False
+        )
+
+    show_archived = (status_tab == 'archived')
 
     if current_user.role == 'manager':
         subordinate_ids = db.session.query(User.id).filter(User.manager_id == current_user.id)
@@ -108,8 +132,8 @@ def approval_history():
             distinct_years.append(d.year)
     years = sorted(list(set(distinct_years)), reverse=True)
 
-    employees = User.query.filter_by(company_id=my_company, is_active=True, is_deleted=False).order_by(User.name).all()
-    leave_types = LeaveType.query.filter_by(company_id=my_company, is_active=True).order_by(LeaveType.name).all()
+    employees = User.query.filter_by(company_id=my_company).order_by(User.name).all()
+    leave_types = LeaveType.query.filter_by(company_id=my_company).order_by(LeaveType.name).all()
 
     return render_template(
         'approval_history.html',
@@ -118,6 +142,7 @@ def approval_history():
         pagination=pagination,
         per_page_str=per_page_str,
         show_archived=show_archived,
+        current_tab=status_tab,
         years=years,
         year_filter=year_filter,
         status_filter=status_filter,
@@ -134,10 +159,11 @@ def archive_approval_history(request_id):
     my_company = get_active_company_id()
     req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
     req.is_archived = True
-    audit_log('approval_history.archived', 'leave_request', req.id)
+    req.is_deleted = False
+    audit_log('approval_history.archived', 'leave_request', req.id, company_id=my_company)
     db.session.commit()
     flash(translate('Approval history archived.'), 'success')
-    return redirect(request.referrer or url_for('main.approval_history'))
+    return redirect(request.referrer or url_for('main.approval_history', status_tab='archived'))
 
 @main_bp.route('/approval-history/unarchive/<int:request_id>', methods=['POST'])
 @login_required
@@ -146,10 +172,37 @@ def unarchive_approval_history(request_id):
     my_company = get_active_company_id()
     req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
     req.is_archived = False
-    audit_log('approval_history.unarchived', 'leave_request', req.id)
+    req.is_deleted = False
+    audit_log('approval_history.unarchived', 'leave_request', req.id, company_id=my_company)
     db.session.commit()
     flash(translate('Approval history unarchived.'), 'success')
-    return redirect(request.referrer or url_for('main.approval_history', archived=1))
+    return redirect(request.referrer or url_for('main.approval_history', status_tab='archived'))
+
+@main_bp.route('/approval-history/delete/<int:request_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def delete_approval_history(request_id):
+    my_company = get_active_company_id()
+    req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
+    req.is_deleted = True
+    req.deleted_at = utcnow()
+    audit_log('approval_history.deleted', 'leave_request', req.id, details={'mode': 'soft_delete'}, company_id=my_company)
+    db.session.commit()
+    flash(translate('Approval history moved to trash.'), 'success')
+    return redirect(request.referrer or url_for('main.approval_history', status_tab='deleted'))
+
+@main_bp.route('/approval-history/restore/<int:request_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def restore_approval_history(request_id):
+    my_company = get_active_company_id()
+    req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
+    req.is_deleted = False
+    req.deleted_at = None
+    audit_log('approval_history.restored', 'leave_request', req.id, company_id=my_company)
+    db.session.commit()
+    flash(translate('Approval history restored.'), 'success')
+    return redirect(request.referrer or url_for('main.approval_history', status_tab='deleted'))
 
 @main_bp.route('/approve/<int:request_id>', methods=['POST'])
 @login_required

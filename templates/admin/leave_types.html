@@ -2,27 +2,32 @@
 {% block title %}Leave Types{% endblock %}
 {% block content %}
 <div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div><span class="eyebrow-rule"></span><p class="page-kicker">Leave settings</p><h1 class="page-title mt-1">Jenis cuti</h1><p class="mt-2 text-sm text-gray-500">Atur kebijakan leave, kuota, dan alur persetujuan organisasi.</p></div>
+    <div><span class="eyebrow-rule"></span><p class="page-kicker">Leave settings</p><h1 class="page-title mt-1">{{ t('Leave Types') }}</h1><p class="mt-2 text-sm text-gray-500">Atur kebijakan leave, kuota, dan alur persetujuan organisasi.</p></div>
     <div class="flex flex-wrap items-center gap-3">
-        <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-4 py-2.5"><i class="fa-solid fa-plus mr-1.5"></i>Tambah jenis cuti</button>
-        <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1">
-            <a href="{{ url_for('main.admin_leave_types') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if not show_archived %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
-                <i class="fa-solid fa-list-check mr-1.5"></i>Aktif
+        <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-primary px-4 py-2.5"><i class="fa-solid fa-plus mr-1.5"></i>{{ t('Add Leave Type') }}</button>
+        <div class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-2xs">
+            <a href="{{ url_for('main.admin_leave_types', status='active') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'active' %}bg-triton-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
+                <i class="fa-solid fa-list-check mr-1.5"></i>{{ t('Active') }}
             </a>
-            <a href="{{ url_for('main.admin_leave_types', archived=1) }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if show_archived %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900{% endif %}">
-                <i class="fa-solid fa-box-archive mr-1.5"></i>Diarsipkan
+            <a href="{{ url_for('main.admin_leave_types', status='archived') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'archived' %}bg-amber-600 text-white shadow-sm{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
+                <i class="fa-solid fa-box-archive mr-1.5"></i>{{ t('Archived') }}
             </a>
+            {% if current_user.role in ('admin', 'hr') %}
+            <a href="{{ url_for('main.admin_leave_types', status='deleted') }}" class="rounded-md px-3 py-1.5 text-xs font-semibold transition {% if current_tab == 'deleted' %}bg-rose-600 text-white shadow-sm{% else %}text-gray-600 hover:text-rose-700 hover:bg-rose-50{% endif %}">
+                <i class="fa-solid fa-trash-can mr-1.5"></i>{{ t('Deleted') }}
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
 <section class="app-card sticky top-16 z-10 mb-6 p-3 sm:p-4 bg-white border border-gray-200 shadow-sm">
     <form method="GET" class="flex flex-col gap-3 lg:flex-row lg:items-center" id="filterForm">
-        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+        <input type="hidden" name="status" value="{{ current_tab }}">
         <div class="relative min-w-0 flex-1"><label for="leave-search" class="sr-only">Cari jenis cuti</label><i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400"></i><input id="leave-search" type="text" name="q" value="{{ request.args.get('q', '') }}" class="field pl-9" placeholder="Cari jenis cuti"></div>
-        {% if request.args.get('q') %}<a href="{{ url_for('main.admin_leave_types', archived=1 if show_archived else none) }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter"><i class="fa-solid fa-xmark"></i></a>{% endif %}
+        {% if request.args.get('q') %}<a href="{{ url_for('main.admin_leave_types', status=current_tab) }}" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition" title="Hapus filter"><i class="fa-solid fa-xmark"></i></a>{% endif %}
     </form>
 </section>
-<div class="mb-4 flex items-center justify-between"><p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ leave_types|length }}</span> jenis cuti ditampilkan</p></div>
+<div class="mb-4 flex items-center justify-between"><p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ leave_types|length }}</span> {{ t('Leave Types')|lower }} ditampilkan</p></div>
 
 <!-- Leave type list -->
 <div class="app-card overflow-hidden">
@@ -30,11 +35,11 @@
         <table class="w-full min-w-[720px] text-sm">
             <thead class="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
-                    <th class="px-5 py-3.5">Jenis cuti</th>
-                    <th class="px-5 py-3.5">Kuota</th>
-                    <th class="px-5 py-3.5 min-w-[200px]">Alur approval</th>
-                    <th class="px-5 py-3.5">Status</th>
-                    <th class="px-5 py-3.5 text-right"><span class="sr-only">Aksi</span></th>
+                    <th class="px-5 py-3.5">{{ t('Leave Types') }}</th>
+                    <th class="px-5 py-3.5">{{ t('Allocated') }}</th>
+                    <th class="px-5 py-3.5 min-w-[200px]">{{ t('Approval workflow') }}</th>
+                    <th class="px-5 py-3.5">{{ t('Document Status') }}</th>
+                    <th class="px-5 py-3.5 text-right"><span class="sr-only">{{ t('Actions') }}</span></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -51,9 +56,9 @@
                     </td>
                     <td class="px-5 py-4">
                         {% if lt.days_per_year > 0 %}
-                        <span class="font-semibold text-gray-900">{{ lt.days_per_year }} hari</span><span class="block text-xs text-gray-500">per tahun</span>
+                        <span class="font-semibold text-gray-900">{{ lt.days_per_year }} {{ t('Days')|lower }}</span><span class="block text-xs text-gray-500">per tahun</span>
                         {% else %}
-                        <span class="font-semibold text-gray-700">Sesuai kebutuhan</span><span class="block text-xs text-gray-500">tanpa kuota tahunan</span>
+                        <span class="font-semibold text-gray-700">{{ t('As needed') }}</span><span class="block text-xs text-gray-500">tanpa kuota tahunan</span>
                         {% endif %}
                     </td>
                     <td class="px-5 py-4">
@@ -95,32 +100,42 @@
                         {% endif %}
                     </td>
                     <td class="px-5 py-4">
-                        {% if lt.is_active %}
-                        <span class="badge bg-emerald-100 text-emerald-700">Aktif</span>
+                        {% if current_tab == 'deleted' or lt.is_deleted %}
+                        <span class="badge bg-rose-100 text-rose-700 border border-rose-200">{{ t('Deleted') }}</span>
+                        {% elif lt.is_active %}
+                        <span class="badge bg-emerald-100 text-emerald-700">{{ t('Active') }}</span>
                         {% else %}
-                        <span class="badge bg-gray-100 text-gray-600">Nonaktif</span>
+                        <span class="badge bg-amber-100 text-amber-700">{{ t('Archived') }}</span>
                         {% endif %}
                     </td>
                     <td class="px-5 py-4">
                         <div class="flex justify-end gap-1">
-                            {% if lt.is_active %}
+                            {% if current_tab == 'deleted' or lt.is_deleted %}
+                            <form method="POST" action="{{ url_for('main.admin_restore_leave_type', type_id=lt.id) }}" class="inline">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Restore') }}">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                                    <span class="sr-only">{{ t('Restore') }}</span>
+                                </button>
+                            </form>
+                            {% elif lt.is_active %}
                             <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-triton-50 hover:text-triton-700" title="Atur approval"><i class="fa-solid fa-layer-group"></i><span class="sr-only">Atur approval</span></a>
-                    <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }}, {{ lt.created_at_formatted|tojson }}, {{ lt.creator_name|tojson }}, {{ lt.updated_at_formatted|tojson }}, {{ lt.updater_name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
+                            <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }}, {{ lt.created_at_formatted|tojson }}, {{ lt.creator_name|tojson }}, {{ lt.updated_at_formatted|tojson }}, {{ lt.updater_name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
                             <button type="button" onclick='openArchiveLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition" title="{{ t('Archive leave type') }}">
                                 <i class="fa-solid fa-box-archive"></i>
-                                <span class="sr-only">{{ t('Arsipkan') }}</span>
+                                <span class="sr-only">{{ t('Archived') }}</span>
                             </button>
                             <button type="button" onclick='openDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus jenis cuti"><i class="fa-solid fa-trash-can"></i><span class="sr-only">Hapus {{ lt.name }}</span></button>
                             {% else %}
                             <form method="POST" action="{{ url_for('main.admin_unarchive_leave_type', type_id=lt.id) }}" class="inline">
                                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="Pulihkan / Buka arsip">
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Restore') }}">
                                     <i class="fa-solid fa-arrow-rotate-left"></i>
-                                    <span class="sr-only">Pulihkan</span>
+                                    <span class="sr-only">{{ t('Restore') }}</span>
                                 </button>
                             </form>
                             <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i><span class="sr-only">Edit {{ lt.name }}</span></button>
-                            <button type="button" onclick='openDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus permanen"><i class="fa-solid fa-trash-can"></i><span class="sr-only">Hapus permanen</span></button>
+                            <button type="button" onclick='openDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus"><i class="fa-solid fa-trash-can"></i><span class="sr-only">Hapus</span></button>
                             {% endif %}
                         </div>
                     </td>
@@ -128,9 +143,9 @@
                 {% else %}
                 <tr>
                     <td colspan="5" class="px-5 py-14 text-center">
-                        <i class="fa-solid {% if show_archived %}fa-box-archive{% else %}fa-list-check{% endif %} mb-3 block text-2xl text-gray-300"></i>
-                        <p class="font-semibold text-gray-700">{% if show_archived %}Tidak ada jenis cuti diarsipkan{% else %}Belum ada jenis cuti aktif{% endif %}</p>
-                        <p class="mt-1 text-sm text-gray-500">{% if show_archived %}Jenis cuti yang dinonaktifkan atau diarsipkan akan muncul di sini.{% else %}Tambah kebijakan cuti pertama untuk perusahaan ini.{% endif %}</p>
+                        <i class="fa-solid {% if current_tab == 'deleted' %}fa-trash-can text-rose-300{% elif current_tab == 'archived' %}fa-box-archive text-amber-300{% else %}fa-list-check text-gray-300{% endif %} mb-3 block text-2xl"></i>
+                        <p class="font-semibold text-gray-700">{% if current_tab == 'deleted' %}{{ t('No deleted leave types') }}{% elif current_tab == 'archived' %}Tidak ada jenis cuti diarsipkan{% else %}Belum ada jenis cuti aktif{% endif %}</p>
+                        <p class="mt-1 text-sm text-gray-500">{% if current_tab == 'deleted' %}{{ t('Deleted leave types will appear here') }}{% elif current_tab == 'archived' %}Jenis cuti yang dinonaktifkan atau diarsipkan akan muncul di sini.{% else %}Tambah kebijakan cuti pertama untuk perusahaan ini.{% endif %}</p>
                     </td>
                 </tr>
                 {% endfor %}

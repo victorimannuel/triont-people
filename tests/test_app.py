@@ -640,6 +640,26 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(res_active_again.status_code, 200)
         self.assertIn(f'<p class="font-semibold text-gray-900">{self.lt_annual_a.name}</p>'.encode('utf-8'), res_active_again.data)
 
+        # 7. Soft delete leave type
+        res_del = self.client.post(f'/admin/leave-types/delete/{self.lt_annual_a.id}', follow_redirects=True)
+        self.assertEqual(res_del.status_code, 200)
+        with self.app.app_context():
+            lt = db.session.get(LeaveType, self.lt_annual_a.id)
+            self.assertTrue(lt.is_deleted)
+
+        # 8. Deleted list shows it with restore button
+        res_deleted = self.client.get('/admin/leave-types?status=deleted')
+        self.assertEqual(res_deleted.status_code, 200)
+        self.assertIn(f'/admin/leave-types/restore/{self.lt_annual_a.id}'.encode('utf-8'), res_deleted.data)
+
+        # 9. Restore leave type
+        res_restore = self.client.post(f'/admin/leave-types/restore/{self.lt_annual_a.id}', follow_redirects=True)
+        self.assertEqual(res_restore.status_code, 200)
+        with self.app.app_context():
+            lt = db.session.get(LeaveType, self.lt_annual_a.id)
+            self.assertFalse(lt.is_deleted)
+            self.assertTrue(lt.is_active)
+
     def test_calendar_ical_feed_and_token_regeneration(self):
         # 1. Login as employee and create an approved leave request
         self._login(self.employee_user)
