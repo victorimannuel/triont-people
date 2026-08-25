@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Audit Logs{% endblock %}
+{% block title %}{{ page_title|default('Audit Logs') }}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -10,16 +10,18 @@
                 <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700 shadow-2xs">
                     <i class="fa-solid fa-shield-halved text-base"></i>
                 </span>
-                <h1 class="text-xl font-bold text-gray-900">{{ t('Audit Logs & Activity Trail') }}</h1>
+                <h1 class="text-xl font-bold text-gray-900">{{ t(page_title|default('Audit Logs And Activity Trail')) }}</h1>
             </div>
-            <p class="mt-1 text-xs text-gray-500">{{ t('Record of all operational activities and system data changes for Administrators.') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t(page_subtitle|default('Record of all operational activities and system data changes for Administrators.')) }}</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ url_for('main.admin_export_audit_logs', category=category, actor_id=actor_id, start_date=start_date, end_date=end_date, q=q) }}"
+            {% if export_endpoint %}
+            <a href="{{ url_for(export_endpoint, category=category, actor_id=actor_id, start_date=start_date, end_date=end_date, q=q) }}"
                class="btn-secondary inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border-gray-200 hover:bg-gray-50 text-gray-700 shadow-2xs">
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
                 <span>{{ t('Export Excel (.xlsx)') }}</span>
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -30,22 +32,23 @@
             <p class="mt-1 text-xl font-bold text-gray-900">{{ total_logs_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-blue-500">
-            <span class="text-xs font-medium text-gray-500">{{ t("Today's Activity") }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t(today_label|default('Today Activity')) }}</span>
             <p class="mt-1 text-xl font-bold text-blue-600">{{ today_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-indigo-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Authentication & Logins') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t(third_metric_label|default('Authentication And Logins')) }}</span>
             <p class="mt-1 text-xl font-bold text-indigo-600">{{ auth_count }}</p>
         </div>
         <div class="app-card p-4 border-l-4 border-l-amber-500">
-            <span class="text-xs font-medium text-gray-500">{{ t('Data Operations & Changes') }}</span>
+            <span class="text-xs font-medium text-gray-500">{{ t(fourth_metric_label|default('Data Operations And Changes')) }}</span>
             <p class="mt-1 text-xl font-bold text-amber-600">{{ data_ops_count }}</p>
         </div>
     </div>
 
     <!-- Filter & Search Toolbar (Single Row Auto-Filter) -->
     <div class="app-card p-3.5 bg-white">
-        <form method="GET" action="{{ url_for('main.admin_audit_logs') }}" id="auditFilterForm" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end text-xs">
+        <form method="GET" action="{{ url_for(form_endpoint|default('main.admin_audit_logs')) }}" id="auditFilterForm" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end text-xs">
+            {% if show_category_filter|default(true) %}
             <div class="min-w-0">
                 <label class="mb-1 block font-semibold text-gray-700 truncate">{{ t('Action Category') }}</label>
                 <select name="category" class="input py-1.5 text-xs w-full" onchange="document.getElementById('auditFilterForm').submit()">
@@ -58,6 +61,7 @@
                     <option value="system" {% if category == 'system' %}selected{% endif %}>{{ t('System, Backup & Import') }}</option>
                 </select>
             </div>
+            {% endif %}
             <div class="min-w-0">
                 <label class="mb-1 block font-semibold text-gray-700 truncate">{{ t('User / Actor') }}</label>
                 <select name="actor_id" class="input py-1.5 text-xs w-full" onchange="document.getElementById('auditFilterForm').submit()">
@@ -78,7 +82,7 @@
                 <div class="flex items-center justify-between mb-1">
                     <label class="block font-semibold text-gray-700 truncate">{{ t('Search Keywords') }}</label>
                     {% if (category and category != 'all') or actor_id or start_date or end_date or q %}
-                    <a href="{{ url_for('main.admin_audit_logs') }}" class="text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline shrink-0 ml-1">
+                    <a href="{{ url_for(form_endpoint|default('main.admin_audit_logs')) }}" class="text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline shrink-0 ml-1">
                         <i class="fa-solid fa-arrow-rotate-left mr-0.5"></i>{{ t('Reset') }}
                     </a>
                     {% endif %}
@@ -86,7 +90,7 @@
                 <div class="relative">
                     <input type="text" name="q" id="auditSearchInput" value="{{ q }}" placeholder="{{ t('IP, target, details...') }}" class="input py-1.5 pr-8 text-xs w-full">
                     {% if q %}
-                    <a href="{{ url_for('main.admin_audit_logs', category=category, actor_id=actor_id, start_date=start_date, end_date=end_date) }}" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600" title="{{ t('Clear search') }}">
+                    <a href="{{ url_for(form_endpoint|default('main.admin_audit_logs'), category=category, actor_id=actor_id, start_date=start_date, end_date=end_date) }}" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600" title="{{ t('Clear search') }}">
                         <i class="fa-solid fa-xmark text-xs"></i>
                     </a>
                     {% else %}
@@ -158,6 +162,12 @@
                         </td>
                         <td class="px-4 py-3 max-w-xs">
                             {% if log.details_dict %}
+                            {% if log.details_dict.result_status %}
+                            <span class="mb-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold {% if log.details_dict.result_status|string|first == "2" %}bg-emerald-50 text-emerald-700 border border-emerald-200{% elif log.details_dict.result_status|string|first == "3" %}bg-amber-50 text-amber-700 border border-amber-200{% else %}bg-red-50 text-red-700 border border-red-200{% endif %}">
+                                <i class="fa-solid fa-shield-halved text-[9px]"></i>
+                                {{ log.details_dict.result|default("result")|title }} {{ log.details_dict.result_status }}
+                            </span>
+                            {% endif %}
                             <div class="truncate text-[11px] font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100" title="{{ log.details }}">
                                 {{ log.details }}
                             </div>
@@ -229,6 +239,10 @@
                     <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t('IP Address') }}</span>
                     <p class="font-mono text-gray-800 mt-0.5" id="inspectIp">-</p>
                 </div>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">{{ t("Result") }}</span>
+                    <p class="font-semibold text-gray-800 mt-0.5" id="inspectResult">-</p>
+                </div>
             </div>
 
             <div>
@@ -261,6 +275,7 @@ function inspectAuditLog(id, action, actionLabel, actorName, actorEmail, timeStr
     document.getElementById('inspectTarget').textContent = targetType !== '-' ? targetType + ' #' + targetId : '-';
     document.getElementById('inspectIp').textContent = ipAddr;
     document.getElementById('inspectUserAgent').textContent = userAgent || '-';
+    document.getElementById("inspectResult").textContent = details && details.result_status ? ((details.result || "result") + " " + details.result_status) : "-";
     document.getElementById('inspectJsonDetails').textContent = JSON.stringify(details, null, 2);
 
     const modal = document.getElementById('auditInspectModal');

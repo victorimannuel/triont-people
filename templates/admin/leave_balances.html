@@ -20,7 +20,7 @@
         <a href="{{ url_for('main.export_excel') }}" class="btn-secondary px-3.5 py-2 text-xs font-semibold">
             <i class="fa-solid fa-file-export mr-1.5"></i>Ekspor data
         </a>
-        {% if current_user.role in ('hr', 'admin') %}
+        {% if current_user.role in ('hr', 'admin', 'superadmin') %}
         <button type="button" onclick="openRolloverModal()" class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs">
             <i class="fa-solid fa-rotate mr-1"></i>Tutup Buku / Rollover
         </button>

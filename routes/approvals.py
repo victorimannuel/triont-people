@@ -9,7 +9,7 @@ from models.company import Company
 from models.leave import LeaveRequest, LeaveBalance, LeaveType
 from models.approval import ApprovalConfig
 from core.i18n import translate
-from core.auth import get_active_company_id, role_required
+from core.auth import get_active_company_id, role_required, is_admin_role
 from services.audit_service import audit_log
 from services.notification_service import send_notification
 from services.import_service import parse_file_headers_and_preview, execute_leave_history_import
@@ -61,7 +61,7 @@ def approval_history():
             status_tab = 'active'
 
     # Non-admin cannot access deleted tab
-    if status_tab == 'deleted' and current_user.role != 'admin':
+    if status_tab == 'deleted' and not is_admin_role(current_user.role):
         status_tab = 'active'
 
     my_company = get_active_company_id()
@@ -252,7 +252,7 @@ def approve_leave(request_id):
                 is_dept_head = True
         if not (is_subordinate or is_dept_head):
             abort(403)
-    elif current_user.role in ('hr', 'admin'):
+    elif current_user.role in ('hr', 'admin', 'superadmin'):
         # HR and Admin have company-wide authority to approve/reject all leave requests across levels and types
         pass
     else:

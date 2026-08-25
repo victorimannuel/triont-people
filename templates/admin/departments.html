@@ -19,7 +19,7 @@
             <a href="{{ update_query_params(status='active', page=1) }}" class="status-tab {% if current_tab == 'active' %}active{% endif %}">
                 <i class="fa-solid fa-list-check mr-1.5"></i>{{ t('Active') }}
             </a>
-            {% if current_user.role == 'admin' %}
+            {% if is_admin_role(current_user.role) %}
             <a href="{{ update_query_params(status='deleted', page=1) }}" class="status-tab {% if current_tab == 'deleted' %}active{% endif %}">
                 <i class="fa-solid fa-trash-can mr-1.5"></i>{{ t('Deleted') }}
             </a>
@@ -167,7 +167,7 @@
             </button>
         </div>
         <form method="POST" action="{{ url_for('main.admin_add_department') }}" class="modal-two-column-form">
-            {% if current_user.role == 'admin' %}
+            {% if is_admin_role(current_user.role) %}
             <div class="col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
                 <select name="company_id" class="input">
@@ -210,7 +210,7 @@
             </button>
         </div>
         <form method="POST" id="editForm" class="modal-two-column-form">
-            {% if current_user.role == 'admin' %}
+            {% if is_admin_role(current_user.role) %}
             <div class="col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
                 <select name="company_id" id="editCompanyId" class="input">

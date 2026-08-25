@@ -18,10 +18,6 @@ def enforce_csrf():
         return
     sent_token = request.form.get('_csrf_token') or request.headers.get('X-CSRFToken')
     if not sent_token or sent_token != session.get('_csrf_token'):
-        from services.audit_service import audit_log
-        from extensions import db
-        audit_log('security.csrf_failed', details={'path': request.path})
-        db.session.commit()
         is_ajax_or_json = (
             request.is_json
             or '/import/' in request.path
@@ -30,6 +26,16 @@ def enforce_csrf():
             or 'application/json' in request.headers.get('Accept', '')
             or (request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html)
         )
+        result_status = 400 if is_ajax_or_json else 302
+        from services.audit_service import audit_log
+        from extensions import db
+        audit_log('security.csrf_failed', details={
+            'method': request.method,
+            'path': request.path,
+            'result': 'blocked',
+            'result_status': result_status,
+        })
+        db.session.commit()
         if is_ajax_or_json:
             return jsonify(success=False, ok=False, error='Validasi keamanan (CSRF) gagal atau sesi telah berakhir. Silakan muat ulang halaman.'), 400
         flash(translate('Security check failed. Please try again.'), 'danger')

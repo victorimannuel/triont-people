@@ -1,6 +1,11 @@
+import http.client
+import ipaddress
 import json
+import os
 import re
 import secrets
+import socket
+from urllib.parse import urlparse
 from datetime import datetime, date, timedelta
 from flask import render_template, request, redirect, url_for, flash, jsonify, abort, send_file, session
 from flask_login import login_required, current_user, login_user
@@ -14,7 +19,7 @@ from models.holiday import PublicHoliday
 from models.audit import AuditLog
 from models.auth import PasswordReset
 from core.i18n import translate, normalize_language
-from core.auth import get_active_company_id, role_required, validate_password_strength
+from core.auth import get_active_company_id, role_required, validate_password_strength, is_admin_role, is_superadmin_role
 from services.audit_service import audit_log
 from services.holiday_service import sync_company_holidays
 from services.import_service import parse_file_headers_and_preview, execute_employee_import
@@ -26,11 +31,163 @@ from routes.common import main_bp
 def get_manageable_company_id(company_id=None):
     if not current_user.is_authenticated:
         return None
-    if current_user.role != 'admin':
+    if not is_admin_role(current_user.role):
         return current_user.company_id
     if company_id and db.session.get(Company, company_id):
         return company_id
     return get_active_company_id()
+
+
+def audit_changes(before, after):
+    return {
+        'before': before,
+        'after': after,
+        'changed': {
+            key: {'before': before.get(key), 'after': after.get(key)}
+            for key in after
+            if before.get(key) != after.get(key)
+        }
+    }
+
+
+def assignable_employee_roles():
+    roles = ['employee', 'manager', 'hr']
+    if is_admin_role(current_user.role):
+        roles.append('admin')
+    if is_superadmin_role(current_user.role):
+        roles.append('superadmin')
+    return roles
+
+
+def validate_assignable_employee_role(role):
+    if role not in assignable_employee_roles():
+        flash(translate('Role is not allowed.'), 'danger')
+        return False
+    return True
+
+
+def custom_domain_target():
+    return os.environ.get('CUSTOM_DOMAIN_CNAME_TARGET', 'people-triton.imannuelvictor.com').strip().lower().rstrip('.')
+
+
+def normalize_custom_domain(raw_domain):
+    raw_domain = (raw_domain or '').strip()
+    if not raw_domain:
+        raise ValueError(translate('Domain is required.'))
+
+    parsed = urlparse(raw_domain if '://' in raw_domain else f'//{raw_domain}')
+    host = (parsed.hostname or '').strip().lower().rstrip('.')
+    if not host:
+        raise ValueError(translate('Domain is invalid.'))
+
+    try:
+        host = host.encode('idna').decode('ascii')
+    except UnicodeError:
+        raise ValueError(translate('Domain is invalid.'))
+
+    if len(host) > 253 or '..' in host or host == 'localhost':
+        raise ValueError(translate('Domain is invalid.'))
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError(translate('Please enter a domain name, not an IP address.'))
+
+    labels = host.split('.')
+    label_re = re.compile(r'^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')
+    if len(labels) < 2 or any(not label_re.match(label) for label in labels):
+        raise ValueError(translate('Domain is invalid.'))
+    return host
+
+
+def resolve_domain_ips(hostname, port=443):
+    infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+    return sorted({info[4][0] for info in infos})
+
+
+def split_public_ips(ips):
+    public_ips = []
+    blocked_ips = []
+    for ip_text in ips:
+        try:
+            ip = ipaddress.ip_address(ip_text)
+        except ValueError:
+            blocked_ips.append(ip_text)
+            continue
+        if ip.is_global:
+            public_ips.append(ip_text)
+        else:
+            blocked_ips.append(ip_text)
+    return public_ips, blocked_ips
+
+
+def check_https_domain(hostname):
+    conn = http.client.HTTPSConnection(hostname, 443, timeout=8)
+    try:
+        conn.request('HEAD', '/auth/login', headers={'User-Agent': 'PeopleDomainCheck/1.0'})
+        res = conn.getresponse()
+        res.read()
+        if res.status == 405:
+            conn.close()
+            conn = http.client.HTTPSConnection(hostname, 443, timeout=8)
+            conn.request('GET', '/auth/login', headers={'User-Agent': 'PeopleDomainCheck/1.0'})
+            res = conn.getresponse()
+            res.read()
+        return {'ok': 200 <= res.status < 500, 'status_code': res.status, 'reason': res.reason}
+    finally:
+        conn.close()
+
+
+def test_custom_domain(raw_domain):
+    target = custom_domain_target()
+    result = {
+        'domain': '',
+        'target': target,
+        'overall': 'failed',
+        'message': translate('Custom domain is not ready yet.'),
+        'dns': {'ok': False, 'ips': [], 'target_ips': [], 'blocked_ips': [], 'error': None},
+        'https': {'ok': False, 'status_code': None, 'reason': None, 'error': None},
+    }
+
+    domain = normalize_custom_domain(raw_domain)
+    result['domain'] = domain
+
+    try:
+        domain_ips = resolve_domain_ips(domain)
+        target_ips = resolve_domain_ips(target)
+        public_domain_ips, blocked_ips = split_public_ips(domain_ips)
+        public_target_ips, _ = split_public_ips(target_ips)
+        shared_ips = sorted(set(public_domain_ips) & set(public_target_ips))
+        result['dns'].update({
+            'ips': public_domain_ips,
+            'target_ips': public_target_ips,
+            'blocked_ips': blocked_ips,
+            'matched_ips': shared_ips,
+            'ok': bool(shared_ips) or domain == target,
+        })
+        if blocked_ips:
+            result['dns']['error'] = translate('Domain resolves to a private or unsafe IP address.')
+    except socket.gaierror as exc:
+        result['dns']['error'] = str(exc)
+    except OSError as exc:
+        result['dns']['error'] = str(exc)
+
+    if result['dns']['ips'] and not result['dns']['blocked_ips']:
+        try:
+            result['https'].update(check_https_domain(domain))
+        except Exception as exc:
+            result['https']['error'] = str(exc)
+
+    dns_ok = result['dns']['ok']
+    https_ok = result['https']['ok']
+    if dns_ok and https_ok:
+        result['overall'] = 'ready'
+        result['message'] = translate('Domain looks ready.')
+    elif dns_ok or https_ok:
+        result['overall'] = 'partial'
+        result['message'] = translate('Domain is partially ready. Check the details below.')
+    return result
 
 # ── ADMIN: COMPANIES & SMTP ──
 
@@ -82,6 +239,19 @@ def admin_add_company():
 @role_required('admin')
 def admin_edit_company(company_id):
     company = Company.query.get_or_404(company_id)
+    before = {
+        'name': company.name,
+        'primary_color': company.primary_color,
+        'notifications_enabled': company.notifications_enabled,
+        'delegate_enabled': company.delegate_enabled,
+        'smtp_host': company.smtp_host,
+        'smtp_port': company.smtp_port,
+        'smtp_user': company.smtp_user,
+        'smtp_password_changed': False,
+        'notify_on_approve': company.notify_on_approve,
+        'notify_on_reject': company.notify_on_reject,
+        'notify_on_submit': company.notify_on_submit,
+    }
     company.name = request.form.get('name', company.name)
     company.primary_color = request.form.get('primary_color', company.primary_color)
     company.notifications_enabled = bool(request.form.get('notifications_enabled'))
@@ -94,8 +264,21 @@ def admin_edit_company(company_id):
     company.notify_on_approve = bool(request.form.get('notify_on_approve'))
     company.notify_on_reject = bool(request.form.get('notify_on_reject'))
     company.notify_on_submit = bool(request.form.get('notify_on_submit'))
+    after = {
+        'name': company.name,
+        'primary_color': company.primary_color,
+        'notifications_enabled': company.notifications_enabled,
+        'delegate_enabled': company.delegate_enabled,
+        'smtp_host': company.smtp_host,
+        'smtp_port': company.smtp_port,
+        'smtp_user': company.smtp_user,
+        'smtp_password_changed': bool(request.form.get('smtp_password')),
+        'notify_on_approve': company.notify_on_approve,
+        'notify_on_reject': company.notify_on_reject,
+        'notify_on_submit': company.notify_on_submit,
+    }
     db.session.commit()
-    audit_log('admin.company_updated', 'company', company.id, details={'name': company.name}, company_id=company.id)
+    audit_log('admin.company_updated', 'company', company.id, details=audit_changes(before, after), company_id=company.id)
     flash(translate(f'Perusahaan {company.name} berhasil diperbarui!'), 'success')
     return redirect(url_for('main.admin_companies'))
 
@@ -208,7 +391,36 @@ People by Triont""")
 @login_required
 @role_required('admin')
 def admin_custom_domain_guide():
-    return render_template('admin/custom_domain_guide.html')
+    return render_template('admin/custom_domain_guide.html', cname_target=custom_domain_target(), domain_test=None)
+
+
+@main_bp.route('/admin/custom-domain-guide/test', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_custom_domain_test():
+    domain = request.form.get('domain', '')
+    try:
+        domain_test = test_custom_domain(domain)
+    except ValueError as exc:
+        domain_test = {
+            'domain': domain.strip(),
+            'target': custom_domain_target(),
+            'overall': 'failed',
+            'message': str(exc),
+            'dns': {'ok': False, 'ips': [], 'target_ips': [], 'blocked_ips': [], 'error': str(exc)},
+            'https': {'ok': False, 'status_code': None, 'reason': None, 'error': None},
+        }
+
+    audit_log('admin.custom_domain_tested', 'company', get_active_company_id(), details={
+        'domain': domain_test.get('domain'),
+        'target': domain_test.get('target'),
+        'result': domain_test.get('overall'),
+        'dns_ok': domain_test.get('dns', {}).get('ok'),
+        'https_ok': domain_test.get('https', {}).get('ok'),
+    }, company_id=get_active_company_id())
+    db.session.commit()
+
+    return render_template('admin/custom_domain_guide.html', cname_target=custom_domain_target(), domain_test=domain_test)
 
 # ── ADMIN: EMPLOYEES ──
 
@@ -226,7 +438,7 @@ def admin_employees():
             status_tab = 'active'
 
     # Non-admin cannot access deleted tab
-    if status_tab == 'deleted' and current_user.role != 'admin':
+    if status_tab == 'deleted' and not is_admin_role(current_user.role):
         status_tab = 'active'
 
     show_archived = (status_tab == 'archived')
@@ -255,7 +467,7 @@ def admin_employees():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(User.role.desc(), User.name).paginate(page=page, per_page=per_page, error_out=False)
     employees = pagination.items
-    managers = User.query.filter(User.company_id == my_company, User.is_deleted == False, User.is_active == True, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
+    managers = User.query.filter(User.company_id == my_company, User.is_deleted == False, User.is_active == True, User.role.in_(['manager', 'hr', 'admin', 'superadmin'])).order_by(User.name).all()
     departments = Department.query.filter_by(company_id=my_company).all()
     return render_template(
         'admin/employees.html',
@@ -384,7 +596,7 @@ def admin_stop_impersonation():
         return redirect(url_for('main.dashboard'))
 
     admin_user = db.session.get(User, admin_id)
-    if not admin_user or admin_user.role != 'admin' or not admin_user.is_active:
+    if not admin_user or not is_admin_role(admin_user.role) or not admin_user.is_active:
         session.pop('impersonator_admin_id', None)
         session.pop('impersonator_admin_name', None)
         flash(translate('Sesi admin tidak valid.'), 'danger')
@@ -627,6 +839,8 @@ def admin_add_employee():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
     role = request.form.get('role', 'employee')
+    if not validate_assignable_employee_role(role):
+        return redirect(url_for('main.admin_employees'))
     manager_id = request.form.get('manager_id', type=int)
     department_id = request.form.get('department_id', type=int)
 
@@ -729,12 +943,26 @@ def admin_edit_employee(user_id):
         return redirect(url_for('main.admin_employees'))
 
     user = User.query.filter_by(id=user_id, company_id=get_active_company_id()).first_or_404()
+    if is_superadmin_role(user.role) and not is_superadmin_role(current_user.role):
+        flash(translate('Only super admins can manage super admin accounts.'), 'danger')
+        return redirect(url_for('main.admin_employees'))
+    before = {
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'company_id': user.company_id,
+        'manager_id': user.manager_id,
+        'department_id': user.department_id,
+        'password_changed': False,
+    }
     target_company_id = get_manageable_company_id(request.form.get('company_id', type=int))
     email = request.form.get('email', user.email).strip()
     if User.query.filter(User.email == email, User.id != user.id).first():
         flash(translate('Email is already registered.'), 'danger')
         return redirect(url_for('main.admin_employees'))
     new_role = request.form.get('role', user.role)
+    if not validate_assignable_employee_role(new_role):
+        return redirect(url_for('main.admin_employees'))
 
     user.name = request.form.get('name', user.name).strip()
     user.email = email
@@ -754,8 +982,17 @@ def admin_edit_employee(user_id):
             flash(translate('Password must be at least 8 characters and include letters and numbers.'), 'danger')
             return redirect(url_for('main.admin_employees'))
         user.set_password(password)
+    after = {
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'company_id': user.company_id,
+        'manager_id': user.manager_id,
+        'department_id': user.department_id,
+        'password_changed': bool(password),
+    }
     db.session.commit()
-    audit_log('admin.employee_updated', 'user', user.id, details={'name': user.name, 'email': user.email, 'role': user.role}, company_id=target_company_id)
+    audit_log('admin.employee_updated', 'user', user.id, details=audit_changes(before, after), company_id=target_company_id)
     flash(translate(f'Karyawan {user.name} berhasil diperbarui!'), 'success')
     return redirect(url_for('main.admin_employees'))
 
@@ -792,7 +1029,7 @@ def admin_employee_leave_balance(user_id):
 def admin_grant_leave(user_id):
     company_id = get_active_company_id()
     employee = User.query.filter_by(id=user_id, company_id=company_id).first_or_404()
-    if employee.role == 'admin':
+    if is_admin_role(employee.role):
         abort(403)
 
     leave_type_id = request.form.get('leave_type_id', type=int)
@@ -896,7 +1133,7 @@ def admin_delete_employee(user_id):
 
     my_company = get_active_company_id()
     user = User.query.filter_by(id=user_id, company_id=my_company).first_or_404()
-    if user.role == 'admin':
+    if is_admin_role(user.role):
         flash(translate('Admin users cannot be deleted.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
@@ -923,7 +1160,7 @@ def admin_delete_employee(user_id):
     audit_log('admin.employee_deleted', 'user', user.id, details={'email': user.email, 'mode': 'soft_delete'}, company_id=my_company)
     db.session.commit()
     flash(translate(f'Karyawan {name} berhasil dipindahkan ke kotak sampah.'), 'success')
-    return redirect(url_for('main.admin_employees', status='deleted' if current_user.role == 'admin' else 'active'))
+    return redirect(url_for('main.admin_employees', status='deleted' if is_admin_role(current_user.role) else 'active'))
 
 @main_bp.route('/admin/employees/restore/<int:user_id>', methods=['POST'])
 @login_required
@@ -973,7 +1210,7 @@ def admin_employees_bulk_action():
 
     if action == 'archive':
         for u in users:
-            if u.role == 'admin':
+            if is_admin_role(u.role):
                 continue
             u.is_active = False
             u.is_deleted = False
@@ -997,7 +1234,7 @@ def admin_employees_bulk_action():
 
     elif action == 'delete':
         for u in users:
-            if u.role == 'admin':
+            if is_admin_role(u.role):
                 continue
             u.is_active = False
             u.is_deleted = True
@@ -1008,10 +1245,10 @@ def admin_employees_bulk_action():
             count += 1
         db.session.commit()
         flash(translate(f'{count} karyawan berhasil dipindahkan ke kotak sampah.'), 'success')
-        return redirect(url_for('main.admin_employees', status='deleted' if current_user.role == 'admin' else 'active'))
+        return redirect(url_for('main.admin_employees', status='deleted' if is_admin_role(current_user.role) else 'active'))
 
     elif action == 'restore':
-        if current_user.role != 'admin':
+        if not is_admin_role(current_user.role):
             abort(403)
         for u in users:
             u.is_deleted = False
@@ -1043,7 +1280,7 @@ def admin_leave_types():
             status_tab = 'active'
 
     # Non-admin cannot access deleted tab
-    if status_tab == 'deleted' and current_user.role != 'admin':
+    if status_tab == 'deleted' and not is_admin_role(current_user.role):
         status_tab = 'active'
 
     if status_tab == 'deleted':
@@ -1129,6 +1366,16 @@ def admin_add_leave_type():
 @role_required('manager', 'hr', 'admin')
 def admin_edit_leave_type(type_id):
     lt = LeaveType.query.filter_by(id=type_id, company_id=get_active_company_id()).first_or_404()
+    before = {
+        'name': lt.name,
+        'days_per_year': lt.days_per_year,
+        'color': lt.color,
+        'description': lt.description,
+        'is_active': lt.is_active,
+        'requires_attachment': lt.requires_attachment,
+        'attachment_label': lt.attachment_label,
+        'company_id': lt.company_id,
+    }
     my_company = get_manageable_company_id(request.form.get('company_id', type=int))
     lt.name = request.form.get('name', lt.name)
     lt.days_per_year = request.form.get('days_per_year', type=int, default=lt.days_per_year)
@@ -1139,8 +1386,18 @@ def admin_edit_leave_type(type_id):
     new_label = request.form.get('attachment_label', '').strip()
     lt.attachment_label = new_label if new_label else 'Surat Dokter / Bukti Pendukung'
     lt.company_id = my_company
+    after = {
+        'name': lt.name,
+        'days_per_year': lt.days_per_year,
+        'color': lt.color,
+        'description': lt.description,
+        'is_active': lt.is_active,
+        'requires_attachment': lt.requires_attachment,
+        'attachment_label': lt.attachment_label,
+        'company_id': lt.company_id,
+    }
     db.session.commit()
-    audit_log('admin.leave_type_updated', 'leave_type', lt.id, details={'name': lt.name, 'days': lt.days_per_year}, company_id=my_company)
+    audit_log('admin.leave_type_updated', 'leave_type', lt.id, details=audit_changes(before, after), company_id=my_company)
     flash(translate(f'Jenis cuti {lt.name} berhasil diperbarui!'), 'success')
     return redirect(url_for('main.admin_leave_types'))
 
@@ -1273,7 +1530,7 @@ def admin_departments():
     status_tab = request.args.get('status', '').strip().lower()
 
     # Non-admin cannot access deleted tab
-    if status_tab == 'deleted' and current_user.role != 'admin':
+    if status_tab == 'deleted' and not is_admin_role(current_user.role):
         status_tab = 'active'
 
     if status_tab == 'deleted':
@@ -1294,7 +1551,7 @@ def admin_departments():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(Department.name).paginate(page=page, per_page=per_page, error_out=False)
     departments = pagination.items
-    managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.is_deleted == False, User.role.in_(['manager', 'hr', 'admin'])).order_by(User.name).all()
+    managers = User.query.filter(User.company_id == my_company, User.is_active == True, User.is_deleted == False, User.role.in_(['manager', 'hr', 'admin', 'superadmin'])).order_by(User.name).all()
     return render_template(
         'admin/departments.html',
         departments=departments,
@@ -1329,13 +1586,23 @@ def admin_add_department():
 @role_required('manager', 'hr', 'admin')
 def admin_edit_department(dept_id):
     dept = Department.query.filter_by(id=dept_id, company_id=get_active_company_id()).first_or_404()
+    before = {
+        'name': dept.name,
+        'company_id': dept.company_id,
+        'head_id': dept.head_id,
+    }
     target_company_id = get_manageable_company_id(request.form.get('company_id', type=int))
     dept.name = request.form.get('name', dept.name)
     head_id = request.form.get('head_id', type=int)
     dept.company_id = target_company_id
     dept.head_id = head_id if User.query.filter_by(id=head_id, company_id=target_company_id).first() else None
+    after = {
+        'name': dept.name,
+        'company_id': dept.company_id,
+        'head_id': dept.head_id,
+    }
     db.session.commit()
-    audit_log('admin.department_updated', 'department', dept.id, details={'name': dept.name}, company_id=target_company_id)
+    audit_log('admin.department_updated', 'department', dept.id, details=audit_changes(before, after), company_id=target_company_id)
     flash(translate(f'Departemen {dept.name} berhasil diperbarui!'), 'success')
     return redirect(url_for('main.admin_departments'))
 
@@ -1396,10 +1663,10 @@ def admin_departments_bulk_action():
             count += 1
         db.session.commit()
         flash(translate(f'{count} departemen berhasil dipindahkan ke kotak sampah.'), 'success')
-        return redirect(url_for('main.admin_departments', status='deleted' if current_user.role == 'admin' else 'active'))
+        return redirect(url_for('main.admin_departments', status='deleted' if is_admin_role(current_user.role) else 'active'))
 
     elif action == 'restore':
-        if current_user.role != 'admin':
+        if not is_admin_role(current_user.role):
             abort(403)
         for d in departments:
             d.is_deleted = False
@@ -1608,6 +1875,7 @@ def admin_audit_logs():
         (AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None))
     )
 
+    query = query.filter(~AuditLog.action.startswith('security.'))
     if actor_id:
         query = query.filter(AuditLog.actor_id == actor_id)
 
@@ -1623,7 +1891,7 @@ def admin_audit_logs():
         elif category == 'company':
             query = query.filter(AuditLog.action.startswith('admin.company_') | AuditLog.action.startswith('company.') | (AuditLog.action == 'workspace.company_switched'))
         elif category == 'system':
-            query = query.filter(AuditLog.action.startswith('system.') | AuditLog.action.startswith('reports.') | AuditLog.action.startswith('import.') | AuditLog.action.startswith('security.') | (AuditLog.action == 'holiday.synced'))
+            query = query.filter(AuditLog.action.startswith('system.') | AuditLog.action.startswith('reports.') | AuditLog.action.startswith('import.') | (AuditLog.action == 'holiday.synced'))
 
     if start_date_str:
         try:
@@ -1651,13 +1919,14 @@ def admin_audit_logs():
     # Metrics
     today_start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
+    base_log_filter = db.or_(AuditLog.company_id == my_company, AuditLog.company_id.is_(None))
     total_logs_count = query.count()
-    today_count = AuditLog.query.filter((AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None)), AuditLog.created_at >= today_start).count()
-    auth_count = AuditLog.query.filter((AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None)), AuditLog.action.startswith('auth.')).count()
-    data_ops_count = AuditLog.query.filter((AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None)), ~AuditLog.action.startswith('auth.')).count()
+    today_count = AuditLog.query.filter(base_log_filter, ~AuditLog.action.startswith('security.'), AuditLog.created_at >= today_start).count()
+    auth_count = AuditLog.query.filter(base_log_filter, AuditLog.action.startswith('auth.')).count()
+    data_ops_count = AuditLog.query.filter(base_log_filter, ~AuditLog.action.startswith('auth.'), ~AuditLog.action.startswith('security.')).count()
 
     pagination = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    actors = User.query.filter_by(company_id=my_company).order_by(User.name.asc()).all()
+    actors = User.query.order_by(User.name.asc()).all()
 
     return render_template(
         'admin/audit_logs.html',
@@ -1673,7 +1942,91 @@ def admin_audit_logs():
         total_logs_count=total_logs_count,
         today_count=today_count,
         auth_count=auth_count,
-        data_ops_count=data_ops_count
+        data_ops_count=data_ops_count,
+        page_title='Audit Logs & Activity Trail',
+        page_subtitle='Record of all operational activities and system data changes for Administrators.',
+        export_endpoint='main.admin_export_audit_logs',
+        form_endpoint='main.admin_audit_logs',
+        show_category_filter=True,
+        today_label="Today's Activity",
+        third_metric_label='Authentication & Logins',
+        fourth_metric_label='Data Operations & Changes'
+    )
+
+@main_bp.route('/admin/security-logs')
+@login_required
+@role_required('superadmin')
+def admin_security_logs():
+    my_company = get_active_company_id()
+
+    actor_id = request.args.get('actor_id', type=int)
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+    q = request.args.get('q', '').strip()
+    page, per_page, per_page_str = get_pagination_args(default=20)
+
+    query = AuditLog.query.filter(AuditLog.action.startswith('security.'))
+
+    if actor_id:
+        query = query.filter(AuditLog.actor_id == actor_id)
+
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            query = query.filter(AuditLog.created_at >= start_date)
+        except ValueError:
+            pass
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            query = query.filter(AuditLog.created_at <= end_date)
+        except ValueError:
+            pass
+
+    if q:
+        search_fmt = f'%{q}%'
+        query = query.filter(
+            (AuditLog.action.ilike(search_fmt)) |
+            (AuditLog.details.ilike(search_fmt)) |
+            (AuditLog.target_type.ilike(search_fmt)) |
+            (AuditLog.ip_address.ilike(search_fmt))
+        )
+
+    today_start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    total_logs_count = query.count()
+    security_base = AuditLog.query.filter(AuditLog.action.startswith('security.'))
+    today_count = security_base.filter(AuditLog.created_at >= today_start).count()
+    blocked_count = security_base.filter(AuditLog.details.ilike('%blocked%')).count()
+    anonymous_count = security_base.filter(AuditLog.actor_id.is_(None)).count()
+
+    pagination = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    actors = User.query.order_by(User.name.asc()).all()
+
+    return render_template(
+        'admin/audit_logs.html',
+        logs=pagination.items,
+        pagination=pagination,
+        per_page_str=per_page_str,
+        actors=actors,
+        category='all',
+        actor_id=actor_id,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        q=q,
+        total_logs_count=total_logs_count,
+        today_count=today_count,
+        auth_count=blocked_count,
+        data_ops_count=anonymous_count,
+        page_title='Security Logs',
+        page_subtitle='Security events, blocked probes, and anonymous request failures separated from operational audit logs.',
+        export_endpoint='main.admin_export_security_logs',
+        form_endpoint='main.admin_security_logs',
+        show_category_filter=False,
+        today_label='Security Events Today',
+        third_metric_label='Blocked Events',
+        fourth_metric_label='Anonymous Events'
     )
 
 @main_bp.route('/admin/audit-logs/export')
@@ -1695,6 +2048,7 @@ def admin_export_audit_logs():
         (AuditLog.company_id == my_company) | (AuditLog.company_id.is_(None))
     )
 
+    query = query.filter(~AuditLog.action.startswith('security.'))
     if actor_id:
         query = query.filter(AuditLog.actor_id == actor_id)
 
@@ -1710,7 +2064,7 @@ def admin_export_audit_logs():
         elif category == 'company':
             query = query.filter(AuditLog.action.startswith('admin.company_') | AuditLog.action.startswith('company.') | (AuditLog.action == 'workspace.company_switched'))
         elif category == 'system':
-            query = query.filter(AuditLog.action.startswith('system.') | AuditLog.action.startswith('reports.') | AuditLog.action.startswith('import.') | AuditLog.action.startswith('security.') | (AuditLog.action == 'holiday.synced'))
+            query = query.filter(AuditLog.action.startswith('system.') | AuditLog.action.startswith('reports.') | AuditLog.action.startswith('import.') | (AuditLog.action == 'holiday.synced'))
 
     if start_date_str:
         try:
@@ -1748,3 +2102,58 @@ def admin_export_audit_logs():
         download_name=filename
     )
 
+
+@main_bp.route('/admin/security-logs/export')
+@login_required
+@role_required('superadmin')
+def admin_export_security_logs():
+    from services.export_service import generate_audit_logs_excel
+    my_company = get_active_company_id()
+    company = db.session.get(Company, my_company)
+    company_slug = re.sub(r'[^a-zA-Z0-9_-]', '_', company.name.lower()) if company else 'company'
+
+    actor_id = request.args.get('actor_id', type=int)
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+    q = request.args.get('q', '').strip()
+
+    query = AuditLog.query.filter(AuditLog.action.startswith('security.'))
+
+    if actor_id:
+        query = query.filter(AuditLog.actor_id == actor_id)
+
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            query = query.filter(AuditLog.created_at >= start_date)
+        except ValueError:
+            pass
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            query = query.filter(AuditLog.created_at <= end_date)
+        except ValueError:
+            pass
+
+    if q:
+        search_fmt = f'%{q}%'
+        query = query.filter(
+            (AuditLog.action.ilike(search_fmt)) |
+            (AuditLog.details.ilike(search_fmt)) |
+            (AuditLog.target_type.ilike(search_fmt)) |
+            (AuditLog.ip_address.ilike(search_fmt))
+        )
+
+    logs = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(5000).all()
+    excel_buffer = generate_audit_logs_excel(my_company, logs)
+    filename = f"Security_Log_{company_slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    audit_log('reports.exported', 'company', my_company, details={'type': 'security_logs', 'count': len(logs)}, company_id=my_company)
+
+    return send_file(
+        excel_buffer,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )

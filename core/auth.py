@@ -7,6 +7,20 @@ from models.user import User
 from models.company import Company
 from core.i18n import translate
 
+ADMIN_ROLES = ('admin', 'superadmin')
+APPROVER_ROLES = ('manager', 'hr', 'admin', 'superadmin')
+
+def is_superadmin_role(role):
+    return role == 'superadmin'
+
+def is_admin_role(role):
+    return role in ADMIN_ROLES
+
+def role_allows(user_role, allowed_roles):
+    if user_role == 'superadmin' and ('admin' in allowed_roles or 'superadmin' in allowed_roles):
+        return True
+    return user_role in allowed_roles
+
 @login_manager.user_loader
 def load_user(user_id):
     user = db.session.get(User, int(user_id))
@@ -17,7 +31,7 @@ def load_user(user_id):
 def get_active_company_id():
     if not current_user.is_authenticated:
         return None
-    if current_user.role == 'admin':
+    if is_admin_role(current_user.role):
         active_id = session.get('active_company_id')
         if active_id:
             company = db.session.get(Company, active_id)
@@ -31,7 +45,7 @@ def role_required(*roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated or current_user.role not in roles:
+            if not current_user.is_authenticated or not role_allows(current_user.role, roles):
                 is_ajax_or_json = (
                     request.is_json
                     or '/import/' in request.path

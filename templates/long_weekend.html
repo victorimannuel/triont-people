@@ -9,7 +9,7 @@
         <p class="mt-2 text-sm text-gray-500">{{ t('List of national holidays, collective leave, and smart leave strategies throughout the year') }} {{ year }}.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-        {% if current_user.role in ('manager', 'hr', 'admin') %}
+        {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
         <button type="button" onclick="openAddHolidayModal()" class="inline-flex items-center gap-1.5 rounded-xl bg-triton-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-triton-700">
             <i class="fa-solid fa-plus"></i> {{ t('Add Holiday') }}
         </button>
@@ -186,7 +186,7 @@
                     <th class="px-5 py-3.5">{{ t('Day') }}</th>
                     <th class="px-5 py-3.5">{{ t('Holiday Name') }}</th>
                     <th class="px-5 py-3.5 text-center">{{ t('Category') }}</th>
-                    {% if current_user.role in ('manager', 'hr', 'admin') %}
+                    {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
                     <th class="px-5 py-3.5 text-right">{{ t('Actions') }}</th>
                     {% endif %}
                 </tr>
@@ -219,7 +219,7 @@
                         </span>
                         {% endif %}
                     </td>
-                    {% if current_user.role in ('manager', 'hr', 'admin') %}
+                    {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
                     <td class="px-5 py-3.5">
                         <div class="flex justify-end gap-1">
                             <button type="button" onclick="confirmDeleteHoliday({{ h.id }}, {{ (h.name ~ ' (' ~ h.holiday_date.strftime('%d/%m/%Y') ~ ')')|tojson }})" class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition" title="{{ t('Delete holiday') }}">
@@ -243,7 +243,7 @@
 </div>
 
 <!-- Modal: Tambah Hari Libur Kustom -->
-{% if current_user.role in ('manager', 'hr', 'admin') %}
+{% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
 <div id="addHolidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/40 p-4 backdrop-blur-xs">
     <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
         <div class="flex items-center justify-between border-b border-gray-100 pb-3">

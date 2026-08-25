@@ -1,3 +1,99 @@
-{% extends "base.html" %}{% block title %}Custom Domain Guide{% endblock %}{% block content %}<div class="max-w-3xl"><p class="page-kicker">Setup guide</p><h1 class="page-title mt-1">Hubungkan domain perusahaan</h1><p class="mt-2 text-gray-500">Gunakan CNAME agar People tetap tampil di domain milik client.</p><div class="app-card mt-6 space-y-5 p-6"><div><h2 class="font-bold">1. Pilih subdomain</h2><p class="text-sm text-gray-600">Contoh: <code>people.client.com</code>.</p></div><div><h2 class="font-bold">2. Tambahkan DNS CNAME</h2><pre class="mt-2 overflow-x-auto rounded bg-slate-900 p-4 text-sm text-slate-100">Type: CNAME
+{% extends "base.html" %}
+{% block title %}{{ t('Custom Domain Guide') }}{% endblock %}
+{% block content %}
+<div class="max-w-5xl">
+    <p class="page-kicker">{{ t('Setup guide') }}</p>
+    <h1 class="page-title mt-1">{{ t('Connect Company Domain') }}</h1>
+    <p class="mt-2 text-gray-500">{{ t("Use CNAME so People appears on the client's own domain.") }}</p>
+
+    <div class="grid gap-6 lg:grid-cols-[1fr_0.95fr] mt-6">
+        <div class="app-card space-y-5 p-6">
+            <div>
+                <h2 class="font-bold">{{ t('1. Choose subdomain') }}</h2>
+                <p class="text-sm text-gray-600">{{ t('Example:') }} <code>people.client.com</code>.</p>
+            </div>
+            <div>
+                <h2 class="font-bold">{{ t('2. Add DNS CNAME') }}</h2>
+                <pre class="mt-2 overflow-x-auto rounded bg-slate-900 p-4 text-sm text-slate-100">Type: CNAME
 Name: people
-Target: people-triton.imannuelvictor.com</pre></div><div><h2 class="font-bold">3. Tunggu propagasi</h2><p class="text-sm text-gray-600">Biasanya beberapa menit hingga 24 jam. Jangan gunakan redirect; CNAME menjaga domain client tetap terlihat.</p></div><div><h2 class="font-bold">4. Kirim domain ke admin People</h2><p class="text-sm text-gray-600">Kami verifikasi DNS, aktifkan SSL, lalu hubungkan domain ke company yang tepat.</p></div></div></div>{% endblock %}
+Target: {{ cname_target }}</pre>
+            </div>
+            <div>
+                <h2 class="font-bold">{{ t('3. Wait for propagation') }}</h2>
+                <p class="text-sm text-gray-600">{{ t('Usually a few minutes up to 24 hours. Do not use redirects; CNAME keeps client domain visible.') }}</p>
+            </div>
+            <div>
+                <h2 class="font-bold">{{ t('4. Test and activate') }}</h2>
+                <p class="text-sm text-gray-600">{{ t('Use the test button to verify DNS and HTTPS status before activating the domain for the client.') }}</p>
+            </div>
+        </div>
+
+        <div class="app-card p-6">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">{{ t('Custom domain status') }}</h2>
+                    <p class="mt-1 text-sm text-gray-500">{{ t('Check whether the client domain already points to People and serves HTTPS correctly.') }}</p>
+                </div>
+                {% if domain_test %}
+                    {% if domain_test.overall == 'ready' %}
+                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{{ t('Ready') }}</span>
+                    {% elif domain_test.overall == 'partial' %}
+                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{{ t('Partial') }}</span>
+                    {% else %}
+                        <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{{ t('Not ready') }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">{{ t('Not tested') }}</span>
+                {% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('main.admin_custom_domain_test') }}" class="mt-5 space-y-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">{{ t('Client domain') }}</label>
+                    <input class="input" name="domain" placeholder="people.client.com" value="{{ domain_test.domain if domain_test else '' }}" autocomplete="off" required>
+                    <p class="mt-1 text-xs text-gray-500">{{ t('You may paste a full URL; only the hostname will be checked.') }}</p>
+                </div>
+                <button type="submit" class="btn-primary w-full px-4 py-2.5">
+                    <i class="fa-solid fa-satellite-dish mr-1.5"></i>{{ t('Test domain') }}
+                </button>
+            </form>
+
+            {% if domain_test %}
+                <div class="mt-5 rounded-xl border {% if domain_test.overall == 'ready' %}border-emerald-200 bg-emerald-50{% elif domain_test.overall == 'partial' %}border-amber-200 bg-amber-50{% else %}border-red-200 bg-red-50{% endif %} p-4">
+                    <p class="font-bold {% if domain_test.overall == 'ready' %}text-emerald-800{% elif domain_test.overall == 'partial' %}text-amber-800{% else %}text-red-800{% endif %}">{{ domain_test.message }}</p>
+                    <p class="mt-1 text-sm text-gray-600"><span class="font-semibold">{{ t('Domain') }}:</span> {{ domain_test.domain or '-' }}</p>
+                </div>
+
+                <div class="mt-4 divide-y rounded-xl border border-gray-200 bg-white text-sm">
+                    <div class="flex items-start gap-3 p-4">
+                        <div class="mt-0.5 h-8 w-8 shrink-0 rounded-full {% if domain_test.dns.ok %}bg-emerald-100 text-emerald-700{% else %}bg-red-100 text-red-700{% endif %} flex items-center justify-center">
+                            <i class="fa-solid {% if domain_test.dns.ok %}fa-check{% else %}fa-xmark{% endif %}"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold text-gray-900">{{ t('DNS target') }}</p>
+                            <p class="mt-1 text-gray-600">{{ t('Expected target') }}: <code>{{ domain_test.target }}</code></p>
+                            <p class="mt-1 break-words text-gray-500">{{ t('Resolved IPs') }}: {{ domain_test.dns.ips|join(', ') if domain_test.dns.ips else '-' }}</p>
+                            {% if domain_test.dns.target_ips %}<p class="mt-1 break-words text-gray-500">{{ t('Target IPs') }}: {{ domain_test.dns.target_ips|join(', ') }}</p>{% endif %}
+                            {% if domain_test.dns.error %}<p class="mt-1 text-red-600">{{ domain_test.dns.error }}</p>{% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-4">
+                        <div class="mt-0.5 h-8 w-8 shrink-0 rounded-full {% if domain_test.https.ok %}bg-emerald-100 text-emerald-700{% else %}bg-red-100 text-red-700{% endif %} flex items-center justify-center">
+                            <i class="fa-solid {% if domain_test.https.ok %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold text-gray-900">{{ t('HTTPS app check') }}</p>
+                            {% if domain_test.https.status_code %}
+                                <p class="mt-1 text-gray-600">{{ t('Response') }}: {{ domain_test.https.status_code }} {{ domain_test.https.reason or '' }}</p>
+                            {% else %}
+                                <p class="mt-1 text-gray-600">{{ t('No HTTPS response yet.') }}</p>
+                            {% endif %}
+                            {% if domain_test.https.error %}<p class="mt-1 break-words text-red-600">{{ domain_test.https.error }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

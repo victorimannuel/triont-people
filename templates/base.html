@@ -19,6 +19,10 @@
         .nav-link.active i { color:var(--primary); }
         .app-shell { transition:padding-left .18s ease; }
         .app-sidebar { transition:width .18s ease; }
+        .app-sidebar .sidebar-brand, .app-sidebar .sidebar-footer { flex-shrink:0; }
+        .app-sidebar .sidebar-nav { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+        .app-sidebar .sidebar-nav::-webkit-scrollbar { width:6px; }
+        .app-sidebar .sidebar-nav::-webkit-scrollbar-thumb { background:#d7dfda; border-radius:999px; }
         .sidebar-toggle { display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:6px; color:#68716c; }
         .sidebar-toggle:hover { background:#f3f6f4; color:#18231f; }
         @media (min-width:768px) {
@@ -130,12 +134,12 @@
             </a>
             <button type="button" id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar"><i class="fa-solid fa-chevron-left text-xs"></i></button>
         </div>
-        <nav class="px-3 py-4">
+        <nav class="sidebar-nav px-3 py-3">
             <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="fa-solid fa-house w-4 text-center"></i>{{ t('Home') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Team Calendar') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.long_weekend' %}active{% endif %}" href="{{ url_for('main.long_weekend') }}"><i class="fa-solid fa-sun w-4 text-center"></i>{{ t('Holidays') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
-            {% if current_user.role in ('manager', 'hr', 'admin') %}
+            {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
             <p class="nav-label">{{ t('Approval') }}</p>
             <a class="nav-link {% if request.endpoint == 'main.approvals' %}active{% endif %}" href="{{ url_for('main.approvals') }}"><i class="fa-solid fa-circle-check w-4 text-center"></i>{{ t('Inbox') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.approval_history' %}active{% endif %}" href="{{ url_for('main.approval_history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
@@ -145,15 +149,16 @@
             <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Leave Types') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departments') }}</a>
             <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Export Data') }}</a>
-            {% if current_user.role == 'admin' %}
+            {% if is_admin_role(current_user.role) %}
             <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Companies') }}</a>
             <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+            {% if is_superadmin_role(current_user.role) %}<a class="nav-link {% if request.endpoint == 'main.admin_security_logs' %}active{% endif %}" href="{{ url_for('main.admin_security_logs') }}"><i class="fa-solid fa-user-shield w-4 text-center"></i>{{ t('Security Logs') }}</a>{% endif %}
             <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
             {% endif %}
             {% endif %}
         </nav>
-        <div class="mt-auto border-t border-gray-200 p-4">
+        <div class="sidebar-footer border-t border-gray-200 p-4">
             <button type="button" id="pwa-install-sidebar" onclick="triggerPwaInstall()" class="hidden flex items-center justify-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition border border-emerald-200 w-full mb-3 shadow-2xs">
                 <i class="fa-solid fa-download text-emerald-600"></i><span>Install App</span>
             </button>
@@ -183,7 +188,7 @@
             <button type="button" id="mobile-drawer-close" class="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"><i class="fa-solid fa-xmark text-sm"></i></button>
         </div>
         <div class="overflow-y-auto flex-1 px-3 py-4">
-            {% if current_user.role == 'admin' and available_companies|length > 1 %}
+            {% if is_admin_role(current_user.role) and available_companies|length > 1 %}
             <div class="mb-4 rounded-lg bg-gray-50 p-2.5 border border-gray-200">
                 <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Workspace</label>
                 <form method="post" action="{{ url_for('main.select_active_company') }}">
@@ -200,7 +205,7 @@
                 <a class="nav-link {% if request.endpoint == 'main.calendar' %}active{% endif %}" href="{{ url_for('main.calendar') }}"><i class="fa-regular fa-calendar w-4 text-center"></i>{{ t('Team Calendar') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.long_weekend' %}active{% endif %}" href="{{ url_for('main.long_weekend') }}"><i class="fa-solid fa-sun w-4 text-center"></i>{{ t('Holidays') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}" href="{{ url_for('main.history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
-                {% if current_user.role in ('manager', 'hr', 'admin') %}
+                {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
                 <p class="nav-label mt-4">{{ t('Approval') }}</p>
                 <a class="nav-link {% if request.endpoint == 'main.approvals' %}active{% endif %}" href="{{ url_for('main.approvals') }}"><i class="fa-solid fa-circle-check w-4 text-center"></i>{{ t('Inbox') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.approval_history' %}active{% endif %}" href="{{ url_for('main.approval_history') }}"><i class="fa-solid fa-clock-rotate-left w-4 text-center"></i>{{ t('History') }}</a>
@@ -210,10 +215,11 @@
                 <a class="nav-link {% if request.endpoint == 'main.admin_leave_types' %}active{% endif %}" href="{{ url_for('main.admin_leave_types') }}"><i class="fa-solid fa-list-check w-4 text-center"></i>{{ t('Leave Types') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.admin_departments' %}active{% endif %}" href="{{ url_for('main.admin_departments') }}"><i class="fa-solid fa-building-user w-4 text-center"></i>{{ t('Departments') }}</a>
                 <a class="nav-link" href="{{ url_for('main.export_excel') }}"><i class="fa-solid fa-file-export w-4 text-center"></i>{{ t('Export Data') }}</a>
-                {% if current_user.role == 'admin' %}
+                {% if is_admin_role(current_user.role) %}
                 <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Companies') }}</a>
                 <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+                {% if is_superadmin_role(current_user.role) %}<a class="nav-link {% if request.endpoint == 'main.admin_security_logs' %}active{% endif %}" href="{{ url_for('main.admin_security_logs') }}"><i class="fa-solid fa-user-shield w-4 text-center"></i>{{ t('Security Logs') }}</a>{% endif %}
                 <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
                 {% endif %}
                 {% endif %}
@@ -323,7 +329,7 @@
             <span class="text-[10px] leading-tight transition-colors {% if is_calendar %}font-extrabold text-teal-900{% else %}font-medium text-gray-500{% endif %}">{{ t('Calendar') }}</span>
         </a>
 
-        {% if current_user.role in ('manager', 'hr', 'admin') %}
+        {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
         {% set is_inbox = (request.endpoint in ('main.approvals', 'main.approval_history')) %}
         <a class="relative flex flex-col items-center justify-center gap-0.5 rounded-xl py-1 transition-all active:scale-95" href="{{ url_for('main.approvals') }}">
             {% if is_inbox %}
@@ -394,7 +400,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <div class="language-toggle" role="group" aria-label="Language"><button type="button" data-lang-option="en">EN</button><button type="button" data-lang-option="id">ID</button><button type="button" data-lang-option="idc">CAS</button></div>
-                {% if current_user.role == 'admin' %}
+                {% if is_admin_role(current_user.role) %}
                 <form method="post" action="{{ url_for('main.select_active_company') }}" class="hidden sm:block w-44 sm:w-56"><label class="sr-only" for="active-company">Perusahaan aktif</label><select id="active-company" name="company_id" onchange="this.form.submit()" class="field text-xs py-1.5 bg-white shadow-xs">{% for company_option in available_companies %}<option value="{{ company_option.id }}" {% if active_company and company_option.id == active_company.id %}selected{% endif %}>{{ company_option.name }}</option>{% endfor %}</select></form>
                 {% endif %}
                 <span class="hidden text-xs text-gray-500 sm:block">{{ current_user.name }}</span>

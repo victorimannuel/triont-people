@@ -1,12 +1,13 @@
 import io
 import json
 import unittest
+from unittest.mock import patch
 from datetime import date, datetime, timedelta
 from config import Config
 from extensions import db
 from app import create_app
 from core.time_util import utcnow
-from models import User, Company, Department, LeaveType, LeaveRequest, LeaveBalance, LeaveGrant, PublicHoliday, ApprovalConfig, PasswordReset
+from models import AuditLog, User, Company, Department, LeaveType, LeaveRequest, LeaveBalance, LeaveGrant, PublicHoliday, ApprovalConfig, PasswordReset
 from services.holiday_service import calculate_long_weekends, ensure_company_holidays
 
 class TestConfig(Config):
@@ -40,7 +41,10 @@ class PeopleAppTestCase(unittest.TestCase):
         db.session.add_all([self.lt_annual_a, self.lt_annual_b])
         db.session.flush()
 
-        self.admin_user = User(name='Super Admin', email='admin@test.com', role='admin', company_id=self.company_a.id)
+        self.superadmin_user = User(name='Super Admin', email='superadmin@test.com', role='superadmin', company_id=self.company_a.id)
+        self.superadmin_user.set_password('SuperAdminPass123')
+
+        self.admin_user = User(name='Company Admin', email='admin@test.com', role='admin', company_id=self.company_a.id)
         self.admin_user.set_password('AdminPass123')
 
         self.manager_user = User(name='Manager Bob', email='manager@test.com', role='manager', company_id=self.company_a.id)
@@ -52,7 +56,7 @@ class PeopleAppTestCase(unittest.TestCase):
         self.emp_b = User(name='Charlie B', email='charlie@test.com', role='employee', company_id=self.company_b.id)
         self.emp_b.set_password('CharliePass123')
 
-        db.session.add_all([self.admin_user, self.manager_user, self.employee_user, self.emp_b])
+        db.session.add_all([self.superadmin_user, self.admin_user, self.manager_user, self.employee_user, self.emp_b])
         db.session.flush()
 
         self.employee_user.manager_id = self.manager_user.id
@@ -68,6 +72,7 @@ class PeopleAppTestCase(unittest.TestCase):
     def _login(self, user, password=None):
         self.client.get('/auth/logout')
         passwords = {
+            'superadmin@test.com': 'SuperAdminPass123',
             'admin@test.com': 'AdminPass123',
             'manager@test.com': 'ManagerPass123',
             'alice@test.com': 'AlicePass123',
@@ -77,8 +82,49 @@ class PeopleAppTestCase(unittest.TestCase):
         self.client.post('/auth/login', data={'email': user.email, 'password': pwd, '_csrf_token': 'test-token'})
 
     def test_login_flow(self):
+        from datetime import timedelta
+        self.assertEqual(self.app.config['PERMANENT_SESSION_LIFETIME'], timedelta(days=7))
         res = self.client.post('/auth/login', data={'email': 'alice@test.com', 'password': 'AlicePass123', '_csrf_token': 'test-token'})
         self.assertEqual(res.status_code, 302)
+        with self.client.session_transaction() as sess:
+            self.assertTrue(sess.permanent)
+
+    def test_csrf_audit_log_records_blocked_result(self):
+        self.app.config["WTF_CSRF_ENABLED"] = True
+        res = self.client.post("/api/graphql", json={"query": "{ __typename }"})
+        self.assertEqual(res.status_code, 400)
+        log = AuditLog.query.filter_by(action="security.csrf_failed").first()
+        self.assertIsNotNone(log)
+        details = log.details_dict
+        self.assertEqual(details["method"], "POST")
+        self.assertEqual(details["path"], "/api/graphql")
+        self.assertEqual(details["result"], "blocked")
+        self.assertEqual(details["result_status"], 400)
+
+    def test_custom_domain_guide_has_test_form(self):
+        self._login(self.admin_user)
+        res = self.client.get('/admin/custom-domain-guide')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Test domain', res.data)
+        self.assertIn(b'people-triton.imannuelvictor.com', res.data)
+
+    def test_custom_domain_test_reports_ready(self):
+        self._login(self.admin_user)
+        with patch('routes.admin.resolve_domain_ips', side_effect=[['104.21.1.1'], ['104.21.1.1']]), \
+             patch('routes.admin.check_https_domain', return_value={'ok': True, 'status_code': 200, 'reason': 'OK'}):
+            res = self.client.post('/admin/custom-domain-guide/test', data={'domain': 'https://people.client.com/login'})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'people.client.com', res.data)
+        self.assertIn(b'Domain looks ready.', res.data)
+        log = AuditLog.query.filter_by(action='admin.custom_domain_tested').first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.details_dict['result'], 'ready')
+
+    def test_custom_domain_test_blocks_unsafe_hosts(self):
+        self._login(self.admin_user)
+        res = self.client.post('/admin/custom-domain-guide/test', data={'domain': 'http://localhost/admin'})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Domain is invalid.', res.data)
 
     def test_apply_leave_and_balance_deduction(self):
         self._login(self.employee_user)
@@ -1060,6 +1106,139 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(res_delete.status_code, 302)
         db.session.refresh(self.employee_user)
         self.assertIsNone(self.employee_user.avatar_path)
+
+    def test_security_logs_are_global_and_superadmin_only(self):
+        db.session.add(AuditLog(
+            company_id=self.company_a.id,
+            action='security.csrf_failed',
+            details=json.dumps({'path': '/api/graphql', 'result': 'blocked', 'result_status': 400})
+        ))
+        db.session.add(AuditLog(
+            company_id=self.company_b.id,
+            action='security.suspicious_404',
+            details=json.dumps({'path': '/.env', 'result': 'blocked', 'result_status': 404})
+        ))
+        db.session.add(AuditLog(
+            company_id=self.company_a.id,
+            actor_id=self.admin_user.id,
+            action='admin.employee_updated',
+            details=json.dumps({'name': 'Alice Employee'})
+        ))
+        db.session.commit()
+
+        self._login(self.admin_user)
+        audit_res = self.client.get('/admin/audit-logs')
+        self.assertEqual(audit_res.status_code, 200)
+        audit_html = audit_res.data.decode('utf-8')
+        self.assertIn('admin.employee_updated', audit_html)
+        self.assertNotIn('security.csrf_failed', audit_html)
+
+        admin_security_res = self.client.get('/admin/security-logs')
+        self.assertEqual(admin_security_res.status_code, 302)
+
+        self._login(self.superadmin_user)
+        security_res = self.client.get('/admin/security-logs')
+        self.assertEqual(security_res.status_code, 200)
+        security_html = security_res.data.decode('utf-8')
+        self.assertIn('Security Logs', security_html)
+        self.assertIn('security.csrf_failed', security_html)
+        self.assertIn('security.suspicious_404', security_html)
+        self.assertIn('Blocked 400', security_html)
+        self.assertNotIn('admin.employee_updated', security_html)
+
+        security_export = self.client.get('/admin/security-logs/export')
+        self.assertEqual(security_export.status_code, 200)
+        self.assertEqual(security_export.headers.get('Content-Type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_only_superadmin_can_assign_superadmin_role(self):
+        self._login(self.admin_user)
+        res = self.client.post(f'/admin/employees/edit/{self.employee_user.id}', data={
+            'name': self.employee_user.name,
+            'email': self.employee_user.email,
+            'role': 'superadmin',
+            'company_id': str(self.company_a.id),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.role, 'employee')
+
+        self._login(self.superadmin_user)
+        res = self.client.post(f'/admin/employees/edit/{self.employee_user.id}', data={
+            'name': self.employee_user.name,
+            'email': self.employee_user.email,
+            'role': 'superadmin',
+            'company_id': str(self.company_a.id),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.role, 'superadmin')
+
+    def test_suspicious_probe_404_and_forbidden_are_security_logs(self):
+        from flask import abort
+
+        @self.app.route('/_test_forbidden')
+        def _test_forbidden():
+            abort(403)
+
+        self.client.get('/graphql')
+        self.client.get('/_test_forbidden')
+
+        probe_log = AuditLog.query.filter_by(action='security.suspicious_404').first()
+        self.assertIsNotNone(probe_log)
+        self.assertEqual(probe_log.details_dict['path'], '/graphql')
+        self.assertEqual(probe_log.details_dict['result_status'], 404)
+
+        forbidden_log = AuditLog.query.filter_by(action='security.forbidden').first()
+        self.assertIsNotNone(forbidden_log)
+        self.assertEqual(forbidden_log.details_dict['result_status'], 403)
+
+    def test_update_audit_logs_include_before_after_changed_fields(self):
+        self._login(self.admin_user)
+        res = self.client.post(f'/admin/employees/edit/{self.employee_user.id}', data={
+            'name': 'Alice Employee Renamed',
+            'email': self.employee_user.email,
+            'role': 'employee',
+            'company_id': str(self.company_a.id),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+
+        log = AuditLog.query.filter_by(action='admin.employee_updated', target_id=self.employee_user.id).order_by(AuditLog.id.desc()).first()
+        self.assertIsNotNone(log)
+        details = log.details_dict
+        self.assertEqual(details['before']['name'], 'Alice Employee')
+        self.assertEqual(details['after']['name'], 'Alice Employee Renamed')
+        self.assertEqual(details['changed']['name']['before'], 'Alice Employee')
+        self.assertEqual(details['changed']['name']['after'], 'Alice Employee Renamed')
+
+    def test_avatar_upload_is_audited(self):
+        self._login(self.employee_user)
+        dummy_png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        res = self.client.post('/settings', data={
+            'name': self.employee_user.name,
+            'language': 'en',
+            'avatar': (io.BytesIO(dummy_png), 'profile.png')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res.status_code, 302)
+
+        log = AuditLog.query.filter_by(action='user.avatar_uploaded', target_id=self.employee_user.id).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.details_dict['extension'], 'png')
+
+    def test_import_actions_use_specific_audit_names(self):
+        from flask_login import login_user
+        from services.import_service import audit_log as import_audit_log
+
+        with self.app.test_request_context('/admin/employees/import/execute'):
+            login_user(self.admin_user)
+            import_audit_log(action='import.employees_completed', target_type='user', details={'created': 1}, company_id=self.company_a.id)
+            import_audit_log(action='import.history_completed', target_type='leave_request', details={'created': 1}, company_id=self.company_a.id)
+            db.session.commit()
+
+        self.assertIsNotNone(AuditLog.query.filter_by(action='import.employees_completed').first())
+        self.assertIsNotNone(AuditLog.query.filter_by(action='import.history_completed').first())
 
     def test_admin_audit_logs_access_filter_and_export(self):
         # 1. Non-admin gets redirected

@@ -53,7 +53,10 @@ class AuditLog(db.Model):
             'admin.department_deleted': 'Delete Department',
             'admin.company_created': 'Add Company',
             'admin.company_updated': 'Edit Company',
+            'admin.custom_domain_tested': 'Test Custom Domain',
             'admin.approval_config_updated': 'Update Approval Workflow',
+            'admin.approval_config_added': 'Add Approval Workflow Level',
+            'admin.approval_config_deleted': 'Delete Approval Workflow Level',
             'company.smtp_updated': 'Update SMTP Settings',
             'holiday.synced': 'Sync Public Holidays',
             'leave.request_submitted': 'Submit Leave Request',
@@ -72,7 +75,13 @@ class AuditLog(db.Model):
             'user.avatar_deleted': 'Delete Profile Photo',
             'user.language_updated': 'Change Language',
             'workspace.company_switched': 'Switch Active Company',
-            'security.csrf_failed': 'Security: CSRF Verification Failed'
+            'security.csrf_failed': 'Security: CSRF Verification Failed',
+            'security.forbidden': 'Security: Forbidden Access',
+            'security.suspicious_404': 'Security: Suspicious Probe Blocked',
+            'auth.otp_failed': 'OTP Verification Failed',
+            'auth.otp_locked': 'OTP Verification Locked',
+            'user.password_otp_failed': 'Password OTP Failed',
+            'user.password_otp_locked': 'Password OTP Locked'
         }
         return labels.get(self.action, self.action.replace('.', ' ').replace('_', ' ').title())
 

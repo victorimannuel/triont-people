@@ -11,7 +11,7 @@ from models.leave import LeaveType, LeaveRequest, LeaveBalance
 from models.approval import ApprovalConfig
 from models.holiday import PublicHoliday
 from core.i18n import translate
-from core.auth import get_active_company_id, role_required
+from core.auth import get_active_company_id, role_required, is_admin_role
 from services.audit_service import audit_log
 from services.notification_service import send_notification
 from services.holiday_service import calculate_long_weekends
@@ -202,7 +202,7 @@ def download_leave_attachment(request_id):
     req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
     # Allow: own employee, approver roles, or admin
     is_own = (req.employee_id == current_user.id)
-    is_approver = current_user.role in ('manager', 'hr', 'admin')
+    is_approver = current_user.role in ('manager', 'hr', 'admin', 'superadmin')
     if not (is_own or is_approver):
         abort(403)
     if not req.attachment_path:
@@ -291,7 +291,7 @@ def leave_slip(request_id):
 
     is_owner = (req.employee_id == current_user.id)
     is_manager = (req.employee.manager_id == current_user.id) if req.employee else False
-    is_admin_or_hr = (current_user.role in ('admin', 'hr'))
+    is_admin_or_hr = (current_user.role in ('admin', 'superadmin', 'hr'))
 
     if not (is_owner or is_manager or is_admin_or_hr):
         abort(403)
@@ -314,7 +314,7 @@ def cancel_leave(request_id):
     req = LeaveRequest.query.filter_by(id=request_id, company_id=my_company).first_or_404()
 
     is_owner = (req.employee_id == current_user.id)
-    is_admin_or_hr = (current_user.role in ('admin', 'hr'))
+    is_admin_or_hr = (current_user.role in ('admin', 'superadmin', 'hr'))
 
     if not (is_owner or is_admin_or_hr):
         flash(translate('You do not have permission to cancel this leave request.'), 'danger')

@@ -13,7 +13,7 @@ from models.company import Company
 from models.leave import LeaveBalance, LeaveType, LeaveRequest
 from models.auth import PasswordReset
 from core.i18n import translate, normalize_language, SUPPORTED_LANGUAGES
-from core.auth import get_active_company_id, role_required, validate_password_strength
+from core.auth import get_active_company_id, role_required, validate_password_strength, is_admin_role, is_superadmin_role
 from core.time_util import utcnow
 from services.audit_service import audit_log
 from services.notification_service import send_password_reset_otp_email
@@ -54,7 +54,7 @@ def dashboard():
 
     # Pending approvals (for managers/admins)
     pending_approvals = []
-    if current_user.role in ('manager', 'hr', 'admin'):
+    if current_user.role in ('manager', 'hr', 'admin', 'superadmin'):
         if current_user.role == 'manager':
             pending_approvals = LeaveRequest.query.filter(
                 LeaveRequest.status == 'pending',
@@ -70,7 +70,7 @@ def dashboard():
 
     # Get all companies for admin chart filter
     companies = []
-    if current_user.role == 'admin':
+    if is_admin_role(current_user.role):
         companies = [{'id': c.id, 'name': c.name} for c in Company.query.filter_by(is_active=True).all()]
 
     # Team on leave this week (next 7 days)
@@ -161,6 +161,10 @@ def user_settings():
             dest_path = os.path.join(uploads_dir, unique_filename)
             avatar_file.save(dest_path)
             current_user.avatar_path = os.path.join('uploads', 'avatars', unique_filename)
+            audit_log('user.avatar_uploaded', 'user', current_user.id, details={
+                'filename': unique_filename,
+                'extension': ext,
+            }, company_id=current_user.company_id)
 
         # Handle Direct Password Update (Option 1: Know current password)
         if current_password or new_password or confirm_password:
@@ -243,13 +247,18 @@ def verify_password_change_otp():
         return jsonify(ok=False, message=translate('Kode OTP sudah kedaluwarsa. Silakan minta kode baru.')), 400
 
     if reset_entry.is_locked:
+        audit_log('user.password_otp_locked', 'user', current_user.id, company_id=current_user.company_id)
+        db.session.commit()
         return jsonify(ok=False, message=translate('Batas maksimal percobaan salah tercapai. Silakan minta kode baru.')), 400
 
     if not reset_entry.check_otp(otp_input):
         reset_entry.attempts += 1
-        db.session.commit()
         rem = max(0, 5 - reset_entry.attempts)
+        audit_log('user.password_otp_failed', 'user', current_user.id, details={'remaining_attempts': rem}, company_id=current_user.company_id)
+        db.session.commit()
         if rem == 0:
+            audit_log('user.password_otp_locked', 'user', current_user.id, company_id=current_user.company_id)
+            db.session.commit()
             return jsonify(ok=False, message=translate('Terlalu banyak percobaan salah. Kode OTP dibatalkan. Silakan minta kode baru.')), 400
         return jsonify(ok=False, message=translate(f'Kode OTP salah. Sisa kesempatan: {rem} kali.')), 400
 

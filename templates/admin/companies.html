@@ -14,7 +14,7 @@
             <a href="{{ update_query_params(status='active', page=1) }}" class="status-tab {% if current_tab == 'active' %}active{% endif %}">
                 <i class="fa-solid fa-list-check mr-1.5"></i>{{ t('Active') }}
             </a>
-            {% if current_user.role == 'admin' %}
+            {% if is_admin_role(current_user.role) %}
             <a href="{{ update_query_params(status='deleted', page=1) }}" class="status-tab {% if current_tab == 'deleted' %}active{% endif %}">
                 <i class="fa-solid fa-trash-can mr-1.5"></i>{{ t('Deleted') }}
             </a>

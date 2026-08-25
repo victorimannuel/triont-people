@@ -436,7 +436,7 @@ def execute_leave_history_import(file_stream, filename, mapping, company_id, cur
     db.session.commit()
 
     audit_log(
-        action='import',
+        action='import.history_completed',
         target_type='leave_request',
         target_id=None,
         details={
@@ -614,7 +614,7 @@ def execute_employee_import(file_stream, filename, mapping, company_id, current_
     db.session.commit()
 
     audit_log(
-        action='import',
+        action='import.employees_completed',
         target_type='user',
         target_id=None,
         details={

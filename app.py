@@ -6,7 +6,7 @@ from config import Config
 from extensions import db, login_manager, migrate
 from core.csrf import csrf_token, enforce_csrf, inject_csrf_fields
 from core.i18n import translate, LANGUAGE_LABELS, normalize_language, SUPPORTED_LANGUAGES, get_client_translations
-from core.auth import get_active_company_id, load_user
+from core.auth import get_active_company_id, load_user, is_admin_role, is_superadmin_role
 from models import Company, init_audit_events
 from services.seed_service import seed_initial_data
 from routes import register_blueprints
@@ -47,6 +47,8 @@ def create_app(config_class=Config):
             'current_user_tz': get_current_user_timezone(),
             'update_query_params': update_query_params,
             'is_impersonating': bool(session.get('impersonator_admin_id')),
+            'is_admin_role': is_admin_role,
+            'is_superadmin_role': is_superadmin_role,
             'impersonator_admin_name': session.get('impersonator_admin_name', 'Admin'),
             'date': date,
             'datetime': datetime,
@@ -114,6 +116,8 @@ def create_app(config_class=Config):
         r = str(role).lower()
         if r == 'hr':
             return 'HR'
+        if r == 'superadmin':
+            return 'Super Admin'
         if r == 'admin':
             return 'Admin'
         if r == 'manager':
@@ -133,7 +137,7 @@ def create_app(config_class=Config):
             )
         active_company = db.session.get(Company, get_active_company_id())
         available_companies = []
-        if current_user.role == 'admin':
+        if is_admin_role(current_user.role):
             available_companies = Company.query.filter_by(is_active=True).order_by(Company.name).all()
         primary = active_company.primary_color if active_company else '#1e5a52'
         current_language = current_user.language_preference or normalize_language(session.get('language', 'en'))
@@ -152,9 +156,37 @@ def create_app(config_class=Config):
         from flask import send_from_directory
         return send_from_directory(os.path.join(app.root_path, 'static'), 'sw.js', mimetype='application/javascript')
 
+    def log_security_event(action, status_code):
+        try:
+            from services.audit_service import audit_log
+            actor_id = current_user.id if current_user.is_authenticated else None
+            company_id = getattr(current_user, 'company_id', None) if current_user.is_authenticated else None
+            audit_log(action, details={
+                'method': request.method,
+                'path': request.path,
+                'result': 'blocked',
+                'result_status': status_code,
+            }, company_id=company_id, actor_id=actor_id)
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+    def is_suspicious_probe_path(path):
+        lowered = (path or '').lower()
+        probe_markers = (
+            'graphql', '/gql', '/api/gql', '/api/graphql',
+            '/wp-', 'wp-admin', 'wp-login', '.env', '.git',
+            'phpmyadmin', 'xmlrpc.php', 'vendor/phpunit',
+        )
+        return any(marker in lowered for marker in probe_markers)
+
     # Error Handlers
     @app.errorhandler(403)
     def forbidden_error(error):
+        log_security_event('security.forbidden', 403)
         if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
             return jsonify({
                 'error': 'Forbidden',
@@ -165,6 +197,8 @@ def create_app(config_class=Config):
 
     @app.errorhandler(404)
     def not_found_error(error):
+        if is_suspicious_probe_path(request.path):
+            log_security_event('security.suspicious_404', 404)
         if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
             return jsonify({
                 'error': 'Not Found',

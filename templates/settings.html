@@ -220,7 +220,7 @@
             </dl>
         </div>
 
-        {% if current_user.role == 'admin' %}
+        {% if is_admin_role(current_user.role) %}
         <!-- Database & System Backup Card for Admin -->
         <div class="app-card p-5 border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white">
             <div class="flex items-center gap-2">

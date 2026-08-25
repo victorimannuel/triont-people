@@ -26,7 +26,7 @@
                 </div>
                 <p class="text-sm font-semibold text-gray-700">{{ t('No leave balance yet') }}</p>
                 <p class="mt-1 text-xs text-gray-400 max-w-xs">{{ t('Leave balances for this year have not been allocated to your account yet.') }}</p>
-                {% if current_user.role in ('manager', 'hr', 'admin') %}
+                {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
                 <a href="{{ url_for('main.admin_leave_balances') }}" class="btn-primary mt-4 px-3.5 py-1.5 text-xs font-semibold">
                     <i class="fa-solid fa-calendar-plus mr-1.5"></i>{{ t('Manage Leave Balances') }}
                 </a>
@@ -56,7 +56,7 @@
     </div>
 </div>
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
-    <section class="app-card {% if current_user.role in ('manager', 'hr', 'admin') %}xl:col-span-3{% else %}xl:col-span-5{% endif %}">
+    <section class="app-card {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}xl:col-span-3{% else %}xl:col-span-5{% endif %}">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
                 <h2 class="text-sm font-semibold text-gray-900">{{ t('Recent Requests') }}</h2>
@@ -91,7 +91,7 @@
         </div>
     </section>
 
-    {% if current_user.role in ('manager', 'hr', 'admin') %}
+    {% if current_user.role in ('manager', 'hr', 'admin', 'superadmin') %}
     <section class="app-card xl:col-span-2">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>

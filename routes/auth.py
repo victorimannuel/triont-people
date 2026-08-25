@@ -24,7 +24,8 @@ def login():
         password = request.form.get('password', '')
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password) and user.is_active and not user.is_deleted:
-            login_user(user)
+            session.permanent = True
+            login_user(user, remember=True)
             session['language'] = normalize_language(user.language_preference or 'en')
             audit_log('auth.login_success', 'user', user.id, company_id=user.company_id, actor_id=user.id)
             db.session.commit()
@@ -136,14 +137,19 @@ def verify_otp():
             return render_template('verify_otp.html', email=email, cooldown_remaining=cooldown_remaining)
 
         if reset_entry.is_locked:
+            audit_log('auth.otp_locked', 'user', user.id, company_id=user.company_id)
+            db.session.commit()
             flash(translate('Batas maksimal percobaan salah tercapai. Silakan minta kode baru.'), 'danger')
             return redirect(url_for('auth.forgot_password'))
 
         if not reset_entry.check_otp(otp_input):
             reset_entry.attempts += 1
-            db.session.commit()
             remaining_attempts = max(0, 5 - reset_entry.attempts)
+            audit_log('auth.otp_failed', 'user', user.id, details={'remaining_attempts': remaining_attempts}, company_id=user.company_id)
+            db.session.commit()
             if remaining_attempts == 0:
+                audit_log('auth.otp_locked', 'user', user.id, company_id=user.company_id)
+                db.session.commit()
                 flash(translate('Terlalu banyak percobaan salah. Kode OTP dibatalkan. Silakan minta kode baru.'), 'danger')
                 return redirect(url_for('auth.forgot_password'))
             flash(translate(f'Kode OTP salah. Sisa kesempatan: {remaining_attempts} kali.'), 'danger')
