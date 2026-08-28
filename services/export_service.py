@@ -7,6 +7,7 @@ from extensions import db
 from models.user import User, Department
 from models.company import Company
 from models.leave import LeaveRequest, LeaveBalance, LeaveType
+from services.leave_type_service import order_leave_type_query
 
 def generate_leave_report_excel(company_id, year=None, department_id=None):
     """
@@ -58,7 +59,7 @@ def generate_leave_report_excel(company_id, year=None, department_id=None):
     ws_balance["A2"].font = meta_font
 
     # Active leave types
-    leave_types = LeaveType.query.filter_by(company_id=company_id, is_active=True).order_by(LeaveType.id.asc()).all()
+    leave_types = order_leave_type_query(LeaveType.query.filter_by(company_id=company_id, is_active=True)).all()
 
     # Query employees
     emp_query = User.query.filter_by(company_id=company_id, is_active=True, is_deleted=False)

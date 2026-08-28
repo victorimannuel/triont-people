@@ -2,11 +2,12 @@ from datetime import date, timedelta
 from extensions import db
 from models.leave import LeaveBalance, LeaveType, LeaveGrant
 from models.holiday import PublicHoliday
+from services.leave_type_service import order_leave_type_query
 
 def ensure_user_balances(user_id, company_id, year=None):
     if not year:
         year = date.today().year
-    leave_types = LeaveType.query.filter_by(company_id=company_id, is_active=True).all()
+    leave_types = order_leave_type_query(LeaveType.query.filter_by(company_id=company_id, is_active=True)).all()
     balances = {b.leave_type_id: b for b in LeaveBalance.query.filter_by(employee_id=user_id, company_id=company_id, year=year).all()}
     
     for lt in leave_types:

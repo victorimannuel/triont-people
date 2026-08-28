@@ -8,6 +8,7 @@ from models.leave import LeaveType, LeaveRequest, LeaveBalance
 from models.holiday import PublicHoliday
 from core.auth import get_active_company_id
 from services.holiday_service import ensure_company_holidays
+from services.leave_type_service import order_leave_type_query
 from routes.common import main_bp
 
 @main_bp.route('/calendar')
@@ -82,7 +83,7 @@ def calendar():
     employees = []
     max_date = date(2030, 12, 31)
     if can_apply_leave:
-        leave_types = LeaveType.query.filter_by(is_active=True, company_id=my_company).all()
+        leave_types = order_leave_type_query(LeaveType.query.filter_by(is_active=True, company_id=my_company)).all()
         balances = {b.leave_type_id: b for b in LeaveBalance.query.filter_by(employee_id=current_user.id, company_id=my_company, year=this_year).all()}
         employees = User.query.filter(User.id != current_user.id, User.is_active == True, User.is_deleted == False, User.company_id == my_company).order_by(User.name).all() if delegate_enabled else []
 

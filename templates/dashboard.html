@@ -15,7 +15,7 @@
             <div class="grid items-center gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div class="relative mx-auto h-48 w-48">
                     <canvas id="typeChart"></canvas>
-                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center"><span id="chart-center-value" class="text-2xl font-bold text-gray-950">0</span><span class="text-[11px] font-medium text-gray-400">{{ t('days available') }}</span></div>
+                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center"><span id="chart-center-value" class="text-2xl font-bold text-gray-950">0/0</span><span class="text-[11px] font-medium text-gray-400">{{ t('days available') }}</span></div>
                 </div>
                 <div id="typeLegend" class="grid gap-2 sm:grid-cols-2 md:grid-cols-1"></div>
             </div>
@@ -211,11 +211,15 @@
         return Number.isInteger(n) ? String(n) : n.toFixed(1);
     }
 
+    function quotaText(item) {
+        return number(item.remaining) + '/' + number(item.total);
+    }
+
     function selectBalance(index) {
         const item = balances[index];
         if (!item) return;
         const usedPct = item.total > 0 ? Math.min(100, Math.round((item.used / item.total) * 100)) : 0;
-        if (centerValue) centerValue.textContent = number(item.remaining);
+        if (centerValue) centerValue.textContent = quotaText(item);
         if (detail.icon) {
             detail.icon.style.background = item.color + '14';
             detail.icon.style.color = item.color;
@@ -224,7 +228,7 @@
         if (detail.name) detail.name.textContent = item.name;
         const lang = window.PEOPLE_LANGUAGE || 'en';
         const usageSuffix = lang === 'en' ? 'used from annual allocation' : (lang === 'idc' ? 'kepakai dari alokasi tahunan' : 'terpakai dari alokasi tahunan');
-        if (detail.sub) detail.sub.textContent = usedPct + '% ' + usageSuffix;
+        if (detail.sub) detail.sub.textContent = quotaText(item) + ' · ' + usedPct + '% ' + usageSuffix;
         if (detail.remaining) detail.remaining.textContent = number(item.remaining);
         if (detail.total) detail.total.textContent = number(item.total);
         if (detail.used) detail.used.textContent = number(item.used);
@@ -251,7 +255,7 @@
         button.dataset.balanceIndex = index;
         button.className = 'flex items-center justify-between gap-3 rounded-md border border-gray-100 bg-white px-3 py-2 text-left transition hover:bg-gray-50';
         button.style.setProperty('--tw-ring-color', item.color);
-        button.innerHTML = '<span class="flex min-w-0 items-center gap-2"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs" style="background:' + item.color + '14;color:' + item.color + '"><i class="fa-solid ' + item.icon + '"></i></span><span class="truncate text-xs font-semibold text-gray-700">' + item.name + '</span></span><span class="text-xs font-bold text-gray-900">' + number(item.remaining) + '</span>';
+        button.innerHTML = '<span class="flex min-w-0 items-center gap-2"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs" style="background:' + item.color + '14;color:' + item.color + '"><i class="fa-solid ' + item.icon + '"></i></span><span class="truncate text-xs font-semibold text-gray-700">' + item.name + '</span></span><span class="text-xs font-bold text-gray-900">' + quotaText(item) + '</span>';
         button.addEventListener('click', function () { selectBalance(index); });
         legend.appendChild(button);
     });
@@ -273,7 +277,7 @@
             responsive: true,
             maintainAspectRatio: false,
             cutout: '72%',
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + number(ctx.raw) + ' ' + ((window.PEOPLE_LANGUAGE || 'en') === 'en' ? 'days available' : 'hari tersedia'); } } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { const item = balances[ctx.dataIndex]; return ctx.label + ': ' + quotaText(item) + ' ' + ((window.PEOPLE_LANGUAGE || 'en') === 'en' ? 'days available' : 'hari tersedia'); } } } },
             onHover: function (_event, elements) { if (elements.length) selectBalance(elements[0].index); },
             onClick: function (_event, elements) { if (elements.length) selectBalance(elements[0].index); }
         }

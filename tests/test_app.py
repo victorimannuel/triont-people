@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import unittest
 from unittest.mock import patch
 from datetime import date, datetime, timedelta
@@ -896,6 +897,48 @@ class PeopleAppTestCase(unittest.TestCase):
         res_filtered = self.client.get(f'/admin/leave-balances?year={date.today().year}&q=Alice')
         self.assertEqual(res_filtered.status_code, 200)
         self.assertIn(self.employee_user.name.encode('utf-8'), res_filtered.data)
+
+    def test_leave_type_sequence_controls_dashboard_order(self):
+        sick = LeaveType(company_id=self.company_a.id, name='Sick Leave', days_per_year=0, is_active=True, sort_order=10)
+        self.lt_annual_a.sort_order = 20
+        db.session.add(sick)
+        db.session.flush()
+        db.session.add(LeaveBalance(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=sick.id,
+            year=date.today().year,
+            total_days=0,
+            used_days=0,
+            pending_days=0,
+        ))
+        db.session.commit()
+
+        self._login(self.employee_user)
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.data.decode('utf-8')
+        balances_json = re.search(r'const balances = (.*?);', html).group(1)
+        rendered_balances = json.loads(balances_json)
+        self.assertEqual([b['name'] for b in rendered_balances], ['Sick Leave', 'Cuti Tahunan'])
+
+        self._login(self.admin_user)
+        res = self.client.post('/admin/leave-types/reorder', json={
+            'ids': [self.lt_annual_a.id, sick.id]
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json()['ok'])
+        db.session.refresh(self.lt_annual_a)
+        db.session.refresh(sick)
+        self.assertLess(self.lt_annual_a.sort_order, sick.sort_order)
+
+        self._login(self.employee_user)
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.data.decode('utf-8')
+        balances_json = re.search(r'const balances = (.*?);', html).group(1)
+        rendered_balances = json.loads(balances_json)
+        self.assertEqual([b['name'] for b in rendered_balances], ['Cuti Tahunan', 'Sick Leave'])
 
     def test_leave_type_archive_and_unarchive_workflow(self):
         self._login(self.admin_user)

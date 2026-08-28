@@ -20,7 +20,7 @@
         </div>
     </div>
 </div>
-<section class="app-card sticky top-16 z-10 mb-6 p-3 sm:p-4 bg-white border border-gray-200 shadow-sm">
+<section class="app-card sticky top-16 z-10 mb-6 max-w-full min-w-0 overflow-hidden p-3 sm:p-4 bg-white border border-gray-200 shadow-sm">
     <form method="GET" class="flex flex-col gap-3 lg:flex-row lg:items-center" id="filterForm">
         <input type="hidden" name="status" value="{{ current_tab }}">
         {% if request.args.get('per_page') %}
@@ -39,10 +39,22 @@
         {% endif %}
     </form>
 </section>
-<div class="mb-4 flex items-center justify-between"><p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ leave_types|length }}</span> {{ t('Leave Types')|lower }} ditampilkan</p></div>
+<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ leave_types|length }}</span> {{ t('Leave Types')|lower }} ditampilkan</p>
+    {% if current_tab == 'active' and not request.args.get('q') %}
+    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 font-semibold text-teal-700">
+            <i class="fa-solid fa-grip-vertical"></i> Drag atau pakai panah untuk atur urutan dashboard
+        </span>
+        <span id="sequenceStatus" class="font-medium text-gray-400"></span>
+    </div>
+    {% elif current_tab == 'active' %}
+    <p class="text-xs font-medium text-gray-400">Reset pencarian/filter untuk mengubah urutan.</p>
+    {% endif %}
+</div>
 
 <!-- Bulk Action Bar -->
-<div id="bulkActionBar" class="hidden mb-4 rounded-2xl border border-teal-200 bg-teal-50/90 backdrop-blur-md p-3.5 shadow-lg flex flex-wrap items-center justify-between gap-3 animate-slideIn">
+<div id="bulkActionBar" class="hidden mb-4 max-w-full min-w-0 rounded-2xl border border-teal-200 bg-teal-50/90 backdrop-blur-md p-3.5 shadow-lg flex flex-wrap items-center justify-between gap-3 animate-slideIn">
     <div class="flex items-center gap-3">
         <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-600 text-white text-xs font-bold shadow-xs" id="bulkSelectedCountBadge">0</span>
         <span class="text-xs font-bold text-teal-900" id="bulkSelectedText">0 item terpilih</span>
@@ -74,11 +86,12 @@
 </div>
 
 <!-- Leave type list -->
-<div class="app-card overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-sm">
+<div class="app-card leave-types-desktop-table hidden max-w-full min-w-0 overflow-hidden md:block">
+    <div class="max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
+        <table class="w-full min-w-[840px] text-sm">
             <thead class="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
+                    <th class="px-3 py-3.5 text-center w-24">Urutan</th>
                     <th class="px-4 py-3.5 text-center w-10">
                         <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer" title="{{ t('Select All') }}">
                     </th>
@@ -91,7 +104,22 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 {% for lt in leave_types %}
-                <tr class="hover:bg-gray-50/70">
+                <tr class="hover:bg-gray-50/70" data-sortable-row data-leave-type-id="{{ lt.id }}" draggable="{{ 'true' if current_tab == 'active' and not request.args.get('q') else 'false' }}">
+                    <td class="px-3 py-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            {% if current_tab == 'active' and not request.args.get('q') %}
+                            <button type="button" class="drag-handle flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-teal-50 hover:text-teal-700 cursor-grab active:cursor-grabbing" title="Drag untuk mengatur urutan">
+                                <i class="fa-solid fa-grip-vertical"></i>
+                                <span class="sr-only">Drag</span>
+                            </button>
+                            <div class="flex flex-col gap-0.5">
+                                <button type="button" onclick="moveLeaveTypeRow(this, -1)" class="sequence-arrow flex h-4 w-5 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Naik"><i class="fa-solid fa-chevron-up text-[9px]"></i></button>
+                                <button type="button" onclick="moveLeaveTypeRow(this, 1)" class="sequence-arrow flex h-4 w-5 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Turun"><i class="fa-solid fa-chevron-down text-[9px]"></i></button>
+                            </div>
+                            {% endif %}
+                            <span class="sequence-index inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-bold text-gray-600">{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</span>
+                        </div>
+                    </td>
                     <td class="px-4 py-4 text-center">
                         <input type="checkbox" name="bulk_selected_ids" value="{{ lt.id }}" data-item-name="{{ lt.name }}" onchange="updateBulkBar()" class="row-checkbox w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer">
                     </td>
@@ -186,7 +214,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="empty-state">
+                    <td colspan="7" class="empty-state">
                         <i class="fa-solid {% if current_tab == 'deleted' %}fa-trash-can{% elif current_tab == 'archived' %}fa-box-archive{% else %}fa-tags{% endif %}"></i>
                         <p>{% if current_tab == 'deleted' %}Tidak ada jenis cuti di kotak sampah{% elif current_tab == 'archived' %}Tidak ada jenis cuti diarsipkan{% else %}Belum ada jenis cuti{% endif %}</p>
                         <span class="text-sm">{% if current_tab == 'deleted' %}Jenis cuti yang dihapus akan muncul di sini{% elif current_tab == 'archived' %}Jenis cuti yang dinonaktifkan akan muncul di sini{% else %}Klik "Tambah Jenis Cuti" untuk membuat baru{% endif %}</span>
@@ -196,6 +224,80 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Mobile leave type list: avoids wide-table page overflow on small screens -->
+<div class="leave-types-mobile-list space-y-3 md:hidden">
+    {% for lt in leave_types %}
+    <article class="app-card max-w-full min-w-0 overflow-hidden p-4" data-sortable-row data-leave-type-id="{{ lt.id }}" draggable="false">
+        <div class="flex items-start gap-3">
+            <div class="flex flex-col items-center gap-2 shrink-0">
+                {% if current_tab == 'active' and not request.args.get('q') %}
+                <button type="button" onclick="moveLeaveTypeRow(this, -1)" class="sequence-arrow flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-700" title="Naik">
+                    <i class="fa-solid fa-chevron-up text-[10px]"></i>
+                </button>
+                {% endif %}
+                <span class="sequence-index inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-bold text-gray-600">{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</span>
+                {% if current_tab == 'active' and not request.args.get('q') %}
+                <button type="button" onclick="moveLeaveTypeRow(this, 1)" class="sequence-arrow flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-700" title="Turun">
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                {% endif %}
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 items-start justify-between gap-2">
+                    <div class="flex min-w-0 items-start gap-2.5">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md" style="background:{{ lt.color }}18; color:{{ lt.color }};"><i class="fa-solid {{ lt.icon }}"></i></span>
+                        <div class="min-w-0">
+                            <p class="truncate font-semibold text-gray-900">{{ lt.name }}</p>
+                            <p class="mt-0.5 line-clamp-2 text-xs text-gray-500">{{ lt.description or 'Belum ada deskripsi kebijakan.' }}</p>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="bulk_selected_ids" value="{{ lt.id }}" data-item-name="{{ lt.name }}" onchange="updateBulkBar()" class="row-checkbox mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-teal-600 focus:ring-teal-500">
+                </div>
+
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    {% if lt.days_per_year > 0 %}
+                    <span class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 font-semibold text-gray-700"><i class="fa-regular fa-calendar text-gray-400"></i>{{ lt.days_per_year }} {{ t('Days')|lower }}/tahun</span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 font-semibold text-gray-700"><i class="fa-solid fa-infinity text-gray-400"></i>{{ t('As needed') }}</span>
+                    {% endif %}
+                    {% if current_tab == 'deleted' or lt.is_deleted %}
+                    <span class="badge bg-rose-100 text-rose-700 border border-rose-200">{{ t('Deleted') }}</span>
+                    {% elif lt.is_active %}
+                    <span class="badge bg-emerald-100 text-emerald-700">{{ t('Active') }}</span>
+                    {% else %}
+                    <span class="badge bg-amber-100 text-amber-700">{{ t('Archived') }}</span>
+                    {% endif %}
+                    {% if not lt.requires_approval %}
+                    <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-600"><i class="fa-solid fa-bolt text-gray-400"></i>Tanpa Approval</span>
+                    {% endif %}
+                </div>
+
+                <div class="mt-3 flex flex-wrap justify-end gap-1 border-t border-gray-100 pt-3">
+                    {% if current_tab == 'deleted' or lt.is_deleted %}
+                    <button type="button" onclick='confirmRestoreLeaveType({{ lt.id }}, {{ lt.name|tojson }}, false)' class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Restore') }}"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                    {% elif lt.is_active %}
+                    <a href="{{ url_for('main.admin_approval_configs', type_id=lt.id) }}" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-triton-50 hover:text-triton-700" title="Atur approval"><i class="fa-solid fa-layer-group"></i></a>
+                    <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }}, {{ lt.created_at_formatted|tojson }}, {{ lt.creator_name|tojson }}, {{ lt.updated_at_formatted|tojson }}, {{ lt.updater_name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i></button>
+                    <button type="button" onclick='confirmArchiveLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition" title="{{ t('Archive leave type') }}"><i class="fa-solid fa-box-archive"></i></button>
+                    <button type="button" onclick='confirmDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus jenis cuti"><i class="fa-solid fa-trash-can"></i></button>
+                    {% else %}
+                    <button type="button" onclick='confirmRestoreLeaveType({{ lt.id }}, {{ lt.name|tojson }}, true)' class="flex h-9 w-9 items-center justify-center rounded-md text-teal-600 hover:bg-teal-50 hover:text-teal-800 transition" title="{{ t('Restore') }}"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                    <button type="button" onclick='openEditModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.description or "")|tojson }}, {{ lt.days_per_year }}, {{ lt.color|tojson }}, {{ "true" if lt.is_active else "false" }}, {{ "true" if lt.requires_attachment else "false" }}, {{ (lt.attachment_label or "Surat Dokter / Bukti Pendukung")|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Edit jenis cuti"><i class="fa-solid fa-pen"></i></button>
+                    <button type="button" onclick='confirmDeleteLeaveType({{ lt.id }}, {{ lt.name|tojson }})' class="flex h-9 w-9 items-center justify-center rounded-md text-red-500 hover:bg-red-50 hover:text-red-700" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </article>
+    {% else %}
+    <div class="app-card empty-state">
+        <i class="fa-solid {% if current_tab == 'deleted' %}fa-trash-can{% elif current_tab == 'archived' %}fa-box-archive{% else %}fa-tags{% endif %}"></i>
+        <p>{% if current_tab == 'deleted' %}Tidak ada jenis cuti di kotak sampah{% elif current_tab == 'archived' %}Tidak ada jenis cuti diarsipkan{% else %}Belum ada jenis cuti{% endif %}</p>
+        <span class="text-sm">{% if current_tab == 'deleted' %}Jenis cuti yang dihapus akan muncul di sini{% elif current_tab == 'archived' %}Jenis cuti yang dinonaktifkan akan muncul di sini{% else %}Klik "Tambah Jenis Cuti" untuk membuat baru{% endif %}</span>
+    </div>
+    {% endfor %}
 </div>
 
 <!-- Add Modal -->
@@ -332,10 +434,130 @@
 <style>
 .modal-two-column-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .modal-two-column-form .modal-form-actions { grid-column:1 / -1; }
+.leave-types-desktop-table { display:block !important; }
+.leave-types-mobile-list { display:none !important; }
+@media (max-width: 767px) {
+    .leave-types-desktop-table { display:none !important; }
+    .leave-types-mobile-list { display:block !important; }
+}
 @media (max-width: 640px) { .modal-two-column-form { grid-template-columns:1fr; } }
 </style>
 
 <script>
+const LEAVE_TYPE_REORDER_ENABLED = {{ 'true' if current_tab == 'active' and not request.args.get('q') else 'false' }};
+const LEAVE_TYPE_REORDER_URL = {{ url_for('main.admin_reorder_leave_types')|tojson }};
+let draggedLeaveTypeRow = null;
+let leaveTypeDragAllowed = false;
+let leaveTypeSequenceSaveTimer = null;
+
+function getLeaveTypeRows() {
+    return Array.from(document.querySelectorAll('[data-sortable-row]')).filter(function(row) {
+        return row.offsetParent !== null;
+    });
+}
+
+function setSequenceStatus(message, tone) {
+    const status = document.getElementById('sequenceStatus');
+    if (!status) return;
+    status.textContent = message || '';
+    status.className = 'font-medium ' + (tone === 'error' ? 'text-red-500' : tone === 'success' ? 'text-teal-600' : 'text-gray-400');
+}
+
+function updateLeaveTypeOrderBadges() {
+    const rows = getLeaveTypeRows();
+    rows.forEach(function(row, index) {
+        const badge = row.querySelector('.sequence-index');
+        if (badge) badge.textContent = String(index + 1);
+    });
+}
+
+function saveLeaveTypeSequence() {
+    if (!LEAVE_TYPE_REORDER_ENABLED) return;
+    const ids = getLeaveTypeRows().map(function(row) { return row.dataset.leaveTypeId; }).filter(Boolean);
+    if (!ids.length) return;
+
+    setSequenceStatus('Menyimpan urutan...', 'muted');
+    fetch(LEAVE_TYPE_REORDER_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.PEOPLE_CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({ ids: ids })
+    }).then(function(response) {
+        if (!response.ok) throw new Error('Save failed');
+        return response.json();
+    }).then(function(data) {
+        if (!data.ok) throw new Error(data.message || 'Save failed');
+        setSequenceStatus('Urutan tersimpan.', 'success');
+        window.setTimeout(function() { setSequenceStatus('', 'muted'); }, 1800);
+    }).catch(function() {
+        setSequenceStatus('Gagal menyimpan urutan. Refresh lalu coba lagi.', 'error');
+    });
+}
+
+function scheduleLeaveTypeSequenceSave() {
+    updateLeaveTypeOrderBadges();
+    if (leaveTypeSequenceSaveTimer) window.clearTimeout(leaveTypeSequenceSaveTimer);
+    leaveTypeSequenceSaveTimer = window.setTimeout(saveLeaveTypeSequence, 350);
+}
+
+function moveLeaveTypeRow(button, direction) {
+    const row = button.closest('[data-sortable-row]');
+    if (!row || !LEAVE_TYPE_REORDER_ENABLED) return;
+    const sibling = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling || !sibling.matches('[data-sortable-row]')) return;
+    if (direction < 0) {
+        row.parentNode.insertBefore(row, sibling);
+    } else {
+        row.parentNode.insertBefore(sibling, row);
+    }
+    scheduleLeaveTypeSequenceSave();
+}
+
+function initLeaveTypeReorder() {
+    if (!LEAVE_TYPE_REORDER_ENABLED) return;
+    const rows = getLeaveTypeRows();
+    rows.forEach(function(row) {
+        const handle = row.querySelector('.drag-handle');
+        row.draggable = Boolean(handle);
+        if (handle) {
+            handle.addEventListener('mousedown', function() { leaveTypeDragAllowed = true; });
+            handle.addEventListener('keydown', function(event) {
+                if (event.key === 'ArrowUp') { event.preventDefault(); moveLeaveTypeRow(handle, -1); }
+                if (event.key === 'ArrowDown') { event.preventDefault(); moveLeaveTypeRow(handle, 1); }
+            });
+        }
+        row.addEventListener('dragstart', function(event) {
+            if (!leaveTypeDragAllowed) {
+                event.preventDefault();
+                return;
+            }
+            draggedLeaveTypeRow = row;
+            row.classList.add('opacity-50');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', row.dataset.leaveTypeId || '');
+        });
+        row.addEventListener('dragover', function(event) {
+            if (!draggedLeaveTypeRow || draggedLeaveTypeRow === row) return;
+            event.preventDefault();
+            const rect = row.getBoundingClientRect();
+            const after = event.clientY > rect.top + (rect.height / 2);
+            row.parentNode.insertBefore(draggedLeaveTypeRow, after ? row.nextSibling : row);
+        });
+        row.addEventListener('dragend', function() {
+            if (draggedLeaveTypeRow) draggedLeaveTypeRow.classList.remove('opacity-50');
+            draggedLeaveTypeRow = null;
+            leaveTypeDragAllowed = false;
+            scheduleLeaveTypeSequenceSave();
+        });
+    });
+    document.addEventListener('mouseup', function() { leaveTypeDragAllowed = false; });
+    updateLeaveTypeOrderBadges();
+}
+
+document.addEventListener('DOMContentLoaded', initLeaveTypeReorder);
+
 function formatAuditActor(actor) {
     if (!actor || actor === '-' || actor.toLowerCase() === 'sistem' || actor.toLowerCase() === 'system') {
         const lang = window.PEOPLE_LANGUAGE || 'en';

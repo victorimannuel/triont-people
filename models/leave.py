@@ -11,6 +11,7 @@ class LeaveType(AuditMixin, db.Model):
     days_per_year = db.Column(db.Integer, nullable=False, default=0)
     color = db.Column(db.String(7), default='#6366F1')
     icon = db.Column(db.String(50), default='fa-calendar-alt')
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     requires_approval = db.Column(db.Boolean, default=True)
     requires_attachment = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
     attachment_label = db.Column(db.String(100), default='Surat Dokter / Bukti Pendukung', nullable=True)

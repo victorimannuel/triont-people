@@ -256,8 +256,14 @@ def create_app(config_class=Config):
                 safe_add_column('users', "calendar_token VARCHAR(64)")
                 safe_add_column('users', "avatar_path VARCHAR(255)")
                 safe_add_column('users', "timezone_preference VARCHAR(50) DEFAULT 'Asia/Jakarta'")
+                safe_add_column('leave_types', "sort_order INTEGER DEFAULT 0")
                 safe_add_column('leave_types', "requires_attachment BOOLEAN DEFAULT FALSE")
                 safe_add_column('leave_types', "attachment_label VARCHAR(100) DEFAULT 'Surat Dokter / Bukti Pendukung'")
+                try:
+                    conn.execute(db.text("UPDATE leave_types SET sort_order = id WHERE sort_order IS NULL OR sort_order = 0;"))
+                    conn.commit()
+                except Exception:
+                    pass
                 safe_add_column('leave_requests', "attachment_path VARCHAR(255)")
                 safe_add_column('leave_requests', "attachment_original_name VARCHAR(255)")
 

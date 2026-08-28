@@ -24,6 +24,7 @@ from services.audit_service import audit_log
 from services.holiday_service import sync_company_holidays
 from services.import_service import parse_file_headers_and_preview, execute_employee_import
 from services.notification_service import send_password_reset_otp_email, send_password_reset_link_email
+from services.leave_type_service import order_leave_type_query, next_leave_type_sort_order
 from core.pagination import get_pagination_args
 from core.time_util import utcnow
 from routes.common import main_bp
@@ -476,7 +477,7 @@ def admin_employees():
         per_page_str=per_page_str,
         managers=managers,
         departments=departments,
-        leave_types=LeaveType.query.filter_by(company_id=my_company, is_active=True).order_by(LeaveType.name).all(),
+        leave_types=order_leave_type_query(LeaveType.query.filter_by(company_id=my_company, is_active=True)).all(),
         grant_token=secrets.token_urlsafe(24),
         companies=Company.query.filter_by(is_active=True).order_by(Company.name).all(),
         show_archived=show_archived,
@@ -634,7 +635,7 @@ def admin_leave_balances():
     years = sorted(list(set(existing_years + [this_year, this_year - 1, 2025, 2024])), reverse=True)
 
     # Active leave types and departments
-    leave_types = LeaveType.query.filter_by(company_id=my_company, is_active=True).order_by(LeaveType.id.asc()).all()
+    leave_types = order_leave_type_query(LeaveType.query.filter_by(company_id=my_company, is_active=True)).all()
     departments = Department.query.filter_by(company_id=my_company).order_by(Department.name.asc()).all()
 
     # Query employees
@@ -738,7 +739,7 @@ def admin_leave_balance_rollover():
     lt_query = LeaveType.query.filter_by(company_id=company_id, is_active=True)
     if leave_type_ids:
         lt_query = lt_query.filter(LeaveType.id.in_(leave_type_ids))
-    leave_types = lt_query.all()
+    leave_types = order_leave_type_query(lt_query).all()
     if not leave_types:
         return jsonify(ok=False, message=translate('Tidak ada jenis cuti yang sesuai.')), 400
 
@@ -1298,7 +1299,7 @@ def admin_leave_types():
         query = query.filter(LeaveType.name.ilike(f'%{q}%'))
 
     page, per_page, per_page_str = get_pagination_args(default=20)
-    pagination = query.order_by(LeaveType.name).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = order_leave_type_query(query).paginate(page=page, per_page=per_page, error_out=False)
     leave_types = pagination.items
 
     # Query approval configs for this company
@@ -1321,6 +1322,49 @@ def admin_leave_types():
         current_tab=status_tab
     )
 
+@main_bp.route('/admin/leave-types/reorder', methods=['POST'])
+@login_required
+@role_required('manager', 'hr', 'admin')
+def admin_reorder_leave_types():
+    company_id = get_active_company_id()
+    data = request.get_json(silent=True) or {}
+    raw_ids = data.get('ids') or request.form.getlist('ids')
+
+    ordered_ids = []
+    for raw_id in raw_ids:
+        try:
+            leave_type_id = int(raw_id)
+        except (TypeError, ValueError):
+            return jsonify(ok=False, message=translate('Parameter tidak valid.')), 400
+        if leave_type_id not in ordered_ids:
+            ordered_ids.append(leave_type_id)
+
+    if not ordered_ids:
+        return jsonify(ok=False, message=translate('Tidak ada jenis cuti yang dipilih.')), 400
+
+    leave_types = LeaveType.query.filter(
+        LeaveType.company_id == company_id,
+        LeaveType.is_deleted == False,
+        LeaveType.id.in_(ordered_ids),
+    ).all()
+    leave_type_map = {lt.id: lt for lt in leave_types}
+
+    if len(leave_type_map) != len(ordered_ids):
+        return jsonify(ok=False, message=translate('Sebagian jenis cuti tidak ditemukan.')), 404
+
+    before = {lt.id: lt.sort_order for lt in leave_types}
+    for index, leave_type_id in enumerate(ordered_ids, start=1):
+        leave_type_map[leave_type_id].sort_order = index * 10
+
+    audit_log('admin.leave_type_sequence_updated', 'leave_type', None, details={
+        'before': before,
+        'after': {leave_type_id: index * 10 for index, leave_type_id in enumerate(ordered_ids, start=1)},
+        'leave_type_ids': ordered_ids,
+    }, company_id=company_id)
+    db.session.commit()
+
+    return jsonify(ok=True, message=translate('Urutan jenis cuti berhasil disimpan.'))
+
 @main_bp.route('/admin/leave-types/add', methods=['GET', 'POST'])
 @login_required
 @role_required('manager', 'hr', 'admin')
@@ -1342,6 +1386,7 @@ def admin_add_leave_type():
 
     lt = LeaveType(name=name, description=description, days_per_year=days_per_year, color=color,
                    is_active=True, is_deleted=False, company_id=my_company,
+                   sort_order=next_leave_type_sort_order(my_company),
                    requires_attachment=requires_attachment, attachment_label=attachment_label)
     db.session.add(lt)
     db.session.flush()

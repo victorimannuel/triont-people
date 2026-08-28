@@ -17,6 +17,7 @@ from core.auth import get_active_company_id, role_required, validate_password_st
 from core.time_util import utcnow
 from services.audit_service import audit_log
 from services.notification_service import send_password_reset_otp_email
+from services.leave_type_service import order_leave_type_query
 from routes.common import main_bp
 
 ALLOWED_AVATAR_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
@@ -31,7 +32,11 @@ def dashboard():
     my_company = get_active_company_id()
 
     # My leave balances
-    balances = LeaveBalance.query.filter_by(employee_id=current_user.id, company_id=my_company, year=this_year).all()
+    balances = order_leave_type_query(LeaveBalance.query.join(LeaveType, LeaveBalance.leave_type_id == LeaveType.id).filter(
+        LeaveBalance.employee_id == current_user.id,
+        LeaveBalance.company_id == my_company,
+        LeaveBalance.year == this_year,
+    )).all()
     balance_data = []
     for bal in balances:
         lt = LeaveType.query.filter_by(id=bal.leave_type_id, company_id=my_company).first()
@@ -337,7 +342,7 @@ def api_chart_data():
         ).count()
         monthly.append(count)
 
-    types = LeaveType.query.filter_by(company_id=my_company).all()
+    types = order_leave_type_query(LeaveType.query.filter_by(company_id=my_company)).all()
     type_labels = [t.name for t in types]
     type_counts = []
     for t in types:

@@ -15,6 +15,7 @@ from services.notification_service import send_notification
 from services.import_service import parse_file_headers_and_preview, execute_leave_history_import
 from core.pagination import get_pagination_args
 from core.time_util import utcnow
+from services.leave_type_service import order_leave_type_query
 from routes.common import main_bp
 
 @main_bp.route('/approvals')
@@ -137,7 +138,7 @@ def approval_history():
     years = sorted(list(set(distinct_years)), reverse=True)
 
     employees = User.query.filter_by(company_id=my_company).order_by(User.name).all()
-    leave_types = LeaveType.query.filter_by(company_id=my_company).order_by(LeaveType.name).all()
+    leave_types = order_leave_type_query(LeaveType.query.filter_by(company_id=my_company)).all()
 
     return render_template(
         'approval_history.html',

@@ -16,6 +16,7 @@ from services.audit_service import audit_log
 from services.notification_service import send_notification
 from services.holiday_service import calculate_long_weekends
 from services.leave_service import calculate_working_duration
+from services.leave_type_service import order_leave_type_query
 from routes.common import main_bp
 
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
@@ -35,7 +36,7 @@ def _get_upload_dir():
 def apply_leave():
     this_year = date.today().year
     my_company = get_active_company_id()
-    leave_types = LeaveType.query.filter_by(is_active=True, company_id=my_company).all()
+    leave_types = order_leave_type_query(LeaveType.query.filter_by(is_active=True, company_id=my_company)).all()
     balances = {b.leave_type_id: b for b in LeaveBalance.query.filter_by(employee_id=current_user.id, company_id=my_company, year=this_year).all()}
     max_date = date(2030, 12, 31)
     active_company = db.session.get(Company, my_company)
