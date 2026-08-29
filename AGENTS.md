@@ -6,9 +6,9 @@ This document outlines the workspace structure, test verification, and productio
 
 ## 📂 1. Workspace & Repository Structure
 
-- **Main Repository Path**: `/home/victor/projects/triton/people/triton-people`
-- **Python Virtualenv**: `/home/victor/projects/triton/people/triton-people/.venv/bin/python`
-- **Archive & Backup**: `/home/victor/projects/triton/people/archive/`
+- **Main Repository Path**: `/home/victor/projects/triont/people/triont-people`
+- **Python Virtualenv**: `/home/victor/projects/triont/people/triont-people/.venv/bin/python`
+- **Archive & Backup**: `/home/victor/projects/triont/people/archive/`
 
 ---
 
@@ -17,8 +17,8 @@ This document outlines the workspace structure, test verification, and productio
 Always run and verify the test suite before any deployment:
 
 ```bash
-cd /home/victor/projects/triton/people/triton-people
-/home/victor/projects/triton/people/triton-people/.venv/bin/python -m unittest discover -s tests -v
+cd /home/victor/projects/triont/people/triont-people
+/home/victor/projects/triont/people/triont-people/.venv/bin/python -m unittest discover -s tests -v
 ```
 
 Ensure all 40 test cases pass (`OK`).
@@ -32,7 +32,7 @@ Production deployment is automated using Ansible playbooks located in `imeco-inf
 ### Steps:
 1. Navigate to the Ansible directory:
    ```bash
-   cd /home/victor/projects/imeco/imeco-infra/ansible
+   cd /home/victor/projects/triont/triont-infra/ansible
    ```
 
 2. Execute the deployment playbook:
@@ -41,8 +41,8 @@ Production deployment is automated using Ansible playbooks located in `imeco-inf
    ```
 
 ### Deployment Configuration:
-- **Playbook**: `/home/victor/projects/imeco/imeco-infra/ansible/playbooks/deploy-people.yml`
-- **Source Directory**: `/home/victor/projects/triton/people/triton-people`
+- **Playbook**: `/home/victor/projects/triont/triont-infra/ansible/playbooks/deploy-people.yml`
+- **Source Directory**: `/home/victor/projects/triont/people/triont-people`
 - **Target Host**: `imeco-prod`
 - **Remote App Directory**: `/opt/imeco-infra/apps/people-by-triton`
 - **Live URL**: `https://people.thehyouman.com`

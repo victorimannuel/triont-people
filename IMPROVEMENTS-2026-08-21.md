@@ -6,7 +6,7 @@ Dokumen ini mencatat daftar rencana perbaikan, optimasi performa, dan peningkata
 
 ## ⚡ 1. Kecepatan & Asset Frontend (Selesai)
 - [x] **Pre-compiled Tailwind CSS & Self-Hosted Assets**:
-  - [x] Mengganti runtime Play CDN compiler (`cdn.tailwindcss.com` ~3MB) dengan pre-compiled static CSS ([`static/css/tailwind.min.css`](file:///home/victor/projects/triton/people/triton-people/static/css/tailwind.min.css) 49KB).
+  - [x] Mengganti runtime Play CDN compiler (`cdn.tailwindcss.com` ~3MB) dengan pre-compiled static CSS ([`static/css/tailwind.min.css`](file:///home/victor/projects/triont/people/triont-people/static/css/tailwind.min.css) 49KB).
   - [x] Menyimpan aset FontAwesome 6.5.1, Chart.js, dan TomSelect di folder lokal `static/vendor/` untuk menghilangkan render-blocking dari CDN eksternal.
   - [x] Halaman kini loading instan tanpa jeda kompilasi browser (hemat bandwidth ~98.4%).
   - [x] Build script `npm run build:css` ditambahkan di `package.json`.
