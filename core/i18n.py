@@ -11,6 +11,14 @@ LANGUAGE_LABELS = {
 
 # Canonical English Base Translations Dictionary
 TRANSLATIONS = {
+    "No approver with an email address is available.": {"id": "Tidak ada approver dengan alamat email yang tersedia.", "idc": "Belum ada approver yang punya alamat email."},
+    "This request is no longer pending. Choose Notify all people to resend its result.": {"id": "Pengajuan ini sudah tidak menunggu persetujuan. Pilih Beri tahu semua orang untuk mengirim ulang hasilnya.", "idc": "Pengajuan ini udah selesai. Pilih Beri tahu semua orang buat kirim ulang hasilnya."},
+    "No active recipient email was found for this company.": {"id": "Tidak ditemukan email penerima aktif untuk perusahaan ini.", "idc": "Belum ada email penerima aktif di company ini."},
+    "Leave request submitted": {"id": "Pengajuan cuti berhasil dikirim", "idc": "Pengajuan cuti udah dikirim"},
+    "Leave request could not be submitted": {"id": "Pengajuan cuti belum dapat dikirim", "idc": "Pengajuan cuti belum bisa dikirim"},
+    "No leave balance has been allocated. Please contact your administrator.": {"id": "Saldo cuti belum dialokasikan. Silakan hubungi administrator Anda.", "idc": "Saldo cuti kamu belum dialokasiin. Hubungi admin dulu ya."},
+    "Your leave balance is exhausted. Please contact your administrator.": {"id": "Saldo cuti Anda sudah habis. Silakan hubungi administrator Anda.", "idc": "Saldo cuti kamu udah habis. Hubungi admin dulu ya."},
+    "Insufficient leave balance. Available: {remaining} days. Requested: {duration} days.": {"id": "Saldo cuti tidak mencukupi. Sisa: {remaining} hari. Diajukan: {duration} hari.", "idc": "Saldo cuti kamu kurang. Sisa: {remaining} hari. Pengajuan: {duration} hari."},
     "- No Department -": {"id": "- Tanpa Departemen -", "idc": "- Tanpa Divisi -"},
     "- No Manager -": {"id": "- Tanpa Manager -", "idc": "- Tanpa Manager -"},
     "- None -": {"id": "- Tidak Ada -", "idc": "- Ga Ada -"},

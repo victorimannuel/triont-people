@@ -31,21 +31,71 @@ def _dispatch_email(company, to_email, subject, body):
         print(f'❌ Failed to send email to {to_email}: {e}')
         return False
 
-def send_notification(company, event, leave_request):
-    """Send notification based on company config. Logs to console if SMTP not configured."""
-    if not company or not company.notifications_enabled:
+
+def _dispatch_unique(company, to_email, subject, body, sent_emails, dispatcher=None):
+    normalized = (to_email or '').strip().lower()
+    if not normalized or normalized in sent_emails:
+        return False
+    sent_emails.add(normalized)
+    return (dispatcher or _dispatch_email)(company, to_email, subject, body)
+
+
+def _company_notification_recipients(company_id, exclude_user_ids=None):
+    """Active same-company users who should receive company-wide leave notices."""
+    if not company_id:
+        return []
+
+    from models.user import User
+
+    exclude_user_ids = set(exclude_user_ids or [])
+    query = User.query.filter(
+        User.company_id == company_id,
+        User.is_active == True,
+        User.is_deleted == False,
+    ).order_by(User.name)
+    if exclude_user_ids:
+        query = query.filter(~User.id.in_(exclude_user_ids))
+    return query.all()
+
+
+def _current_approval_recipients(leave_request):
+    """Return the users responsible for the request's current approval level."""
+    from models.user import User
+    from services.approval_service import effective_approval_stage
+
+    if leave_request.status != 'pending':
+        return []
+    _, config = effective_approval_stage(leave_request)
+
+    if config and config.approver_role in ('hr', 'admin', 'superadmin'):
+        return User.query.filter(
+            User.company_id == leave_request.company_id,
+            User.role == config.approver_role,
+            User.is_active == True,
+            User.is_deleted == False,
+        ).order_by(User.name).all()
+
+    manager = getattr(leave_request.employee, 'manager', None)
+    return [manager] if manager and manager.email else []
+
+def send_notification(company, event, leave_request, dispatcher=None, recipient_scope='all', force=False):
+    """Deliver notifications, or pass each message to a supplied dispatcher."""
+    if not company:
         return
 
-    if event == 'approve' and not company.notify_on_approve:
-        return
-    if event == 'reject' and not company.notify_on_reject:
-        return
-    if event == 'submit' and not company.notify_on_submit:
+    if not force and (
+        not company.notifications_enabled
+        or (event == 'approve' and not company.notify_on_approve)
+        or (event == 'reject' and not company.notify_on_reject)
+        or (event == 'submit' and not company.notify_on_submit)
+    ):
         return
 
     emp = leave_request.employee
     status_text = {'approve': 'disetujui', 'reject': 'ditolak', 'submit': 'diajukan'}
+    status_label = {'approve': 'Disetujui', 'reject': 'Ditolak', 'submit': 'Menunggu Persetujuan'}
     action_title = status_text.get(event, event)
+    sent_emails = set()
 
     notes_line = f"\nCatatan: {leave_request.notes}" if getattr(leave_request, 'notes', None) else ""
     reason_line = f"\nAlasan: {leave_request.reason}" if getattr(leave_request, 'reason', None) else ""
@@ -58,62 +108,164 @@ def send_notification(company, event, leave_request):
     else:
         duration_str = f"{int(leave_request.duration_days) if leave_request.duration_days % 1 == 0 else leave_request.duration_days:g} hari"
 
-    if event == 'submit':
-        # 1. Confirmation to employee
-        emp_subject = f'[{company.name}] Pengajuan Cuti Berhasil Dikirim - {leave_request.leave_type.name}'
-        emp_body = f"""Halo {emp.name},
+    date_range = f"{leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}"
+    resend_prefix = 'Kirim ulang: ' if force else ''
+    approval_action = ''
+    approval_stage = ''
+    pending_approval = event == 'submit' and leave_request.status == 'pending'
+    if pending_approval:
+        from services.approval_service import effective_approval_stage
+        level, config = effective_approval_stage(leave_request)
+        role = config.approver_role if config else 'manager'
+        role_label = {'manager': 'Manager', 'hr': 'HR', 'admin': 'Admin', 'superadmin': 'Super Admin'}.get(role, role)
+        approval_stage = f'Persetujuan {role_label} (tahap {level} dari {leave_request.max_approval_level})'
+        approval_action = f"""Tindakan yang diperlukan:
+1. Buka Inbox Approval di People by Triont dan masuk dengan akun Anda:
+https://people.thehyouman.com/approvals
+2. Tinjau pengajuan {emp.name} untuk tanggal {date_range}.
+3. Pilih Approve (Setujui) atau Reject (Tolak), lalu konfirmasikan keputusan Anda.
 
-Pengajuan cuti {leave_request.leave_type.name} Anda berhasil dikirim dan sedang menunggu persetujuan atasan/HR.
+Jika pengajuan sudah diproses oleh approver lain, tidak diperlukan tindakan tambahan."""
 
-Detail Pengajuan:
-- Jenis Cuti : {leave_request.leave_type.name}
-- Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
-- Durasi     : {duration_str}
-- Status     : Menunggu Persetujuan (Pending){reason_line}
+    if recipient_scope in ('manager', 'approver'):
+        recipients = (
+            _current_approval_recipients(leave_request)
+            if recipient_scope == 'approver'
+            else [getattr(emp, 'manager', None)]
+        )
+        for recipient in recipients:
+            if not recipient or not recipient.email:
+                continue
+            purpose = 'Perlu tindakan: Persetujuan cuti' if pending_approval else 'Informasi hasil pengajuan cuti'
+            subject = f'[{company.name}] {resend_prefix}{purpose} - {emp.name}'
+            introduction = (f'Pengajuan cuti {emp.name} memerlukan persetujuan Anda.\n'
+                            f'Anda menerima email ini sebagai approver pada {approval_stage}.'
+                            if pending_approval else f'Pengajuan cuti {emp.name} telah {action_title}.')
+            next_action = approval_action if pending_approval else 'Email ini hanya untuk informasi hasil pengajuan. Tidak diperlukan tindakan approval.'
+            body = f"""Halo {recipient.name},
 
-Salam,
-{company.name} (People by Triont)
-"""
-        _dispatch_email(company, emp.email, emp_subject, emp_body)
-
-        # 2. Notification to manager (if employee has a direct manager)
-        if getattr(emp, 'manager', None) and emp.manager.email:
-            mgr_subject = f'[{company.name}] Pengajuan Cuti Baru Menunggu Persetujuan - {emp.name}'
-            mgr_body = f"""Halo {emp.manager.name},
-
-Anggota tim Anda, {emp.name}, baru saja mengajukan permohonan cuti yang memerlukan persetujuan Anda.
+{introduction}
 
 Detail Pengajuan:
 - Karyawan   : {emp.name} ({emp.email})
 - Jenis Cuti : {leave_request.leave_type.name}
-- Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
-- Durasi     : {duration_str}{reason_line}
+- Tanggal    : {date_range}
+- Durasi     : {duration_str}
+- Status     : {status_label.get(event, leave_request.status.title())}{reason_line}{notes_line}
 
-Silakan tinjau dan berikan keputusan melalui Inbox Approval di People by Triont:
-https://people.thehyouman.com/approvals
+{next_action}
 
 Salam,
 {company.name} (People by Triont)
 """
-            _dispatch_email(company, emp.manager.email, mgr_subject, mgr_body)
+            _dispatch_unique(company, recipient.email, subject, body, sent_emails, dispatcher)
+        return
+
+    if event == 'submit':
+        # 1. Confirmation to employee/requester
+        emp_subject = f'[{company.name}] {resend_prefix}Status Pengajuan Cuti Anda - {leave_request.leave_type.name}'
+        emp_body = f"""Halo {emp.name},
+
+Pengajuan cuti {leave_request.leave_type.name} Anda sudah tercatat dan sedang menunggu persetujuan atasan/HR.
+
+Detail Pengajuan:
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {date_range}
+- Durasi     : {duration_str}
+- Status     : Menunggu Persetujuan (Pending){reason_line}
+
+Anda tidak perlu mengirim pengajuan yang sama lagi. Pantau status melalui menu History:
+https://people.thehyouman.com/history
+
+Salam,
+{company.name} (People by Triont)
+"""
+        _dispatch_unique(company, emp.email, emp_subject, emp_body, sent_emails, dispatcher)
+
+        # 2. Action notification to the approver responsible for the active level.
+        for approver in _current_approval_recipients(leave_request):
+            approver_subject = f'[{company.name}] {resend_prefix}Perlu tindakan: Persetujuan cuti - {emp.name}'
+            approver_body = f"""Halo {approver.name},
+
+Pengajuan cuti {emp.name} memerlukan persetujuan Anda.
+Anda menerima email ini sebagai approver pada {approval_stage}.
+
+Detail Pengajuan:
+- Karyawan   : {emp.name} ({emp.email})
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {date_range}
+- Durasi     : {duration_str}{reason_line}
+
+{approval_action}
+
+Salam,
+{company.name} (People by Triont)
+"""
+            _dispatch_unique(company, approver.email, approver_subject, approver_body, sent_emails, dispatcher)
+
+        team_subject = f'[{company.name}] {resend_prefix}Info Cuti Diajukan - {emp.name}'
+        team_body = f"""Halo,
+
+{emp.name} mengajukan cuti {leave_request.leave_type.name}.
+
+Detail Pengajuan:
+- Karyawan   : {emp.name}
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {date_range}
+- Durasi     : {duration_str}
+- Status     : Menunggu Persetujuan{reason_line}
+
+Email ini untuk informasi tim dan perencanaan jadwal. Cuti ini belum disetujui.
+Tidak diperlukan tindakan approval dari Anda melalui email ini.
+
+Salam,
+{company.name} (People by Triont)
+"""
+        for user in _company_notification_recipients(company.id, exclude_user_ids={emp.id}):
+            _dispatch_unique(company, user.email, team_subject, team_body, sent_emails, dispatcher)
 
     else:
-        # Decision notification to employee (approve / reject)
-        subject = f'[{company.name}] Pengajuan Cuti {action_title.title()} - {leave_request.leave_type.name}'
+        # Decision notification to employee/requester
+        subject = f'[{company.name}] {resend_prefix}Pengajuan Cuti {action_title.title()} - {leave_request.leave_type.name}'
         body = f"""Halo {emp.name},
 
 Pengajuan cuti {leave_request.leave_type.name} Anda telah {action_title}.
 
 Detail Pengajuan:
 - Jenis Cuti : {leave_request.leave_type.name}
-- Tanggal    : {leave_request.start_date.strftime('%d %B %Y')} s/d {leave_request.end_date.strftime('%d %B %Y')}
+- Tanggal    : {date_range}
 - Durasi     : {duration_str}
 - Status     : {leave_request.status.title()}{reason_line}{notes_line}
+
+Lihat detail keputusan pada menu History:
+https://people.thehyouman.com/history
+Jika perlu klarifikasi atas keputusan ini, hubungi approver atau HR Anda.
 
 Salam,
 {company.name} (People by Triont)
 """
-        _dispatch_email(company, emp.email, subject, body)
+        _dispatch_unique(company, emp.email, subject, body, sent_emails, dispatcher)
+
+        team_subject = f'[{company.name}] {resend_prefix}Info Cuti {status_label.get(event, action_title.title())} - {emp.name}'
+        team_body = f"""Halo,
+
+Pengajuan cuti {emp.name} telah {action_title}.
+
+Detail Pengajuan:
+- Karyawan   : {emp.name}
+- Jenis Cuti : {leave_request.leave_type.name}
+- Tanggal    : {date_range}
+- Durasi     : {duration_str}
+- Status     : {status_label.get(event, leave_request.status.title())}{reason_line}{notes_line}
+
+Email ini untuk informasi hasil pengajuan dan penyesuaian jadwal tim.
+Tidak diperlukan tindakan approval dari Anda melalui email ini.
+
+Salam,
+{company.name} (People by Triont)
+"""
+        for user in _company_notification_recipients(company.id, exclude_user_ids={emp.id}):
+            _dispatch_unique(company, user.email, team_subject, team_body, sent_emails, dispatcher)
 
 def send_password_reset_otp_email(company, user, otp_code: str):
     """Sends OTP verification email for password reset."""
@@ -214,4 +366,3 @@ Tim {company_name} (People by Triont)
     else:
         print(f'ℹ️  [DEV/NO_SMTP] Password reset link for {user.email}: {reset_link}')
         return True
-

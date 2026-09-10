@@ -11,36 +11,64 @@ from models.approval import ApprovalConfig
 from core.i18n import translate
 from core.auth import get_active_company_id, role_required, is_admin_role
 from services.audit_service import audit_log
-from services.notification_service import send_notification
+from services.notification_outbox_service import queue_notification
+from services.notification_service import _current_approval_recipients
+from services.approval_service import effective_approval_stage
 from services.import_service import parse_file_headers_and_preview, execute_leave_history_import
 from core.pagination import get_pagination_args
 from core.time_util import utcnow
 from services.leave_type_service import order_leave_type_query
 from routes.common import main_bp
 
-@main_bp.route('/approvals')
-@login_required
-@role_required('manager', 'hr', 'admin')
-def approvals():
-    my_company = get_active_company_id()
-    if current_user.role == 'manager':
-        subordinate_ids = db.session.query(User.id).filter(User.manager_id == current_user.id)
-        dept_ids = db.session.query(Department.id).filter(Department.head_id == current_user.id)
+def _pending_approvals_query(company_id, user):
+    """Build the same pending approval query used by the inbox and sidebar badge."""
+    role = getattr(user, 'role', None)
+    if role == 'manager':
+        subordinate_ids = db.session.query(User.id).filter(User.manager_id == user.id)
+        dept_ids = db.session.query(Department.id).filter(Department.head_id == user.id)
         dept_member_ids = db.session.query(User.id).filter(User.department_id.in_(dept_ids))
-        query = LeaveRequest.query.filter(
+        return LeaveRequest.query.filter(
             LeaveRequest.status == 'pending',
-            LeaveRequest.company_id == my_company,
+            LeaveRequest.company_id == company_id,
             LeaveRequest.current_approval_level == 1,
             or_(
                 LeaveRequest.employee_id.in_(subordinate_ids),
                 LeaveRequest.employee_id.in_(dept_member_ids)
             )
         )
-    else:
-        query = LeaveRequest.query.filter_by(
-            status='pending',
-            company_id=my_company
-        )
+
+    return LeaveRequest.query.filter_by(
+        status='pending',
+        company_id=company_id
+    )
+
+
+def get_pending_approval_count(user=None, company_id=None):
+    user = user or current_user
+    if not getattr(user, 'is_authenticated', False):
+        return 0
+    if getattr(user, 'role', None) not in ('manager', 'hr', 'admin', 'superadmin'):
+        return 0
+    company_id = company_id or get_active_company_id()
+    if not company_id:
+        return 0
+    return _pending_approvals_query(company_id, user).count()
+
+
+@main_bp.app_context_processor
+def inject_pending_approval_count():
+    try:
+        return {'pending_approval_count': get_pending_approval_count()}
+    except Exception:
+        return {'pending_approval_count': 0}
+
+
+@main_bp.route('/approvals')
+@login_required
+@role_required('manager', 'hr', 'admin')
+def approvals():
+    my_company = get_active_company_id()
+    query = _pending_approvals_query(my_company, current_user)
 
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(LeaveRequest.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
@@ -127,6 +155,19 @@ def approval_history():
     page, per_page, per_page_str = get_pagination_args(default=20)
     pagination = query.order_by(LeaveRequest.start_date.desc(), LeaveRequest.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     history = pagination.items
+    resend_approver_names = {}
+    if is_admin_role(current_user.role):
+        for item in history:
+            if item.status == 'pending' and not item.is_deleted:
+                recipients = _current_approval_recipients(item)
+                seen_emails = set()
+                names = []
+                for recipient in recipients:
+                    email = (recipient.email or '').strip().lower()
+                    if email and email not in seen_emails:
+                        names.append(recipient.name)
+                        seen_emails.add(email)
+                resend_approver_names[item.id] = names
 
     # Get distinct years
     current_year = date.today().year
@@ -143,6 +184,7 @@ def approval_history():
     return render_template(
         'approval_history.html',
         history=history,
+        resend_approver_names=resend_approver_names,
         requests=history,
         pagination=pagination,
         per_page_str=per_page_str,
@@ -209,6 +251,61 @@ def restore_approval_history(request_id):
     flash(translate('Approval history restored.'), 'success')
     return redirect(request.referrer or url_for('main.approval_history', status_tab='deleted'))
 
+
+@main_bp.route('/approval-history/<int:request_id>/resend-notification', methods=['POST'])
+@login_required
+@role_required('admin')
+def resend_leave_notification(request_id):
+    """Queue a manual resend for a leave request without blocking on SMTP."""
+    company_id = get_active_company_id()
+    req = LeaveRequest.query.filter_by(
+        id=request_id,
+        company_id=company_id,
+        is_deleted=False,
+    ).first_or_404()
+    recipient_scope = request.form.get('recipient_scope', '').strip().lower()
+    if recipient_scope not in ('all', 'approver'):
+        abort(400)
+    if recipient_scope == 'approver' and req.status != 'pending':
+        flash(translate('This request is no longer pending. Choose Notify all people to resend its result.'), 'resend_error')
+        return redirect(request.referrer or url_for('main.approval_history'))
+
+    event = {'pending': 'submit', 'approved': 'approve', 'rejected': 'reject'}.get(req.status)
+    if not event:
+        flash(translate('This leave request cannot be resent by email.'), 'resend_error')
+        return redirect(request.referrer or url_for('main.approval_history'))
+
+    company = db.session.get(Company, company_id)
+    if not company or not company.smtp_host or not company.smtp_user:
+        flash(translate('Email cannot be sent because SMTP has not been configured for this company.'), 'resend_error')
+        return redirect(request.referrer or url_for('main.approval_history'))
+
+    queued = queue_notification(
+        company,
+        event,
+        req,
+        recipient_scope=recipient_scope,
+        force=True,
+    )
+    if not queued:
+        message = ('No active approver email was found for this leave request.'
+                   if recipient_scope == 'approver'
+                   else 'No active recipient email was found for this company.')
+        flash(translate(message), 'resend_error')
+        return redirect(request.referrer or url_for('main.approval_history'))
+
+    audit_log(
+        'leave.notification_resent',
+        'leave_request',
+        req.id,
+        details={'event': event, 'recipient_scope': recipient_scope, 'recipient_count': len(queued)},
+        company_id=company_id,
+    )
+    db.session.commit()
+    target_label = translate('all active users') if recipient_scope == 'all' else translate('current approver')
+    flash(translate(f'Email resend queued for {target_label}.'), 'resend_success')
+    return redirect(request.referrer or url_for('main.approval_history'))
+
 @main_bp.route('/approve/<int:request_id>', methods=['POST'])
 @login_required
 @role_required('manager', 'hr', 'admin')
@@ -234,13 +331,11 @@ def approve_leave(request_id):
         flash(translate('The approval status has changed. Reload the page and try again.'), 'warning')
         return redirect(url_for('main.approvals'))
 
-    config = ApprovalConfig.query.filter(
-        ApprovalConfig.company_id == req.company_id,
-        (ApprovalConfig.leave_type_id == req.leave_type_id) | (ApprovalConfig.leave_type_id.is_(None)),
-        ApprovalConfig.level == req.current_approval_level
-    ).order_by(ApprovalConfig.leave_type_id.desc()).first()
+    effective_level, config = effective_approval_stage(req)
 
     if current_user.role == 'manager':
+        if effective_level != req.current_approval_level:
+            abort(403)
         # Manager can approve if there is no config (default level 1) or config is explicitly for manager
         if config and config.approver_role not in ('manager', 'hr'):
             abort(403)
@@ -262,6 +357,7 @@ def approve_leave(request_id):
     notes = request.form.get('notes', '')
 
     if action == 'approve':
+        req.current_approval_level = effective_level
         req.approved_by = current_user.id
         req.approved_at = utcnow()
         req.notes = notes
@@ -275,7 +371,7 @@ def approve_leave(request_id):
                 bal.pending_days = max(0, bal.pending_days - req.duration_days)
             flash(translate(f'Cuti {req.employee.name} disetujui ✅'), 'success')
             company = db.session.get(Company, req.company_id)
-            send_notification(company, 'approve', req)
+            queue_notification(company, 'approve', req)
         else:
             req.current_approval_level += 1
             req.status = 'pending'
@@ -284,6 +380,7 @@ def approve_leave(request_id):
             flash(translate(f'Level {req.current_approval_level - 1} disetujui - menunggu approval level {req.current_approval_level}.'), 'info')
 
     elif action == 'reject':
+        req.current_approval_level = effective_level
         req.status = 'rejected'
         req.approved_by = current_user.id
         req.approved_at = utcnow()
@@ -294,7 +391,7 @@ def approve_leave(request_id):
             bal.pending_days = max(0, bal.pending_days - req.duration_days)
         flash(translate(f'Cuti {req.employee.name} ditolak ❌'), 'warning')
         company = db.session.get(Company, req.company_id)
-        send_notification(company, 'reject', req)
+        queue_notification(company, 'reject', req)
 
     else:
         flash(translate('Invalid action.'), 'danger')
@@ -356,4 +453,3 @@ def approval_history_import_execute():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
-

@@ -13,7 +13,7 @@ from models.holiday import PublicHoliday
 from core.i18n import translate
 from core.auth import get_active_company_id, role_required, is_admin_role
 from services.audit_service import audit_log
-from services.notification_service import send_notification
+from services.notification_outbox_service import queue_notification
 from services.holiday_service import calculate_long_weekends
 from services.leave_service import calculate_working_duration
 from services.leave_type_service import order_leave_type_query
@@ -55,6 +55,22 @@ def apply_leave():
                                delegate_enabled=delegate_enabled, leave_types_json=_lt_json(),
                                holidays_json=holidays_json, **kwargs)
 
+    is_calendar_submission = request.method == 'POST' and request.form.get('source') == 'calendar'
+
+    def _calendar_redirect_url():
+        start_date_str = request.form.get('start_date', '').strip()
+        try:
+            selected_date = date.fromisoformat(start_date_str)
+            return url_for('main.calendar', month=selected_date.month, year=selected_date.year)
+        except Exception:
+            return url_for('main.calendar')
+
+    def _form_error(message):
+        flash(translate(message), 'leave_error')
+        if is_calendar_submission:
+            return redirect(_calendar_redirect_url())
+        return _render_apply()
+
     if request.method == 'POST':
         leave_type_id = request.form.get('leave_type', type=int)
         day_part = request.form.get('day_part', 'full').strip().lower()
@@ -66,23 +82,16 @@ def apply_leave():
         delegate_id = request.form.get('delegate_id', type=int) if delegate_enabled else None
 
         if not leave_type_id or not start_date_str or (day_part == 'full' and not end_date_str):
-            flash(translate('Please complete all required fields.'), 'danger')
-            return _render_apply()
+            return _form_error('Please complete all required fields.')
 
         try:
             start_date = date.fromisoformat(start_date_str)
             end_date = date.fromisoformat(end_date_str)
         except:
-            flash(translate('Date format is invalid.'), 'danger')
-            return _render_apply()
+            return _form_error('Date format is invalid.')
 
         if end_date < start_date:
-            flash(translate('End date must be after or equal to start date.'), 'danger')
-            return _render_apply()
-
-        if start_date < date.today():
-            flash(translate('You cannot request leave in the past.'), 'danger')
-            return _render_apply()
+            return _form_error('End date must be after or equal to start date.')
 
         # Check overlapping leave
         overlapping_reqs = LeaveRequest.query.filter(
@@ -104,17 +113,14 @@ def apply_leave():
                 break
 
         if has_conflict:
-            flash(translate('You already have a leave request on those dates.'), 'danger')
-            return _render_apply()
+            return _form_error('You already have a leave request on those dates.')
 
         # Check balance
         lt = LeaveType.query.filter_by(id=leave_type_id, company_id=my_company, is_active=True).first()
         if not lt:
-            flash(translate('Leave type is not available.'), 'danger')
-            return _render_apply()
+            return _form_error('Leave type is not available.')
         if delegate_id and not User.query.filter(User.id == delegate_id, User.id != current_user.id, User.company_id == my_company, User.is_active == True, User.is_deleted == False).first():
-            flash(translate('Delegate is not available.'), 'danger')
-            return _render_apply()
+            return _form_error('Delegate is not available.')
 
         # Check attachment requirement
         upload_file = request.files.get('attachment')
@@ -122,17 +128,14 @@ def apply_leave():
         original_name = None
         if lt.requires_attachment:
             if not upload_file or upload_file.filename == '':
-                flash(translate('Lampiran wajib diunggah untuk jenis cuti ini.'), 'danger')
-                return _render_apply()
+                return _form_error('Lampiran wajib diunggah untuk jenis cuti ini.')
             if not _allowed_file(upload_file.filename):
-                flash(translate('Format file tidak didukung. Gunakan PDF, JPG, atau PNG.'), 'danger')
-                return _render_apply()
+                return _form_error('Format file tidak didukung. Gunakan PDF, JPG, atau PNG.')
             upload_file.seek(0, 2)
             size = upload_file.tell()
             upload_file.seek(0)
             if size > MAX_ATTACHMENT_BYTES:
-                flash(translate('Ukuran file maksimal 5 MB.'), 'danger')
-                return _render_apply()
+                return _form_error('Ukuran file maksimal 5 MB.')
             ext = upload_file.filename.rsplit('.', 1)[1].lower()
             saved_filename = f"{uuid.uuid4().hex}.{ext}"
             original_name = secure_filename(upload_file.filename)
@@ -146,15 +149,16 @@ def apply_leave():
             exclude_holidays=True
         )
         if duration <= 0:
-            flash(translate('Selected dates fall entirely on weekends or public holidays (0 working days).'), 'danger')
-            return _render_apply()
+            return _form_error('Selected dates fall entirely on weekends or public holidays (0 working days).')
 
-        if lt and bal and lt.days_per_year > 0:
+        if lt.days_per_year > 0:
+            if not bal:
+                return _form_error('No leave balance has been allocated. Please contact your administrator.')
             remaining = bal.total_days - bal.used_days - bal.pending_days
+            if remaining <= 0:
+                return _form_error('Your leave balance is exhausted. Please contact your administrator.')
             if duration > remaining:
-                rem_str = f"{remaining:g}"
-                flash(translate(f'Cuti {lt.name} Anda tidak mencukupi. Sisa: {rem_str} hari.'), 'danger')
-                return _render_apply()
+                return _form_error(translate('Insufficient leave balance. Available: {remaining} days. Requested: {duration} days.').format(remaining=f'{remaining:g}', duration=f'{duration:g}'))
 
         # Determine approval levels
         approval_configs = ApprovalConfig.query.filter(
@@ -163,6 +167,24 @@ def apply_leave():
         ).order_by(ApprovalConfig.level).all()
         max_level = max((c.level for c in approval_configs if c.leave_type_id == leave_type_id),
                       default=max((c.level for c in approval_configs if c.leave_type_id is None), default=1))
+        initial_approval_level = 1
+        # A manager must never be routed to their own manager approval stage.
+        # Skip consecutive manager stages and begin at the next configured role
+        # (for example: manager -> HR begins directly at HR level 2).
+        if current_user.role == 'manager':
+            for level in range(1, max_level):
+                config = next(
+                    (item for item in approval_configs
+                     if item.level == level and item.leave_type_id == leave_type_id),
+                    None,
+                ) or next(
+                    (item for item in approval_configs
+                     if item.level == level and item.leave_type_id is None),
+                    None,
+                )
+                if not config or config.approver_role != 'manager':
+                    break
+                initial_approval_level = level + 1
 
         req = LeaveRequest(
             employee_id=current_user.id,
@@ -177,7 +199,7 @@ def apply_leave():
             attachment_path=saved_filename,
             attachment_original_name=original_name,
             status='pending',
-            current_approval_level=1,
+            current_approval_level=initial_approval_level,
             max_approval_level=max_level
         )
         db.session.add(req)
@@ -185,13 +207,15 @@ def apply_leave():
             upload_file.save(os.path.join(_get_upload_dir(), saved_filename))
         if bal:
             bal.pending_days += duration
+        db.session.flush()
+        company = db.session.get(Company, my_company)
+        queue_notification(company, 'submit', req)
         audit_log('leave.request_submitted', 'leave_request', req.id, details={'duration_days': duration, 'day_part': day_part, 'leave_type_id': leave_type_id}, company_id=my_company)
         db.session.commit()
 
-        company = db.session.get(Company, my_company)
-        send_notification(company, 'submit', req)
-
-        flash(translate('Leave request submitted. Waiting for approval.'), 'success')
+        flash(translate('Leave request submitted. Waiting for approval.'), 'leave_success')
+        if is_calendar_submission:
+            return redirect(_calendar_redirect_url())
         return redirect(url_for('main.dashboard'))
 
     return _render_apply()
@@ -349,4 +373,3 @@ def cancel_leave(request_id):
 
     flash(translate('Leave request cancelled successfully.'), 'success')
     return redirect(url_for('main.history'))
-

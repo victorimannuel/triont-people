@@ -138,6 +138,7 @@
         <button type="button" id="leave-drawer-close" class="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="{{ t('Tutup') }}"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <form method="POST" action="{{ url_for('main.apply_leave') }}" class="flex min-h-0 flex-1 flex-col" id="leave-drawer-form">
+        <input type="hidden" name="source" value="calendar">
         <div class="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
             <section>
                 <label class="mb-3 block text-sm font-semibold text-gray-800">{{ t('Leave Types') }}</label>
@@ -152,6 +153,10 @@
                             <span class="min-w-0"><strong class="block text-sm text-gray-800">{{ lt.name }}</strong><small class="mt-1 block text-xs text-gray-500">{% if bal and lt.days_per_year > 0 %}{{ remaining|format_days }} {{ t('of') }} {{ bal.total_days|format_days }} {{ t('days available') }}{% else %}{{ t('Unlimited') }}{% endif %}</small></span>
                         </span>
                     </label>
+                    {% else %}
+                    <div class="col-span-full rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+                        {{ t('No leave types are configured for this company yet.') }}
+                    </div>
                     {% endfor %}
                 </div>
             </section>
@@ -182,8 +187,8 @@
                 </div>
             </section>
             <section class="grid gap-4 sm:grid-cols-2">
-                <div><label id="drawer-start-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Start date') }}</label><input id="drawer-start-date" class="field" type="date" name="start_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
-                <div id="drawer-end-date-wrap"><label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('End date') }}</label><input id="drawer-end-date" class="field" type="date" name="end_date" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+                <div><label id="drawer-start-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Start date') }}</label><input id="drawer-start-date" class="field" type="date" name="start_date" required max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
+                <div id="drawer-end-date-wrap"><label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('End date') }}</label><input id="drawer-end-date" class="field" type="date" name="end_date" required max="{{ max_date }}" onchange="updateDrawerDuration()"></div>
             </section>
             <div id="drawer-duration-display" class="hidden rounded-md border border-triton-100 bg-triton-50 px-4 py-3 text-sm text-triton-700"><span id="drawer-duration-prefix">{{ t('Request duration:') }}</span> <strong id="drawer-duration-days">0</strong></div>
             {% if delegate_enabled %}<section>
@@ -198,7 +203,7 @@
         </div>
         <div class="flex items-center justify-end gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <button type="button" id="leave-drawer-cancel" class="rounded-md px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">{{ t('Cancel') }}</button>
-            <button type="button" id="leave-drawer-open-confirm" class="btn-primary px-5 py-2.5">{{ t('Submit request') }}</button>
+            <button type="button" id="leave-drawer-open-confirm" class="btn-primary px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-50" {% if not leave_types %}disabled{% endif %}>{{ t('Submit request') }}</button>
         </div>
     </form>
 </aside>

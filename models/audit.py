@@ -63,6 +63,7 @@ class AuditLog(db.Model):
             'leave.request_approve': 'Approve Leave Request',
             'leave.request_reject': 'Reject Leave Request',
             'leave.request_cancel': 'Cancel Leave Request',
+            'leave.notification_resent': 'Resend Leave Notification',
             'approval_history.archived': 'Archive Approval History',
             'approval_history.unarchived': 'Unarchive Approval History',
             'system.backup_downloaded': 'Download System Backup',
@@ -132,7 +133,7 @@ class AuditLog(db.Model):
             return 'fa-circle-check'
         elif 'reject' in act:
             return 'fa-circle-xmark'
-        elif 'submit' in act:
+        elif 'submit' in act or 'notification_resent' in act:
             return 'fa-paper-plane'
         else:
             return 'fa-clock-rotate-left'

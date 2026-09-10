@@ -68,11 +68,11 @@
         <section class="mt-6 grid gap-4 sm:grid-cols-2" id="date-pickers-container">
             <div>
                 <label id="start-date-label" class="mb-2 block text-sm font-semibold text-gray-800">{{ t('Start date') }}</label>
-                <input class="field" type="date" name="start_date" id="apply-start-date" value="{{ request.args.get('start_date', '') }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
+                <input class="field" type="date" name="start_date" id="apply-start-date" value="{{ request.args.get('start_date', '') }}" required max="{{ max_date }}" onchange="updateDuration()">
             </div>
             <div id="end-date-wrapper">
                 <label class="mb-2 block text-sm font-semibold text-gray-800">{{ t('End date') }}</label>
-                <input class="field" type="date" name="end_date" id="apply-end-date" value="{{ request.args.get('end_date', request.args.get('start_date', '')) }}" required min="{{ date.today().isoformat() }}" max="{{ max_date }}" onchange="updateDuration()">
+                <input class="field" type="date" name="end_date" id="apply-end-date" value="{{ request.args.get('end_date', request.args.get('start_date', '')) }}" required max="{{ max_date }}" onchange="updateDuration()">
             </div>
         </section>
 

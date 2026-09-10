@@ -27,5 +27,17 @@ services:
     ports:
       - "8000:8000"
 
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: change-me-to-a-long-random-secret
+      DATABASE_URL: postgresql+psycopg2://people_app:change-me@postgres:5432/people
+      AUTO_CREATE_DB: "false"
+    command: ["python", "-m", "workers.notification_worker"]
+
 volumes:
   people_postgres_data:

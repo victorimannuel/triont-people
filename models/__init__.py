@@ -7,6 +7,7 @@ from models.approval import ApprovalConfig
 from models.holiday import PublicHoliday
 from models.audit import AuditLog
 from models.auth import PasswordReset
+from models.notification import NotificationOutbox
 
 __all__ = [
     'db',
@@ -23,4 +24,5 @@ __all__ = [
     'PublicHoliday',
     'AuditLog',
     'PasswordReset',
+    'NotificationOutbox',
 ]

@@ -128,6 +128,7 @@ def select_language():
 def user_settings():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
+        email = request.form.get('email', current_user.email).strip().lower()
         language = normalize_language(request.form.get('language', current_user.language_preference))
         current_password = request.form.get('current_password', '')
         new_password = request.form.get('new_password', '')
@@ -135,6 +136,22 @@ def user_settings():
 
         if name:
             current_user.name = name[:100]
+        if not email or '@' not in email or '.' not in email:
+            flash(translate('Please enter a valid email address.'), 'danger')
+            return render_template('settings.html', calendar_token=current_user.get_calendar_token())
+        existing_email_user = User.query.filter(User.email == email, User.id != current_user.id).first()
+        if existing_email_user:
+            company = db.session.get(Company, existing_email_user.company_id)
+            company_name = company.name if company else 'Unknown company'
+            if existing_email_user.is_deleted:
+                status = 'deleted'
+            elif not existing_email_user.is_active:
+                status = 'archived'
+            else:
+                status = 'active'
+            flash(translate(f'Email {email} is already used by {existing_email_user.name} ({company_name}, {status}).'), 'danger')
+            return render_template('settings.html', calendar_token=current_user.get_calendar_token())
+        current_user.email = email
         current_user.language_preference = language
         session['language'] = language
 
@@ -188,7 +205,7 @@ def user_settings():
         else:
             flash(translate('Profile updated.'), 'success')
 
-        audit_log('user.profile_updated', 'user', current_user.id, details={'language': language, 'timezone': current_user.timezone_preference})
+        audit_log('user.profile_updated', 'user', current_user.id, details={'email': current_user.email, 'language': language, 'timezone': current_user.timezone_preference})
         db.session.commit()
         return redirect(url_for('main.user_settings'))
     return render_template('settings.html', calendar_token=current_user.get_calendar_token())

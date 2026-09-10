@@ -1,0 +1,45 @@
+{% set feedback_success = leave_feedback[-1][0] == 'leave_success' %}
+<style>
+    #leave-result-dialog {
+        width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+        margin: auto; padding: 28px; border: 0; border-radius: 18px;
+        background: white; color: #1f2937; text-align: center; overflow-y: auto;
+        box-shadow: 0 24px 64px rgb(0 0 0 / 22%);
+    }
+    #leave-result-dialog::backdrop { background: rgb(15 23 42 / 50%); }
+    #leave-result-dialog .result-icon {
+        display: grid; place-items: center; width: 56px; height: 56px;
+        margin: 0 auto 16px; border-radius: 50%; font-size: 26px;
+        background: #fef2f2; color: #dc2626;
+    }
+    #leave-result-dialog[data-result="success"] .result-icon { background: #ecfdf5; color: #059669; }
+    #leave-result-title { margin: 0 0 12px; font-size: 20px; font-weight: 700; }
+    #leave-result-message { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+    #leave-result-close {
+        display: block; width: 100%; min-height: 44px; margin-top: 24px;
+        border: 0; border-radius: 8px; background: var(--primary, #0d9488);
+        color: white; font-weight: 600; cursor: pointer;
+    }
+    #leave-result-close:focus-visible { outline: 3px solid #94a3b8; outline-offset: 3px; }
+</style>
+<dialog id="leave-result-dialog" data-result="{{ 'success' if feedback_success else 'error' }}"
+        aria-labelledby="leave-result-title" aria-describedby="leave-result-message">
+    <div class="result-icon" aria-hidden="true"><i class="fa-solid {{ 'fa-circle-check' if feedback_success else 'fa-circle-exclamation' }}"></i></div>
+    <h2 id="leave-result-title">{{ t('Leave request submitted') if feedback_success else t('Leave request could not be submitted') }}</h2>
+    <div id="leave-result-message">
+        {% for category, message in leave_feedback %}<p>{{ message }}</p>{% endfor %}
+    </div>
+    <button id="leave-result-close" type="button" autofocus>{{ t('OK') }}</button>
+</dialog>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dialog = document.getElementById('leave-result-dialog');
+    const closeButton = document.getElementById('leave-result-close');
+    const previousFocus = document.activeElement;
+    dialog.showModal();
+    closeButton.addEventListener('click', function () { dialog.close(); });
+    dialog.addEventListener('close', function () {
+        if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+    });
+});
+</script>

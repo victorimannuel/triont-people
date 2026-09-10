@@ -8,7 +8,7 @@ from config import Config
 from extensions import db
 from app import create_app
 from core.time_util import utcnow
-from models import AuditLog, User, Company, Department, LeaveType, LeaveRequest, LeaveBalance, LeaveGrant, PublicHoliday, ApprovalConfig, PasswordReset
+from models import AuditLog, User, Company, Department, LeaveType, LeaveRequest, LeaveBalance, LeaveGrant, PublicHoliday, ApprovalConfig, PasswordReset, NotificationOutbox
 from services.holiday_service import calculate_long_weekends, ensure_company_holidays
 
 class TestConfig(Config):
@@ -149,6 +149,62 @@ class PeopleAppTestCase(unittest.TestCase):
         bal = LeaveBalance.query.filter_by(employee_id=self.employee_user.id, leave_type_id=self.lt_annual_a.id).first()
         self.assertEqual(bal.pending_days, 2.0)
 
+    def test_successful_leave_request_shows_result_popup(self):
+        self._login(self.employee_user)
+        res = self.client.post('/apply', data={
+            'leave_type': str(self.lt_annual_a.id),
+            'start_date': date(date.today().year, 10, 5).isoformat(),
+            'end_date': date(date.today().year, 10, 6).isoformat(),
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'id="leave-result-dialog"', res.data)
+        self.assertIn(b'Leave request submitted', res.data)
+        self.assertNotIn(b'Leave request submitted. Waiting for approval.</span>', res.data)
+
+    def test_leave_request_without_allocated_balance_shows_result_popup(self):
+        db.session.delete(self.bal_alice)
+        db.session.commit()
+        self._login(self.employee_user)
+        res = self.client.post('/apply', data={
+            'leave_type': str(self.lt_annual_a.id),
+            'start_date': date(date.today().year, 10, 5).isoformat(),
+            'end_date': date(date.today().year, 10, 5).isoformat(),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'id="leave-result-dialog"', res.data)
+        self.assertIn(b'No leave balance has been allocated.', res.data)
+        self.assertIsNone(LeaveRequest.query.filter_by(employee_id=self.employee_user.id).first())
+
+    def test_exhausted_leave_balance_shows_result_popup(self):
+        self.bal_alice.used_days = self.bal_alice.total_days
+        db.session.commit()
+        self._login(self.employee_user)
+        res = self.client.post('/apply', data={
+            'leave_type': str(self.lt_annual_a.id),
+            'start_date': date(date.today().year, 10, 5).isoformat(),
+            'end_date': date(date.today().year, 10, 5).isoformat(),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Your leave balance is exhausted.', res.data)
+        self.assertIsNone(LeaveRequest.query.filter_by(employee_id=self.employee_user.id).first())
+
+    def test_insufficient_leave_balance_shows_result_popup(self):
+        self.bal_alice.total_days = 1
+        db.session.commit()
+        self._login(self.employee_user)
+        res = self.client.post('/apply', data={
+            'leave_type': str(self.lt_annual_a.id),
+            'start_date': date(date.today().year, 10, 5).isoformat(),
+            'end_date': date(date.today().year, 10, 6).isoformat(),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Insufficient leave balance. Available: 1 days. Requested: 2 days.', res.data)
+        self.assertIsNone(LeaveRequest.query.filter_by(employee_id=self.employee_user.id).first())
+
     def test_approval_workflow(self):
         # Create pending request
         start_d = date(date.today().year, 11, 1)
@@ -210,15 +266,22 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertIn(b'Cuti Tahunan', res_mgr.data)
         self.assertIn(b'Family event vacation', res_mgr.data)
         self.assertIn(f'action="/approve/{req.id}"'.encode('utf-8'), res_mgr.data)
+        self.assertIn(b'<span class="approval-inbox-badge', res_mgr.data)
+        self.assertIn(b'aria-label="1 pending approval requests"', res_mgr.data)
 
         # 2. Admin logs in and views /approvals
         self._login(self.admin_user)
         res_adm = self.client.get('/approvals')
         self.assertEqual(res_adm.status_code, 200)
         self.assertIn(b'Alice Employee', res_adm.data)
+        self.assertIn(b'<span class="approval-inbox-badge', res_adm.data)
+        self.assertIn(b'aria-label="1 pending approval requests"', res_adm.data)
 
-        # 3. Regular employee is restricted from /approvals
+        # 3. Regular employee is restricted from /approvals and does not see the approval badge
         self._login(self.employee_user)
+        res_dash = self.client.get('/')
+        self.assertEqual(res_dash.status_code, 200)
+        self.assertNotIn(b'<span class="approval-inbox-badge', res_dash.data)
         res_emp = self.client.get('/approvals')
         self.assertEqual(res_emp.status_code, 302)
 
@@ -699,6 +762,16 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(res_hist.status_code, 200)
         self.assertIn(b'confirmCancelLeaveRequest', res_hist.data)
 
+    def test_topbar_sticky_layout_does_not_create_a_root_scroll_container(self):
+        self._login(self.admin_user)
+
+        res = self.client.get('/admin/employees')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'.app-topbar { position:sticky;', res.data)
+        self.assertIn(b'class="app-topbar no-print', res.data)
+        self.assertNotIn(b'html, body { width:100%; max-width:100%; overflow-x:hidden; }', res.data)
+        self.assertNotIn(b'id="app-shell" class="app-shell min-h-[100dvh] max-w-full overflow-x-clip', res.data)
+
     def test_custom_error_pages_403_404_500(self):
         # 1. Test 404 Not Found (HTML)
         res_404 = self.client.get('/non-existent-random-route-999')
@@ -999,6 +1072,45 @@ class PeopleAppTestCase(unittest.TestCase):
             self.assertFalse(lt.is_deleted)
             self.assertTrue(lt.is_active)
 
+    def test_calendar_request_drawer_allows_backdate_input(self):
+        self._login(self.employee_user)
+        res = self.client.get('/calendar')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'id="drawer-start-date"', res.data)
+        self.assertIn(b'id="drawer-end-date"', res.data)
+        self.assertNotIn(b'id="drawer-start-date" class="field" type="date" name="start_date" required min=', res.data)
+        self.assertNotIn(b'id="drawer-end-date" class="field" type="date" name="end_date" required min=', res.data)
+
+    def test_calendar_submission_errors_return_to_calendar(self):
+        self._login(self.employee_user)
+        start_d = date(date.today().year, 9, 8)
+        res = self.client.post('/apply', data={
+            'source': 'calendar',
+            'start_date': start_d.isoformat(),
+            'end_date': start_d.isoformat(),
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'id="leave-result-dialog"', res.data)
+        self.assertIn(b'Please complete all required fields.', res.data)
+
+    def test_calendar_submission_success_returns_to_calendar(self):
+        self._login(self.employee_user)
+        start_d = date(date.today().year, 9, 9)
+        res = self.client.post('/apply', data={
+            'source': 'calendar',
+            'leave_type': str(self.lt_annual_a.id),
+            'start_date': start_d.isoformat(),
+            'end_date': start_d.isoformat(),
+            'reason': 'Calendar request',
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'id="leave-result-dialog"', res.data)
+        self.assertIn(b'Leave request submitted', res.data)
+        req = LeaveRequest.query.filter_by(employee_id=self.employee_user.id, reason='Calendar request').first()
+        self.assertIsNotNone(req)
+
     def test_calendar_ical_feed_and_token_regeneration(self):
         # 1. Login as employee and create an approved leave request
         self._login(self.employee_user)
@@ -1255,6 +1367,66 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertEqual(details['after']['name'], 'Alice Employee Renamed')
         self.assertEqual(details['changed']['name']['before'], 'Alice Employee')
         self.assertEqual(details['changed']['name']['after'], 'Alice Employee Renamed')
+
+    def test_admin_can_update_employee_email(self):
+        self._login(self.admin_user)
+        res = self.client.post(f'/admin/employees/edit/{self.employee_user.id}', data={
+            'name': self.employee_user.name,
+            'email': 'alice.new@test.com',
+            'role': 'employee',
+            'company_id': str(self.company_a.id),
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.email, 'alice.new@test.com')
+
+        log = AuditLog.query.filter_by(action='admin.employee_updated', target_id=self.employee_user.id).order_by(AuditLog.id.desc()).first()
+        self.assertIsNotNone(log)
+        changed = log.details_dict['changed']
+        self.assertEqual(changed['email']['before'], 'alice@test.com')
+        self.assertEqual(changed['email']['after'], 'alice.new@test.com')
+
+    def test_user_settings_can_update_own_email(self):
+        self._login(self.employee_user)
+        res = self.client.post('/settings', data={
+            'name': self.employee_user.name,
+            'email': 'alice.profile@test.com',
+            'language': 'en',
+            'timezone': 'Asia/Jakarta',
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.email, 'alice.profile@test.com')
+
+    def test_user_settings_rejects_duplicate_email(self):
+        self._login(self.employee_user)
+        res = self.client.post('/settings', data={
+            'name': self.employee_user.name,
+            'email': self.manager_user.email,
+            'language': 'en',
+            'timezone': 'Asia/Jakarta',
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.email, 'alice@test.com')
+        self.assertIn(b'Email manager@test.com is already used by Manager Bob', res.data)
+
+    def test_admin_employee_duplicate_email_message_names_existing_user(self):
+        self._login(self.admin_user)
+        res = self.client.post(f'/admin/employees/edit/{self.employee_user.id}', data={
+            'name': self.employee_user.name,
+            'email': self.manager_user.email,
+            'role': 'employee',
+            'company_id': str(self.company_a.id),
+            '_csrf_token': 'test-token'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        db.session.refresh(self.employee_user)
+        self.assertEqual(self.employee_user.email, 'alice@test.com')
+        self.assertIn(b'Email manager@test.com is already used by Manager Bob', res.data)
 
     def test_avatar_upload_is_audited(self):
         self._login(self.employee_user)
@@ -1952,6 +2124,142 @@ class PeopleAppTestCase(unittest.TestCase):
         db.session.refresh(req2)
         self.assertEqual(req2.status, 'approved')
 
+    def test_manager_leave_skips_manager_stage_and_routes_to_hr(self):
+        hr_user = User(name='HR Maya', email='hr-maya@test.com', role='hr', company_id=self.company_a.id)
+        hr_user.set_password('HrPass123')
+        manager_balance = LeaveBalance(
+            company_id=self.company_a.id,
+            employee_id=self.manager_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            year=date.today().year,
+            total_days=12,
+            used_days=0,
+            pending_days=0,
+        )
+        hr_level = ApprovalConfig(
+            company_id=self.company_a.id,
+            leave_type_id=self.lt_annual_a.id,
+            level=2,
+            approver_role='hr',
+        )
+        self.company_a.notifications_enabled = True
+        self.company_a.notify_on_submit = True
+        db.session.add_all([hr_user, manager_balance, hr_level])
+        db.session.commit()
+
+        start_date = date.today() + timedelta(days=21)
+        while start_date.weekday() >= 5:
+            start_date += timedelta(days=1)
+
+        self._login(self.manager_user)
+        submitted = self.client.post('/apply', data={
+            'leave_type': self.lt_annual_a.id,
+            'day_part': 'full',
+            'start_date': start_date.isoformat(),
+            'end_date': start_date.isoformat(),
+            'reason': 'Manager leave',
+            '_csrf_token': 'test-token',
+        })
+        self.assertEqual(submitted.status_code, 302)
+        req = LeaveRequest.query.filter_by(employee_id=self.manager_user.id, reason='Manager leave').first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.current_approval_level, 2)
+        self.assertEqual(req.max_approval_level, 2)
+
+        hr_email = NotificationOutbox.query.filter_by(
+            leave_request_id=req.id,
+            recipient_email='hr-maya@test.com',
+        ).first()
+        self.assertIsNotNone(hr_email)
+        self.assertIn('memerlukan persetujuan Anda', hr_email.body)
+
+        from services.notification_outbox_service import queue_notification
+        resend_rows = queue_notification(
+            self.company_a,
+            'submit',
+            req,
+            recipient_scope='approver',
+            force=True,
+        )
+        self.assertEqual(len(resend_rows), 1)
+        self.assertEqual(resend_rows[0].recipient_email, 'hr-maya@test.com')
+
+        self._login(hr_user, 'HrPass123')
+        approved = self.client.post(f'/approve/{req.id}', data={
+            'action': 'approve',
+            'expected_level': '2',
+            '_csrf_token': 'test-token',
+        })
+        self.assertEqual(approved.status_code, 302)
+        db.session.refresh(req)
+        self.assertEqual(req.status, 'approved')
+
+    def test_legacy_manager_request_resends_to_hr_and_finishes_once(self):
+        hr = User(name='HR Maya', email='hr-maya@test.com', role='hr', company_id=self.company_a.id)
+        hr.set_password('HrPass123')
+        other_hr = User(name='Other HR', email='other-hr@test.com', role='hr', company_id=self.company_b.id)
+        other_hr.set_password('HrPass123')
+        inactive_hr = User(name='Inactive HR', email='inactive-hr@test.com', role='hr',
+                           company_id=self.company_a.id, is_active=False)
+        inactive_hr.set_password('HrPass123')
+        req = LeaveRequest(
+            company_id=self.company_a.id, employee_id=self.manager_user.id,
+            leave_type_id=self.lt_annual_a.id, start_date=date(date.today().year, 9, 21),
+            end_date=date(date.today().year, 9, 21), duration_days=1,
+            status='pending', current_approval_level=1, max_approval_level=2,
+        )
+        balance = LeaveBalance(company_id=self.company_a.id, employee_id=self.manager_user.id,
+                               leave_type_id=self.lt_annual_a.id, year=date.today().year,
+                               total_days=12, used_days=0, pending_days=1)
+        db.session.add_all([hr, other_hr, inactive_hr, req, balance, ApprovalConfig(
+            company_id=self.company_a.id, leave_type_id=self.lt_annual_a.id,
+            level=2, approver_role='hr',
+        )])
+        self.company_a.smtp_host = 'smtp.example.test'
+        self.company_a.smtp_user = 'noreply@example.test'
+        db.session.commit()
+        self._login(self.admin_user)
+        from flask import render_template
+        with patch('routes.approvals.render_template', wraps=render_template) as rendered:
+            self.client.get('/approval-history')
+        preview_names = rendered.call_args.kwargs['resend_approver_names'][req.id]
+        self.assertEqual(preview_names, ['HR Maya'])
+        with patch('services.notification_service._dispatch_email') as smtp:
+            result = self.client.post(f'/approval-history/{req.id}/resend-notification',
+                                      data={'recipient_scope': 'approver'}, follow_redirects=True)
+        self.assertEqual(result.status_code, 200)
+        self.assertIn(b'Email resend queued', result.data)
+        smtp.assert_not_called()
+        rows = NotificationOutbox.query.filter_by(leave_request_id=req.id).all()
+        self.assertEqual([row.recipient_email for row in rows], ['hr-maya@test.com'])
+        self.assertIn('Kirim ulang: Perlu tindakan', rows[0].subject)
+        self.assertIn('Persetujuan HR (tahap 2 dari 2)', rows[0].body)
+        self.assertIn('Approve (Setujui) atau Reject (Tolak)', rows[0].body)
+        self.assertIn('https://people.thehyouman.com/approvals', rows[0].body)
+        db.session.refresh(req)
+        self.assertEqual(req.current_approval_level, 1)  # Resend never changes workflow state.
+        self.assertEqual(req.status, 'pending')
+        self._login(hr, 'HrPass123')
+        approved = self.client.post(f'/approve/{req.id}', data={'action': 'approve', 'expected_level': '1'})
+        self.assertEqual(approved.status_code, 302)
+        db.session.refresh(req)
+        db.session.refresh(balance)
+        self.assertEqual(req.status, 'approved')
+        self.assertEqual(req.current_approval_level, 2)
+        self.assertEqual(balance.used_days, 1)
+        self.assertEqual(balance.pending_days, 0)
+        self.client.post(f'/approve/{req.id}', data={'action': 'approve', 'expected_level': '1'})
+        db.session.refresh(balance)
+        self.assertEqual(balance.used_days, 1)
+
+        self._login(self.admin_user)
+        before = NotificationOutbox.query.filter_by(leave_request_id=req.id).count()
+        completed = self.client.post(f'/approval-history/{req.id}/resend-notification',
+                                     data={'recipient_scope': 'approver'}, follow_redirects=True)
+        self.assertEqual(completed.status_code, 200)
+        self.assertTrue(b'This request is no longer pending.' in completed.data)
+        self.assertEqual(NotificationOutbox.query.filter_by(leave_request_id=req.id).count(), before)
+
     def test_calendar_cross_month_leave_display(self):
         """Test that leave spanning across two months is properly displayed on both month calendar views."""
         this_year = date.today().year
@@ -1983,7 +2291,7 @@ class PeopleAppTestCase(unittest.TestCase):
         self.assertIn(b'Alice Employee', res_sep.data)
 
     def test_submit_leave_notification_dispatches_to_manager(self):
-        """Test that send_notification on submit logs/dispatches to both employee and manager."""
+        """Submit notifications go to requester, approver, and active same-company users only."""
         from services.notification_service import send_notification
         this_year = date.today().year
         req = LeaveRequest(
@@ -2000,10 +2308,198 @@ class PeopleAppTestCase(unittest.TestCase):
         db.session.add(req)
         db.session.commit()
 
-        # Company notifications enabled
         self.company_a.notifications_enabled = True
         self.company_a.notify_on_submit = True
         db.session.commit()
+
+        with patch('services.notification_service._dispatch_email', return_value=True) as dispatch:
+            send_notification(self.company_a, 'submit', req)
+
+        recipients = [call.args[1] for call in dispatch.call_args_list]
+        self.assertIn('alice@test.com', recipients)
+        self.assertIn('manager@test.com', recipients)
+        self.assertIn('admin@test.com', recipients)
+        self.assertIn('superadmin@test.com', recipients)
+        self.assertNotIn('charlie@test.com', recipients)
+        self.assertEqual(len(recipients), len(set(recipients)))
+        bodies = {call.args[1]: call.args[3] for call in dispatch.call_args_list}
+        self.assertIn('Approve (Setujui) atau Reject (Tolak)', bodies['manager@test.com'])
+        self.assertIn('Tidak diperlukan tindakan approval', bodies['admin@test.com'])
+        self.assertNotIn('/approvals', bodies['admin@test.com'])
+
+    def test_leave_notification_outbox_defers_smtp_and_worker_delivers_each_recipient(self):
+        from services.notification_outbox_service import queue_notification, process_next_notification
+        this_year = date.today().year
+        req = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 11, 5),
+            end_date=date(this_year, 11, 5),
+            duration_days=1.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1,
+        )
+        db.session.add(req)
+        db.session.commit()
+        self.company_a.notifications_enabled = True
+        self.company_a.notify_on_submit = True
+        db.session.commit()
+
+        with patch('services.notification_service._dispatch_email') as dispatch:
+            queued = queue_notification(self.company_a, 'submit', req)
+        self.assertEqual(dispatch.call_count, 0)
+        self.assertEqual(len(queued), 4)
+        db.session.commit()
+
+        with patch('services.notification_outbox_service._dispatch_email', return_value=True) as dispatch:
+            while process_next_notification():
+                pass
+        self.assertEqual(dispatch.call_count, 4)
+        self.assertEqual(NotificationOutbox.query.filter_by(status='sent').count(), 4)
+
+    def test_admin_can_resend_leave_notification_to_current_approver_or_all_company_users(self):
+        this_year = date.today().year
+        req = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 11, 6),
+            end_date=date(this_year, 11, 6),
+            duration_days=1.0,
+            status='pending',
+            current_approval_level=1,
+            max_approval_level=1,
+        )
+        db.session.add(req)
+        self.company_a.smtp_host = 'smtp.example.test'
+        self.company_a.smtp_user = 'noreply@example.test'
+        db.session.commit()
+
+        self._login(self.admin_user)
+        history = self.client.get('/approval-history')
+        self.assertEqual(history.status_code, 200)
+        self.assertIn(b'resendNotificationModal', history.data)
+        self.assertIn(b'Notify all people', history.data)
+        self.assertIn(b'Notify current approver', history.data)
+        self.assertIn(b'btn-primary px-4 py-2.5 text-sm', history.data)
+        self.assertIn(b'<i class="fa-solid fa-paper-plane"></i>Resend</button>', history.data)
+        self.assertIn(b"replace('/0/', '/' + id + '/')", history.data)
+        self.assertIn(b"approverOption.classList.toggle('hidden', status !== 'pending')", history.data)
+
+        approver_resend = self.client.post(
+            f'/approval-history/{req.id}/resend-notification',
+            data={'recipient_scope': 'approver'},
+            follow_redirects=True,
+        )
+        self.assertEqual(approver_resend.status_code, 200)
+        self.assertIn(b'id="resend-result-dialog"', approver_resend.data)
+        self.assertIn(b'Email resend queued', approver_resend.data)
+        approver_rows = NotificationOutbox.query.filter_by(leave_request_id=req.id).all()
+        self.assertEqual(len(approver_rows), 1)
+        self.assertEqual(approver_rows[0].event, 'submit')
+        self.assertEqual(approver_rows[0].recipient_email, 'manager@test.com')
+
+        all_resend = self.client.post(
+            f'/approval-history/{req.id}/resend-notification',
+            data={'recipient_scope': 'all'},
+            follow_redirects=True,
+        )
+        self.assertEqual(all_resend.status_code, 200)
+        recipients = [item.recipient_email for item in NotificationOutbox.query.filter_by(leave_request_id=req.id).all()]
+        self.assertEqual(recipients.count('manager@test.com'), 2)
+        self.assertIn('alice@test.com', recipients)
+        self.assertIn('admin@test.com', recipients)
+        self.assertIn('superadmin@test.com', recipients)
+        self.assertNotIn('charlie@test.com', recipients)
+        audit = AuditLog.query.filter_by(action='leave.notification_resent', target_id=req.id).order_by(AuditLog.id.desc()).first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.details_dict['recipient_scope'], 'all')
+
+        self._login(self.manager_user)
+        denied = self.client.post(f'/approval-history/{req.id}/resend-notification', data={'recipient_scope': 'approver'})
+        self.assertEqual(denied.status_code, 302)
+
+    def test_notification_outbox_retries_failed_delivery(self):
+        from services.notification_outbox_service import process_next_notification
+        item = NotificationOutbox(
+            company_id=self.company_a.id,
+            leave_request_id=1,
+            event='submit',
+            recipient_email='alice@test.com',
+            subject='Test',
+            body='Test message',
+        )
+        db.session.add(item)
+        db.session.commit()
+
+        with patch('services.notification_outbox_service._dispatch_email', return_value=False):
+            self.assertTrue(process_next_notification())
+        db.session.refresh(item)
+        self.assertEqual(item.status, 'retry')
+        self.assertEqual(item.attempts, 1)
+        self.assertGreater(item.available_at, item.created_at)
+
+    def test_approve_leave_notification_dispatches_to_same_company_users(self):
+        """Approval notifications inform requester and other active users in the same company."""
+        from services.notification_service import send_notification
+        this_year = date.today().year
+        req = LeaveRequest(
+            company_id=self.company_a.id,
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=date(this_year, 11, 3),
+            end_date=date(this_year, 11, 4),
+            duration_days=2.0,
+            status='approved',
+            current_approval_level=1,
+            max_approval_level=1,
+            approved_by=self.manager_user.id,
+            approved_at=utcnow()
+        )
+        db.session.add(req)
+        db.session.commit()
+
+        self.company_a.notifications_enabled = True
+        self.company_a.notify_on_approve = True
+        db.session.commit()
+
+        with patch('services.notification_service._dispatch_email', return_value=True) as dispatch:
+            send_notification(self.company_a, 'approve', req)
+
+        recipients = [call.args[1] for call in dispatch.call_args_list]
+        self.assertIn('alice@test.com', recipients)
+        self.assertIn('manager@test.com', recipients)
+        self.assertIn('admin@test.com', recipients)
+        self.assertIn('superadmin@test.com', recipients)
+        self.assertNotIn('charlie@test.com', recipients)
+        self.assertEqual(len(recipients), len(set(recipients)))
+
+    def test_employee_can_apply_backdated_leave(self):
+        """Employees can submit leave requests for past dates."""
+        self._login(self.employee_user)
+        start_d = date.today() - timedelta(days=14)
+        end_d = date.today() - timedelta(days=10)
+
+        res = self.client.post('/apply', data={
+            'leave_type': self.lt_annual_a.id,
+            'day_part': 'full',
+            'start_date': start_d.isoformat(),
+            'end_date': end_d.isoformat(),
+            'reason': 'Backdated leave entry',
+            '_csrf_token': 'test-token'
+        })
+        self.assertEqual(res.status_code, 302)
+
+        req = LeaveRequest.query.filter_by(
+            employee_id=self.employee_user.id,
+            leave_type_id=self.lt_annual_a.id,
+            start_date=start_d,
+            end_date=end_d,
+        ).first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.status, 'pending')
 
     def test_cancel_pending_leave_request(self):
         """Test employee self-service cancellation of pending leave request."""
@@ -2080,10 +2576,3 @@ class PeopleAppTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-
-
-
-
-

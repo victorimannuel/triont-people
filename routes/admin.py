@@ -67,6 +67,19 @@ def validate_assignable_employee_role(role):
     return True
 
 
+def duplicate_email_message(existing_user, email):
+    company = db.session.get(Company, existing_user.company_id) if existing_user else None
+    owner = existing_user.name if existing_user else 'another user'
+    company_name = company.name if company else 'Unknown company'
+    if getattr(existing_user, 'is_deleted', False):
+        status = 'deleted'
+    elif not getattr(existing_user, 'is_active', True):
+        status = 'archived'
+    else:
+        status = 'active'
+    return translate(f'Email {email} is already used by {owner} ({company_name}, {status}).')
+
+
 def custom_domain_target():
     return os.environ.get('CUSTOM_DOMAIN_CNAME_TARGET', 'people-triton.imannuelvictor.com').strip().lower().rstrip('.')
 
@@ -853,8 +866,9 @@ def admin_add_employee():
         flash(translate('Password must be at least 8 characters and include letters and numbers.'), 'danger')
         return redirect(url_for('main.admin_employees'))
 
-    if User.query.filter_by(email=email).first():
-        flash(translate('Email is already registered.'), 'danger')
+    existing_email_user = User.query.filter_by(email=email).first()
+    if existing_email_user:
+        flash(duplicate_email_message(existing_email_user, email), 'danger')
         return redirect(url_for('main.admin_employees'))
 
     user = User(name=name, email=email, role=role, company_id=target_company_id)
@@ -958,8 +972,9 @@ def admin_edit_employee(user_id):
     }
     target_company_id = get_manageable_company_id(request.form.get('company_id', type=int))
     email = request.form.get('email', user.email).strip()
-    if User.query.filter(User.email == email, User.id != user.id).first():
-        flash(translate('Email is already registered.'), 'danger')
+    existing_email_user = User.query.filter(User.email == email, User.id != user.id).first()
+    if existing_email_user:
+        flash(duplicate_email_message(existing_email_user, email), 'danger')
         return redirect(url_for('main.admin_employees'))
     new_role = request.form.get('role', user.role)
     if not validate_assignable_employee_role(new_role):
