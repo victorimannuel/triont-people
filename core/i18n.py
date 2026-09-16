@@ -646,6 +646,44 @@ TRANSLATIONS = {
     "Your session will be closed and you will need to sign in again to access workspace.": {"id": "Session kamu akan ditutup dan kamu perlu login lagi untuk masuk workspace.", "idc": "Sesi kamu bakal ditutup dan kamu harus login lagi buat masuk workspace."},
 }
 
+# Email delivery statuses and safe error explanations.
+TRANSLATIONS.update({
+    "Email Logs": {"id":"Log Email","idc":"Log Email"},
+    "Queued": {"id":"Dalam antrean","idc":"Dalam antrean"},
+    "Sending": {"id":"Sedang dikirim","idc":"Sedang dikirim"},
+    "Retrying": {"id":"Menunggu percobaan ulang","idc":"Menunggu percobaan ulang"},
+    "Sent": {"id":"Terkirim","idc":"Terkirim"},
+    "Failed": {"id":"Gagal","idc":"Gagal"},
+    "Submitted": {"id":"Diajukan","idc":"Diajukan"},
+    "Recipient": {"id":"Penerima","idc":"Penerima"},
+    "Notification event": {"id":"Jenis notifikasi","idc":"Jenis notifikasi"},
+    "Maximum delivery attempts": {"id":"Batas percobaan pengiriman","idc":"Batas percobaan pengiriman"},
+    "Emails": {"id":"email","idc":"email"},
+    "Leave request": {"id":"Pengajuan cuti","idc":"Pengajuan cuti"},
+    "Subject": {"id":"Subjek","idc":"Subjek"},
+    "Delivery attempts": {"id":"Percobaan pengiriman","idc":"Percobaan pengiriman"},
+    "Queued at": {"id":"Waktu masuk antrean","idc":"Waktu masuk antrean"},
+    "Sent at": {"id":"Waktu terkirim","idc":"Waktu terkirim"},
+    "Next attempt": {"id":"Percobaan berikutnya","idc":"Percobaan berikutnya"},
+    "Started at": {"id":"Waktu mulai","idc":"Waktu mulai"},
+    "Delivery error": {"id":"Kegagalan pengiriman","idc":"Kegagalan pengiriman"},
+    "No email logs found.": {"id":"Tidak ada log email.","idc":"Tidak ada log email."},
+    "Timezone": {"id":"Zona waktu","idc":"Zona waktu"},
+    "Pagination": {"id":"Navigasi halaman","idc":"Navigasi halaman"},
+    "Leave notification delivery history. OTP and password emails are not included.": {"id":"Riwayat pengiriman notifikasi cuti. Email OTP dan kata sandi tidak termasuk.","idc":"Riwayat pengiriman notifikasi cuti. Email OTP dan kata sandi tidak termasuk."},
+    "Sent means accepted by SMTP, not guaranteed inbox delivery.": {"id":"Terkirim berarti diterima server SMTP, bukan jaminan masuk kotak masuk.","idc":"Terkirim berarti diterima server SMTP, bukan jaminan masuk kotak masuk."},
+    "SMTP authentication failed.": {"id":"Autentikasi SMTP gagal.","idc":"Autentikasi SMTP gagal."},
+    "SMTP recipient rejected.": {"id":"Penerima ditolak oleh server SMTP.","idc":"Penerima ditolak oleh server SMTP."},
+    "SMTP sender rejected.": {"id":"Pengirim ditolak oleh server SMTP.","idc":"Pengirim ditolak oleh server SMTP."},
+    "SMTP connection failed.": {"id":"Koneksi SMTP gagal.","idc":"Koneksi SMTP gagal."},
+    "SMTP server rejected the message.": {"id":"Server SMTP menolak pesan.","idc":"Server SMTP menolak pesan."},
+    "SMTP connection timed out.": {"id":"Koneksi SMTP melewati batas waktu.","idc":"Koneksi SMTP melewati batas waktu."},
+    "SMTP TLS verification failed.": {"id":"Verifikasi TLS SMTP gagal.","idc":"Verifikasi TLS SMTP gagal."},
+    "SMTP configuration unavailable.": {"id":"Konfigurasi SMTP tidak tersedia.","idc":"Konfigurasi SMTP tidak tersedia."},
+    "SMTP delivery failed or is no longer configured.": {"id":"Pengiriman SMTP gagal atau konfigurasi tidak tersedia.","idc":"Pengiriman SMTP gagal atau konfigurasi tidak tersedia."},
+    "Delivery attempts exhausted.": {"id":"Batas percobaan pengiriman telah tercapai.","idc":"Batas percobaan pengiriman telah tercapai."},
+})
+
 # Reverse lookup map for backward compatibility with legacy Indonesian keys
 _REVERSE_MAP = {}
 for _en_key, _trans in TRANSLATIONS.items():

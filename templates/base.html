@@ -164,6 +164,7 @@
             <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Companies') }}</a>
             <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
             <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+            <a class="nav-link {% if request.endpoint == 'main.admin_email_logs' %}active{% endif %}" href="{{ url_for('main.admin_email_logs') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Logs') }}</a>
             {% if is_superadmin_role(current_user.role) %}<a class="nav-link {% if request.endpoint == 'main.admin_security_logs' %}active{% endif %}" href="{{ url_for('main.admin_security_logs') }}"><i class="fa-solid fa-user-shield w-4 text-center"></i>{{ t('Security Logs') }}</a>{% endif %}
             <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
             {% endif %}
@@ -234,6 +235,7 @@
                 <a class="nav-link {% if request.endpoint == 'main.admin_companies' %}active{% endif %}" href="{{ url_for('main.admin_companies') }}"><i class="fa-solid fa-building w-4 text-center"></i>{{ t('Companies') }}</a>
                 <a class="nav-link {% if request.endpoint in ('main.admin_smtp', 'main.admin_smtp_test') %}active{% endif %}" href="{{ url_for('main.admin_smtp') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Settings') }}</a>
                 <a class="nav-link {% if request.endpoint == 'main.admin_audit_logs' %}active{% endif %}" href="{{ url_for('main.admin_audit_logs') }}"><i class="fa-solid fa-shield-halved w-4 text-center"></i>{{ t('Audit Logs') }}</a>
+                <a class="nav-link {% if request.endpoint == 'main.admin_email_logs' %}active{% endif %}" href="{{ url_for('main.admin_email_logs') }}"><i class="fa-solid fa-envelope w-4 text-center"></i>{{ t('Email Logs') }}</a>
                 {% if is_superadmin_role(current_user.role) %}<a class="nav-link {% if request.endpoint == 'main.admin_security_logs' %}active{% endif %}" href="{{ url_for('main.admin_security_logs') }}"><i class="fa-solid fa-user-shield w-4 text-center"></i>{{ t('Security Logs') }}</a>{% endif %}
                 <a class="nav-link {% if request.endpoint == 'main.admin_custom_domain_guide' %}active{% endif %}" href="{{ url_for('main.admin_custom_domain_guide') }}"><i class="fa-solid fa-globe w-4 text-center"></i>{{ t('Custom Domain') }}</a>
                 {% endif %}

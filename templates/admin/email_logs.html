@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Email Logs') }}{% endblock %}
+{% block content %}
+<style>
+.email-log-page {min-width:0;max-width:100%}
+.email-log-filters {display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.email-log-filters label {display:flex;flex-direction:column;gap:4px;min-width:0}
+.email-log-filters input,.email-log-filters select {width:100%;min-width:0}
+.email-log-scroll {max-width:100%;overflow-x:auto}
+.email-log-table {min-width:850px}
+.email-log-table .email-recipient {max-width:250px;overflow-wrap:anywhere}
+.email-log-subject {min-width:180px;max-width:300px;white-space:normal;overflow-wrap:anywhere}
+.email-log-status {display:inline-flex;border:1px solid #cbd5e1;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#334155;white-space:nowrap}
+.email-log-status.sent {background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+.email-log-status.failed {background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.email-log-status.retry {background:#fffbeb;color:#b45309;border-color:#fde68a}
+.email-log-status.processing {background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.email-log-dialog {border:0;border-radius:16px;padding:24px;width:min(640px,calc(100vw - 32px));max-height:85dvh;overflow:auto;box-sizing:border-box;color:#1e293b;background:white}
+.email-log-dialog::backdrop {background:rgba(0,0,0,.5)}
+.email-log-details {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;font-size:13px}
+.email-log-details dt {font-size:11px;color:#64748b;margin-bottom:4px}
+.email-log-details dd {margin:0;overflow-wrap:anywhere}
+@media(max-width:480px){.email-log-filters,.email-log-details{grid-template-columns:1fr}}
+</style>
+<div class="email-log-page space-y-6">
+    <div>
+        <div class="flex items-center gap-2.5">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700 shadow-2xs"><i class="fa-solid fa-envelope text-base"></i></span>
+            <h1 class="text-xl font-bold text-gray-900">{{ t('Email Logs') }}</h1>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">{{ t('Leave notification delivery history. OTP and password emails are not included.') }}</p>
+        <p class="mt-1 text-xs text-gray-500">{{ t('Sent means accepted by SMTP, not guaranteed inbox delivery.') }}</p>
+    </div>
+    <form method="get" class="app-card p-4 email-log-filters text-xs">
+        {% for key in ('request_id','audit_id','per_page') %}{% if request.args.get(key) %}<input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">{% endif %}{% endfor %}
+        <label><span class="font-semibold text-gray-500">{{ t('Recipient') }}</span><input class="input py-1.5 text-xs" name="q" value="{{ request.args.get('q','') }}" type="search" maxlength="255"></label>
+        <label><span class="font-semibold text-gray-500">{{ t('Status') }}</span><select class="input py-1.5 text-xs" name="status"><option value="">{{ t('All') }}</option>{% for value,label in statuses.items() %}<option value="{{ value }}" {% if request.args.get('status') == value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}</select></label>
+        <label><span class="font-semibold text-gray-500">{{ t('Notification event') }}</span><select class="input py-1.5 text-xs" name="event"><option value="">{{ t('All') }}</option>{% for value,label in events.items() %}<option value="{{ value }}" {% if request.args.get('event') == value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}</select></label>
+        <label><span class="font-semibold text-gray-500">{{ t('Start date') }}</span><input class="input py-1.5 text-xs" type="date" name="start_date" value="{{ request.args.get('start_date','') }}"></label>
+        <label><span class="font-semibold text-gray-500">{{ t('End date') }}</span><input class="input py-1.5 text-xs" type="date" name="end_date" value="{{ request.args.get('end_date','') }}"></label>
+        <div class="flex items-center gap-2"><button class="btn-primary px-4 py-2 text-xs" type="submit">{{ t('Filter') }}</button><a class="btn-secondary px-4 py-2 text-xs" href="{{ url_for('main.admin_email_logs') }}">{{ t('Reset') }}</a></div>
+    </form>
+    <div class="app-card overflow-hidden">
+        <div class="border-b border-gray-100 px-4 py-3 text-xs text-gray-500">{{ pagination.total }} {{ t('Emails') }} · {{ t('Timezone') }}: {{ tz_name }}</div>
+        <div class="email-log-scroll" tabindex="0" role="region" aria-label="{{ t('Email Logs') }}">
+            <table class="email-log-table w-full text-left text-xs">
+                <thead class="border-b border-gray-200 bg-gray-50/80 uppercase tracking-wider text-gray-500 font-semibold"><tr>
+                    {% for label in ('Queued at','Recipient','Subject','Notification event','Leave request','Status','Delivery attempts','Actions') %}<th scope="col" class="px-4 py-3.5">{{ t(label) }}</th>{% endfor %}
+                </tr></thead>
+                <tbody class="divide-y divide-gray-100 text-gray-700">
+                {% for item in logs %}
+                    <tr class="email-log-row hover:bg-gray-50/70 transition-colors">
+                        <td class="px-4 py-3 whitespace-nowrap"><span class="font-semibold text-gray-900 block">{{ item.created_at|user_tz('%d/%m/%Y') }}</span><span class="text-gray-400 font-mono">{{ item.created_at|user_tz('%H:%M:%S') }}</span></td>
+                        <td class="px-4 py-3 email-recipient font-semibold">{{ item.recipient_email }}</td>
+                        <td class="px-4 py-3 email-log-subject">{{ item.subject }}</td>
+                        <td class="px-4 py-3">{{ t(events.get(item.event,item.event)) }}</td>
+                        <td class="px-4 py-3"><a class="underline" href="{{ url_for('main.admin_email_logs',request_id=item.leave_request_id) }}">#{{ item.leave_request_id }}</a></td>
+                        <td class="px-4 py-3"><span class="email-log-status {{ item.status }}">{{ t(statuses.get(item.status,item.status)) }}</span></td>
+                        <td class="px-4 py-3">{{ item.attempts }}</td>
+                        <td class="px-4 py-3 text-right"><button type="button" data-email-detail="{{ item.id }}" aria-haspopup="dialog" aria-controls="emailLogDialog" title="{{ t('View Details') }}" aria-label="{{ t('View Details') }} #{{ item.id }}" class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition shadow-2xs"><i class="fa-solid fa-magnifying-glass text-xs" aria-hidden="true"></i></button></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8" class="empty-state py-12 text-center"><i class="fa-solid fa-envelope text-3xl text-gray-300 mb-2"></i><p class="font-semibold text-gray-700">{{ t('No email logs found.') }}</p></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "components/pagination.html" %}
+    </div>
+</div>
+<dialog id="emailLogDialog" class="email-log-dialog" aria-labelledby="emailLogDialogTitle">
+    <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+        <h2 id="emailLogDialogTitle" class="text-base font-bold">{{ t('Email Logs') }} — {{ t('View Details') }}</h2>
+        <button type="button" data-email-close aria-label="{{ t('Close') }}" class="text-gray-500 p-2"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="emailLogDetailContent"></div>
+    <div class="mt-6 flex justify-end"><button type="button" data-email-close class="btn-secondary px-5 py-2 text-xs">{{ t('Close') }}</button></div>
+</dialog>
+{% for item in logs %}
+<template id="emailLogDetail-{{ item.id }}">
+    <dl class="email-log-details">
+        {% for label,value in [('Recipient',item.recipient_email),('Subject',item.subject),('Notification event',t(events.get(item.event,item.event))),('Status',t(statuses.get(item.status,item.status))),('Delivery attempts',item.attempts),('Maximum delivery attempts',5),('Queued at',item.created_at|format_datetime),('Sent at',item.sent_at|format_datetime)] %}
+        <div><dt>{{ t(label) }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+        <div><dt>{{ t('Leave request') }}</dt><dd>#{{ item.leave_request_id }}</dd></div>
+        <div><dt>{{ t('Timezone') }}</dt><dd>{{ tz_name }}</dd></div>
+        {% if item.status in ('pending','retry') %}<div><dt>{{ t('Next attempt') }}</dt><dd>{{ item.available_at|format_datetime }}</dd></div>{% endif %}
+        {% if item.status == 'processing' %}<div><dt>{{ t('Started at') }}</dt><dd>{{ item.locked_at|format_datetime }}</dd></div>{% endif %}
+        {% if item.last_error %}<div><dt>{{ t('Delivery error') }}</dt><dd>{{ t(public_error(item.last_error)) }}</dd></div>{% endif %}
+    </dl>
+</template>
+{% endfor %}
+<script>
+(() => {
+    const dialog = document.getElementById('emailLogDialog');
+    const content = document.getElementById('emailLogDetailContent');
+    let trigger = null;
+    document.querySelectorAll('[data-email-detail]').forEach(button => {
+        button.addEventListener('click', () => {
+            const template = document.getElementById('emailLogDetail-' + button.dataset.emailDetail);
+            if (!template) return;
+            trigger = button;
+            content.replaceChildren(template.content.cloneNode(true));
+            dialog.showModal();
+        });
+    });
+    dialog.querySelectorAll('[data-email-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
+    dialog.addEventListener('click', event => {
+        const bounds = dialog.getBoundingClientRect();
+        if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+    });
+    dialog.addEventListener('close', () => { if (trigger) trigger.focus(); });
+})();
+</script>
+{% endblock %}

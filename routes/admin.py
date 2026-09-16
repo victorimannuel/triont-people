@@ -1918,6 +1918,70 @@ def admin_download_backup():
 
 # ── ADMIN: AUDIT LOGS ──
 
+@main_bp.route('/admin/email-logs')
+@login_required
+@role_required('admin')
+def admin_email_logs():
+    from models.notification import NotificationOutbox
+    from services.email_log_service import public_delivery_error
+    from core.time_util import get_current_user_timezone
+    from zoneinfo import ZoneInfo
+    from datetime import timezone
+
+    company_id = (get_active_company_id() if is_superadmin_role(current_user.role)
+                  else current_user.company_id)
+    query = NotificationOutbox.query.filter_by(company_id=company_id)
+    status = request.args.get('status', '').strip()
+    event = request.args.get('event', '').strip()
+    q = request.args.get('q', '').strip()[:255]
+    request_id = request.args.get('request_id', type=int)
+    audit_id = request.args.get('audit_id', type=int)
+    statuses = {'pending': 'Queued', 'processing': 'Sending', 'retry': 'Retrying',
+                'sent': 'Sent', 'failed': 'Failed'}
+    events = {'submit': 'Submitted', 'approve': 'Approved', 'reject': 'Rejected'}
+    if status in statuses:
+        query = query.filter_by(status=status)
+    if event in events:
+        query = query.filter_by(event=event)
+    if q:
+        query = query.filter(NotificationOutbox.recipient_email.contains(q, autoescape=True))
+    if request_id is not None:
+        query = query.filter_by(leave_request_id=request_id)
+    if audit_id is not None:
+        audit = AuditLog.query.filter_by(id=audit_id, company_id=company_id,
+                                        action='leave.notification_resent').first_or_404()
+        ids = audit.details_dict.get('outbox_ids')
+        if ids is not None:
+            query = query.filter(NotificationOutbox.id.in_(ids))
+        else:
+            query = query.filter_by(leave_request_id=audit.target_id)
+
+    tz_name = get_current_user_timezone()
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz_name, tz = 'Asia/Jakarta', ZoneInfo('Asia/Jakarta')
+    for key, upper in (('start_date', False), ('end_date', True)):
+        value = request.args.get(key, '')
+        if value:
+            try:
+                boundary = datetime.strptime(value, '%Y-%m-%d')
+                if upper:
+                    boundary += timedelta(days=1)
+                boundary = boundary.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+                query = query.filter(NotificationOutbox.created_at < boundary if upper
+                                     else NotificationOutbox.created_at >= boundary)
+            except ValueError:
+                abort(400)
+    page, per_page, per_page_str = get_pagination_args(default=20)
+    pagination = query.order_by(NotificationOutbox.created_at.desc(),
+                               NotificationOutbox.id.desc()).paginate(
+                                   page=page, per_page=per_page, error_out=False)
+    return render_template('admin/email_logs.html', logs=pagination.items,
+                           pagination=pagination, statuses=statuses, events=events,
+                           public_error=public_delivery_error, tz_name=tz_name,
+                           per_page_str=per_page_str)
+
 @main_bp.route('/admin/audit-logs')
 @login_required
 @role_required('admin')

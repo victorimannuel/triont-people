@@ -8,6 +8,9 @@ from models.company import Company
 from models.leave import LeaveRequest
 from models.notification import NotificationOutbox
 from services.notification_service import _dispatch_email, send_notification
+from services.email_log_service import safe_delivery_error
+
+MAX_DELIVERY_ATTEMPTS = 5
 
 
 def queue_notification(company, event, leave_request, recipient_scope='all', force=False):
@@ -58,6 +61,13 @@ def process_next_notification():
     if not item:
         return False
 
+    if item.attempts >= MAX_DELIVERY_ATTEMPTS:
+        item.status = 'failed'
+        item.locked_at = None
+        item.last_error = 'Delivery attempts exhausted.'
+        db.session.commit()
+        return True
+
     item.status = 'processing'
     item.locked_at = now
     item.attempts += 1
@@ -65,16 +75,22 @@ def process_next_notification():
 
     item_id = item.id
     company = db.session.get(Company, item.company_id)
-    delivered = bool(company) and _dispatch_email(company, item.recipient_email, item.subject, item.body)
+    error = 'SMTP delivery failed or is no longer configured.'
+    try:
+        delivered = bool(company) and _dispatch_email(
+            company, item.recipient_email, item.subject, item.body, raise_errors=True)
+    except Exception as exc:
+        delivered = False
+        error = safe_delivery_error(exc)
     item = db.session.get(NotificationOutbox, item_id)
     if delivered:
         item.status = 'sent'
         item.sent_at = utcnow()
         item.last_error = None
     else:
-        item.status = 'retry'
+        item.status = 'failed' if item.attempts >= MAX_DELIVERY_ATTEMPTS else 'retry'
         item.available_at = _retry_at(item.attempts, utcnow())
-        item.last_error = 'SMTP delivery failed or is no longer configured.'
+        item.last_error = error
     item.locked_at = None
     db.session.commit()
     return True

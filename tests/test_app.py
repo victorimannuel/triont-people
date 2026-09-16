@@ -2416,6 +2416,10 @@ class PeopleAppTestCase(unittest.TestCase):
         audit = AuditLog.query.filter_by(action='leave.notification_resent', target_id=req.id).order_by(AuditLog.id.desc()).first()
         self.assertIsNotNone(audit)
         self.assertEqual(audit.details_dict['recipient_scope'], 'all')
+        self.assertTrue(all(isinstance(i, int) for i in audit.details_dict['outbox_ids']))
+        batch = self.client.get(f'/admin/email-logs?audit_id={audit.id}')
+        self.assertEqual(batch.status_code, 200)
+        self.assertEqual(batch.data.count(b'<tr class="email-log-row '), len(audit.details_dict['outbox_ids']))
 
         self._login(self.manager_user)
         denied = self.client.post(f'/approval-history/{req.id}/resend-notification', data={'recipient_scope': 'approver'})
@@ -2573,6 +2577,110 @@ class PeopleAppTestCase(unittest.TestCase):
 
         dur2 = calculate_working_duration(fri, mon, company_id=self.company_a.id)
         self.assertEqual(dur2, 1.0)
+
+
+    def test_email_logs_scoped_filtered_and_sanitized(self):
+        a = NotificationOutbox(company_id=self.company_a.id, leave_request_id=1,
+            event='submit', recipient_email='visible@test.com', subject='<script>bad</script>',
+            body='PRIVATE BODY', status='retry', attempts=1,
+            last_error='password=VERY_SECRET', created_at=datetime(2026, 9, 15, 18))
+        b = NotificationOutbox(company_id=self.company_b.id, leave_request_id=2,
+            event='approve', recipient_email='HIDDEN_COMPANY@test.com', subject='Hidden',
+            body='Hidden', status='sent')
+        db.session.add_all([a,b])
+        db.session.commit()
+        self._login(self.admin_user)
+        with self.client.session_transaction() as sess:
+            sess['active_company_id'] = self.company_b.id
+        response = self.client.get('/admin/email-logs?status=retry&start_date=2026-09-16&end_date=2026-09-16')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'visible@test.com', response.data)
+        self.assertIn(b'16/09/2026 01:00', response.data)
+        self.assertNotIn(b'HIDDEN_COMPANY@test.com', response.data)
+        self.assertNotIn(b'VERY_SECRET', response.data)
+        self.assertNotIn(b'PRIVATE BODY', response.data)
+        self.assertIn(b'&lt;script&gt;bad&lt;/script&gt;', response.data)
+        self.assertIn(b'<td class="px-4 py-3 email-log-subject">&lt;script&gt;bad&lt;/script&gt;</td>', response.data)
+        self.assertNotIn(b'visible@test.com', self.client.get('/admin/email-logs?status=sent').data)
+        self.assertNotIn(b'visible@test.com', self.client.get('/admin/email-logs?request_id=2').data)
+        self.assertNotIn(b'visible@test.com', self.client.get('/admin/email-logs?q=missing').data)
+        self.assertEqual(self.client.get('/admin/email-logs?start_date=bad').status_code, 400)
+        self._login(self.employee_user)
+        self.assertEqual(self.client.get('/admin/email-logs').status_code, 302)
+        self._login(self.manager_user)
+        self.assertEqual(self.client.get('/admin/email-logs').status_code, 302)
+        self._login(self.superadmin_user)
+        with self.client.session_transaction() as sess:
+            sess['active_company_id'] = self.company_b.id
+        response = self.client.get('/admin/email-logs')
+        self.assertIn(b'HIDDEN_COMPANY@test.com', response.data)
+        self.assertNotIn(b'visible@test.com', response.data)
+
+    def test_email_logs_resend_batch_and_pagination(self):
+        rows = [NotificationOutbox(company_id=self.company_a.id, leave_request_id=1,
+            event='submit', recipient_email=f'person{i}@test.com', subject='Test',
+            body='Private') for i in range(27)]
+        db.session.add_all(rows)
+        db.session.flush()
+        log = AuditLog(company_id=self.company_a.id, action='leave.notification_resent',
+            target_type='leave_request', target_id=1,
+            details=json.dumps({'outbox_ids':[rows[0].id]}))
+        foreign = AuditLog(company_id=self.company_b.id, action='leave.notification_resent',
+            target_type='leave_request', target_id=1, details='{}')
+        db.session.add_all([log,foreign])
+        db.session.commit()
+        self._login(self.admin_user)
+        response = self.client.get(f'/admin/email-logs?audit_id={log.id}')
+        self.assertIn(b'person0@test.com', response.data)
+        self.assertNotIn(b'person1@test.com', response.data)
+        self.assertEqual(self.client.get(f'/admin/email-logs?audit_id={foreign.id}').status_code, 404)
+        response = self.client.get('/admin/email-logs')
+        self.assertEqual(response.data.count(b'<tr class="email-log-row '), 20)
+        self.assertEqual(self.client.get('/admin/email-logs?page=2').data.count(b'<tr class="email-log-row '), 7)
+        self.assertEqual(self.client.get('/admin/email-logs?per_page=50').data.count(b'<tr class="email-log-row '), 27)
+        self.assertIn(b'id="emailLogDialog"', response.data)
+        self.assertIn(b'dialog.showModal()', response.data)
+        self.assertIn(b'email-log-scroll', response.data)
+        self.assertNotIn(b'<details class="email-log-card">', response.data)
+
+    def test_email_worker_fails_after_five_sanitized_attempts(self):
+        import smtplib
+        from services.notification_outbox_service import process_next_notification
+        row = NotificationOutbox(company_id=self.company_a.id, leave_request_id=1,
+            event='submit', recipient_email='test@example.test', subject='Test', body='Test')
+        db.session.add(row)
+        db.session.commit()
+        with patch('services.notification_outbox_service._dispatch_email',
+                   side_effect=smtplib.SMTPAuthenticationError(535, b'SECRET_PASSWORD')):
+            for attempt in range(1,6):
+                row.available_at = utcnow() - timedelta(seconds=1)
+                db.session.commit()
+                self.assertTrue(process_next_notification())
+                self.assertEqual(row.attempts, attempt)
+                self.assertEqual(row.status, 'failed' if attempt == 5 else 'retry')
+                self.assertEqual(row.last_error, 'SMTP authentication failed.')
+                self.assertIsNone(row.locked_at)
+            self.assertFalse(process_next_notification())
+
+    def test_email_worker_recovers_stale_lock_and_stops_exhausted_rows(self):
+        from services.notification_outbox_service import process_next_notification
+        row = NotificationOutbox(company_id=self.company_a.id, leave_request_id=1,
+            event='submit', recipient_email='test@example.test', subject='Test', body='Test',
+            status='processing', attempts=5, locked_at=utcnow()-timedelta(minutes=6))
+        db.session.add(row)
+        db.session.commit()
+        with patch('services.notification_outbox_service._dispatch_email') as dispatch:
+            self.assertTrue(process_next_notification())
+            dispatch.assert_not_called()
+        self.assertEqual(row.status, 'failed')
+        row.status, row.attempts = 'processing', 1
+        row.locked_at = utcnow()-timedelta(minutes=6)
+        db.session.commit()
+        with patch('services.notification_outbox_service._dispatch_email', return_value=True):
+            self.assertTrue(process_next_notification())
+        self.assertEqual(row.status, 'sent')
+        self.assertIsNotNone(row.sent_at)
+        self.assertIsNone(row.last_error)
 
 if __name__ == '__main__':
     unittest.main()

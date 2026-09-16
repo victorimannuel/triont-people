@@ -1,9 +1,11 @@
 import smtplib
 from email.message import EmailMessage
 
-def _dispatch_email(company, to_email, subject, body):
+def _dispatch_email(company, to_email, subject, body, *, raise_errors=False):
     """Internal helper to dispatch email via SMTP with timeout and error logging."""
     if not to_email or not company or not company.smtp_host or not company.smtp_user:
+        if raise_errors:
+            raise ValueError('SMTP configuration unavailable')
         print(f'ℹ️  [NO_SMTP] Email to {to_email} with subject "{subject}" logged.')
         return False
 
@@ -28,7 +30,9 @@ def _dispatch_email(company, to_email, subject, body):
         print(f'✅ Notification sent to {to_email}')
         return True
     except Exception as e:
-        print(f'❌ Failed to send email to {to_email}: {e}')
+        if raise_errors:
+            raise
+        print('SMTP delivery failed.')
         return False
 
 

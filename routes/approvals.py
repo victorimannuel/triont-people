@@ -294,11 +294,13 @@ def resend_leave_notification(request_id):
         flash(translate(message), 'resend_error')
         return redirect(request.referrer or url_for('main.approval_history'))
 
+    db.session.flush()
     audit_log(
         'leave.notification_resent',
         'leave_request',
         req.id,
-        details={'event': event, 'recipient_scope': recipient_scope, 'recipient_count': len(queued)},
+        details={'event': event, 'recipient_scope': recipient_scope, 'recipient_count': len(queued),
+                 'outbox_ids': [item.id for item in queued]},
         company_id=company_id,
     )
     db.session.commit()
